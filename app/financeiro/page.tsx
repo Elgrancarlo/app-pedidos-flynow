@@ -1,4 +1,4 @@
-import Shell from "@/components/shell";
+import Shell from "@/components/layout/shell";
 import PageHeader from "@/components/page-header";
 import FiltroPeriodo from "@/components/pedidos/filtro-periodo";
 import { createServiceClient } from "@/lib/supabase";

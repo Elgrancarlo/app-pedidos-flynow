@@ -5,7 +5,7 @@ import CardsFinanceiro from "@/components/pedidos/cards-financeiro";
 import BotaoSincronizar from "@/components/pedidos/botao-sincronizar";
 import FiltroPeriodo from "@/components/pedidos/filtro-periodo";
 import PageHeader from "@/components/page-header";
-import Shell from "@/components/shell";
+import Shell from "@/components/layout/shell";
 import type { Pedido, StatusPedido } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";

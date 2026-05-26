@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase";
 import TabelaEstoque from "@/components/estoque/tabela-estoque";
 import FormEntrada from "@/components/estoque/form-entrada";
-import Shell from "@/components/shell";
+import Shell from "@/components/layout/shell";
 import type { EstoqueGrupo, EstoqueMovimentacao } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";

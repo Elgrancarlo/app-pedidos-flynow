@@ -1,6 +1,6 @@
 "use client";
 
-import Shell from "@/components/shell";
+import Shell from "@/components/layout/shell";
 import PageHeader from "@/components/page-header";
 import BotaoRecalcular from "@/components/admin/botao-recalcular";
 import { Users, Webhook, MessageSquare, ShieldAlert } from "lucide-react";

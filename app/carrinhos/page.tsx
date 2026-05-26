@@ -1,4 +1,4 @@
-import Shell from "@/components/shell";
+import Shell from "@/components/layout/shell";
 import PageHeader from "@/components/page-header";
 import { Boxes } from "lucide-react";
 
