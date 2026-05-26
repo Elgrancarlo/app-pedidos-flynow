@@ -607,10 +607,18 @@ export const Calendar = ({
       Math.min(left, window.innerWidth - popoverWidth - viewportPadding)
     );
 
+    let top = triggerRect.bottom + 8;
+    const availableBelow = window.innerHeight - top - viewportPadding;
+
+    if (availableBelow < 280) {
+      top = viewportPadding;
+    }
+
     setPopoverStyle({
       left,
-      top: triggerRect.bottom + 8,
+      top,
       width: popoverWidth,
+      maxHeight: window.innerHeight - top - viewportPadding,
     });
   };
 
@@ -796,6 +804,18 @@ export const Calendar = ({
       return;
     }
 
+    const handleResize = () => updatePopoverPosition();
+
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     const handleClickOutside = (event: Event) => {
       const target = event.target as Node;
       const clickedTrigger = calendarRef.current?.contains(target);
@@ -879,7 +899,7 @@ export const Calendar = ({
         <div className="flex justify-between items-center">
           <div
             ref={triggerRef}
-            className="relative"
+            className="relative w-full"
             onClickCapture={(event) => {
               if (isOpenRef.current) {
                 ignoreNextTriggerClickRef.current = true;
@@ -930,14 +950,14 @@ export const Calendar = ({
           type="menu"
           style={popoverStyle}
           className={twMerge(clsx(
-            "flynow-calendar-popover fixed z-50 border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+            "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
             isPopoverClosing && "flynow-calendar-popover--closing",
             popoverOriginClass,
             horizontalLayout ? "w-[min(462px,calc(100vw-2rem))]" : "w-[min(280px,calc(100vw-2rem))]",
             popoverClassName
           ))}
         >
-          <div className={clsx(horizontalLayout && "flex gap-5")}>
+          <div className={clsx(horizontalLayout && "flex flex-col gap-4 min-[520px]:flex-row min-[520px]:gap-5")}>
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-sm text-[#F5F2EA] font-medium">

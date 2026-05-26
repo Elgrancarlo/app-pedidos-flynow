@@ -149,6 +149,22 @@ function formatDateLabel(value: string) {
   });
 }
 
+function useCompactViewport() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const updateMatch = () => setIsCompact(query.matches);
+
+    updateMatch();
+    query.addEventListener("change", updateMatch);
+
+    return () => query.removeEventListener("change", updateMatch);
+  }, []);
+
+  return isCompact;
+}
+
 function SectionHeader({
   title,
   description,
@@ -166,7 +182,7 @@ function SectionHeader({
         <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
           {title}
         </h2>
-        <p className="mt-1.5 text-sm leading-5 text-[#858A94]">
+        <p className="mt-1.5 text-[13px] leading-5 text-[#858A94] sm:text-sm">
           {description}
         </p>
       </div>
@@ -197,10 +213,10 @@ function KpiMetric({
           {label}
         </p>
       </div>
-      <p className="mt-3 text-[30px] font-semibold leading-none tracking-normal tabular-nums text-[#F5F2EA] md:text-[32px]">
+      <p className="mt-3 text-[24px] font-semibold leading-none tracking-normal tabular-nums text-[#F5F2EA] sm:text-[30px] md:text-[32px]">
         {value}
       </p>
-      <p className="mt-3 max-w-[28ch] text-[13px] leading-5 text-[#8B9099]">
+      <p className="mt-3 max-w-[28ch] text-xs leading-5 text-[#8B9099] sm:text-[13px]">
         {supportingText}
       </p>
     </div>
@@ -238,11 +254,11 @@ function OverviewPanel({ data }: { data: MetricsData }) {
         aria-hidden="true"
         className="block h-px bg-gradient-to-r from-transparent via-[#D6A84F]/45 to-transparent"
       />
-      <div className="flex flex-col gap-1 border-b border-white/[0.06] px-5 py-4">
+      <div className="flex flex-col gap-1 border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
         <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
           Visão geral
         </h2>
-        <p className="text-sm leading-5 text-[#858A94]">
+        <p className="text-[13px] leading-5 text-[#858A94] sm:text-sm">
           Resumo do período selecionado
         </p>
       </div>
@@ -252,10 +268,10 @@ function OverviewPanel({ data }: { data: MetricsData }) {
           <div
             key={metric.label}
             className={cn(
-              "px-5 py-5",
+              "px-4 py-4 sm:px-5 sm:py-5",
               index > 0 &&
                 "border-t border-white/[0.06] md:border-l md:border-t-0"
-          )}
+            )}
           >
             <KpiMetric {...metric} />
           </div>
@@ -284,7 +300,7 @@ function ConversionItem({
       : "border-white/[0.08] text-[#A3A8B1]";
 
   return (
-    <div className="rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3.5 py-3 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035]">
+    <div className="min-w-0 rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3 py-3 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035] sm:px-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           {icon ? (
@@ -307,7 +323,7 @@ function ConversionItem({
           </div>
         </div>
         {taxa !== undefined ? (
-          <span className="rounded-md border border-[#4ADE80]/16 bg-[#0D1F14]/80 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
+          <span className="shrink-0 rounded-md border border-[#4ADE80]/16 bg-[#0D1F14]/80 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
             {formatPercent(taxa)}
           </span>
         ) : null}
@@ -315,10 +331,10 @@ function ConversionItem({
 
       <div className="mt-3">
         <div className="flex items-end justify-between gap-3">
-          <p className="text-[16px] font-semibold leading-none tabular-nums text-[#F5F2EA]">
+          <p className="min-w-0 truncate text-[15px] font-semibold leading-none tabular-nums text-[#F5F2EA] sm:text-[16px]">
             {formatCurrency(receita)}
           </p>
-          <p className="text-xs tabular-nums text-[#858A94]">
+          <p className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-[#858A94] sm:text-xs">
             {Math.round(percentage)}% do maior
           </p>
         </div>
@@ -343,7 +359,7 @@ function ConversionPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
+    <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
       <SectionHeader title={title} description={description} />
       <div className="mt-4 space-y-2.5">{children}</div>
     </section>
@@ -353,9 +369,9 @@ function ConversionPanel({
 function DashboardSkeleton() {
   return (
     <div className="flynow-dashboard-skeleton space-y-5">
-      <div className="flynow-dashboard-skeleton-panel h-[214px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12]" />
+      <div className="flynow-dashboard-skeleton-panel h-[350px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] md:h-[214px]" />
 
-      <div className="flynow-dashboard-skeleton-panel h-[520px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12]" />
+      <div className="flynow-dashboard-skeleton-panel h-[420px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] sm:h-[470px] lg:h-[520px]" />
 
       <div className="grid items-start gap-5 xl:grid-cols-2">
         {Array.from({ length: 2 }).map((_, index) => (
@@ -381,14 +397,16 @@ function ErrorState({ message }: { message: string }) {
 }
 
 function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
+  const isCompact = useCompactViewport();
+
   return (
-    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between lg:mb-6">
         <SectionHeader
           title="Faturamento vs investimento"
           description="Evolução diária no período selecionado"
         />
-        <div className="flex items-center gap-4 rounded-md border border-white/[0.06] bg-[#050607] px-3 py-2 text-xs text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-3 py-2 text-xs text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:w-auto sm:justify-start sm:gap-4">
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
             <span className="size-1.5 rounded-full bg-[#D6A84F]" />
             Faturamento
@@ -400,12 +418,22 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
         </div>
       </div>
 
-      <div className="flynow-chart-stage h-[420px] min-w-0">
+      <div className="flynow-chart-stage h-[300px] min-w-0 sm:h-[340px] lg:h-[420px]">
         <div className="flynow-chart-plot h-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer
+            width="100%"
+            height="100%"
+            minWidth={1}
+            minHeight={240}
+            initialDimension={{ width: 640, height: 320 }}
+          >
             <LineChart
               data={data}
-              margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+              margin={
+                isCompact
+                  ? { top: 8, right: 2, bottom: 0, left: -6 }
+                  : { top: 8, right: 12, bottom: 0, left: 0 }
+              }
             >
               <CartesianGrid
                 stroke="rgba(255,255,255,0.065)"
@@ -414,18 +442,18 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
               />
               <XAxis
                 dataKey="data"
-                tick={{ fill: "#858A94", fontSize: 11 }}
+                tick={{ fill: "#858A94", fontSize: isCompact ? 10 : 11 }}
                 tickFormatter={formatDateLabel}
                 axisLine={false}
                 tickLine={false}
-                minTickGap={24}
+                minTickGap={isCompact ? 16 : 24}
               />
               <YAxis
-                tick={{ fill: "#858A94", fontSize: 11 }}
+                tick={{ fill: "#858A94", fontSize: isCompact ? 10 : 11 }}
                 tickFormatter={(value) => compactCurrency(Number(value))}
                 axisLine={false}
                 tickLine={false}
-                width={72}
+                width={isCompact ? 52 : 72}
               />
               <Tooltip
                 formatter={(value, name) => [
@@ -514,7 +542,7 @@ function PeriodActions({
     const groupRect = group.getBoundingClientRect();
     const buttonRect = activeButton.getBoundingClientRect();
     const nextUnderline = {
-      x: buttonRect.left - groupRect.left + 8,
+      x: buttonRect.left - groupRect.left + group.scrollLeft + 8,
       y: buttonRect.bottom - groupRect.top - 5,
       width: Math.max(buttonRect.width - 16, 12),
       visible: true,
@@ -549,6 +577,7 @@ function PeriodActions({
 
     const handleResize = () => updatePresetUnderline();
     window.addEventListener("resize", handleResize);
+    group.addEventListener("scroll", handleResize, { passive: true });
 
     const resizeObserver =
       typeof ResizeObserver !== "undefined"
@@ -567,6 +596,7 @@ function PeriodActions({
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      group.removeEventListener("scroll", handleResize);
       resizeObserver?.disconnect();
     };
   }, [activePreset, updatePresetUnderline]);
@@ -578,13 +608,13 @@ function PeriodActions({
   } as CSSProperties;
 
   return (
-    <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
+    <div className="flex w-full min-w-0 flex-col items-start gap-2 lg:w-auto lg:items-end">
       <div
         role="group"
         aria-label="Filtro de período"
-        className="flex w-full max-w-full flex-col gap-1.5 rounded-2xl border border-[#1D2026] bg-[#08090B] p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)] xl:w-auto xl:flex-row xl:items-center"
+        className="flex w-full max-w-full flex-col gap-1.5 rounded-[14px] border border-[#1D2026] bg-[#08090B] p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)] lg:w-auto lg:flex-row lg:items-center"
       >
-        <div className="flynow-date-picker dark w-full xl:w-auto">
+        <div className="flynow-date-picker dark w-full lg:w-auto">
           <Calendar
             value={calendarValue}
             onChange={onCalendarChange}
@@ -593,9 +623,9 @@ function PeriodActions({
             maxValue={maxDate}
             popoverAlignment="end"
             triggerActive={isCustomRange}
-            className="w-full xl:w-auto"
+            className="w-full lg:w-auto"
             triggerClassName={cn(
-              "!h-8 !w-full xl:!w-[236px] !rounded-xl !bg-[#0E1014] !px-2.5 !text-xs !font-medium !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418]",
+              "!h-9 !w-full !rounded-xl !bg-[#0E1014] !px-2.5 !text-xs !font-medium !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418] sm:!h-8 lg:!w-[236px]",
               isCustomRange
                 ? "!border-[#D6A84F]/45 !text-[#F5F2EA] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
                 : "!border-[#242932] !text-[#A3A6AE]"
@@ -606,14 +636,14 @@ function PeriodActions({
 
         <div
           aria-hidden="true"
-          className="hidden h-5 w-px bg-[#20242B] xl:block"
+          className="hidden h-5 w-px bg-[#20242B] lg:block"
         />
 
         <div
           ref={presetGroupRef}
           role="group"
           aria-label="Selecionar período"
-          className="relative grid w-full grid-cols-2 gap-1 md:grid-cols-5 xl:flex xl:w-auto xl:items-center"
+          className="flynow-period-presets relative flex w-full max-w-full gap-1 overflow-x-auto overscroll-x-contain pb-1 md:grid md:grid-cols-5 md:overflow-visible md:pb-0 lg:flex lg:w-auto lg:items-center"
         >
           <span
             aria-hidden="true"
@@ -636,7 +666,7 @@ function PeriodActions({
                 aria-pressed={isActive}
                 onClick={() => onSelect(preset)}
                 className={cn(
-                  "relative h-8 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 xl:min-w-10",
+                  "relative h-8 shrink-0 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 md:shrink lg:min-w-10",
                   isActive
                     ? "bg-[#17191E] text-[#F5F2EA] shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
                     : "text-[#858A94] hover:bg-[#111318] hover:text-[#DADDE2]"
@@ -744,7 +774,7 @@ export function PerformanceDashboard() {
         }
       />
 
-      <div className="px-6 pb-10 pt-6">
+      <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
         {isInitialLoading ? <DashboardSkeleton /> : null}
 
         {!isInitialLoading && error ? (

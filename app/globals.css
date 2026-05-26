@@ -148,6 +148,8 @@
 html,
 body {
   background: #050505;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -638,6 +640,14 @@ body {
 
 .flynow-preset-underline[data-visible="true"] {
   opacity: 1;
+}
+
+.flynow-period-presets {
+  scrollbar-width: none;
+}
+
+.flynow-period-presets::-webkit-scrollbar {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
