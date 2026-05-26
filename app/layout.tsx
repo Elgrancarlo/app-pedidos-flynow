@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Space_Grotesk } from "next/font/google";
+import { DM_Sans, Geist, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+});
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
@@ -21,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="h-full">
       <body
-        className={`${geist.className} ${spaceGrotesk.variable} h-full text-gray-900 antialiased`}
+        className={`${geist.className} ${dmSans.variable} ${spaceGrotesk.variable} h-full text-gray-900 antialiased`}
       >
         {children}
       </body>
