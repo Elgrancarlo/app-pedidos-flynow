@@ -323,3 +323,17 @@ body {
     @apply font-sans;
   }
 }
+
+.flynow-dashboard-shell a[href],
+.flynow-dashboard-shell button:not(:disabled),
+.flynow-dashboard-shell [role="button"]:not([aria-disabled="true"]),
+.flynow-dashboard-shell select:not(:disabled),
+.flynow-dashboard-shell summary {
+  cursor: pointer;
+}
+
+.flynow-dashboard-shell button:disabled,
+.flynow-dashboard-shell [aria-disabled="true"],
+.flynow-dashboard-shell select:disabled {
+  cursor: not-allowed;
+}
