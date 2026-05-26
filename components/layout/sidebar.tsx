@@ -8,19 +8,19 @@ import {
   Box,
   ChevronDown,
   ChartSpline,
-  CircleDashed,
   Inbox,
   LogOut,
   MoreHorizontal,
   Plus,
   Search,
+  ShoppingCart,
   SlidersHorizontal,
 } from "lucide-react";
 
 const PRIMARY_NAV = [
   { href: "/dashboard", label: "Dashboard", Icone: Activity },
   { href: "/pedidos", label: "Pedidos", Icone: Inbox },
-  { href: "/carrinhos", label: "Carrinhos", Icone: CircleDashed },
+  { href: "/carrinhos", label: "Carrinhos", Icone: ShoppingCart },
   { href: "/financeiro", label: "Financeiro", Icone: ChartSpline },
 ];
 
