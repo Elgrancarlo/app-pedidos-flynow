@@ -444,15 +444,20 @@ function PeriodActions({
   activeRange,
   range,
   calendarValue,
+  maxDate,
   onSelect,
   onCalendarChange,
 }: {
   activeRange: string;
   range: { from: Date; to: Date };
   calendarValue: RangeValue | null;
+  maxDate: Date;
   onSelect: (preset: RangePreset) => void;
   onCalendarChange: (value: RangeValue | null) => void;
 }) {
+  const isCustomRange =
+    activeRange === "custom" && Boolean(calendarValue?.start && calendarValue.end);
+
   return (
     <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
       <div
@@ -466,9 +471,16 @@ function PeriodActions({
             onChange={onCalendarChange}
             horizontalLayout
             showTimeInput={false}
+            maxValue={maxDate}
             popoverAlignment="end"
+            triggerActive={isCustomRange}
             className="w-full xl:w-auto"
-            triggerClassName="!h-8 !w-full xl:!w-[236px] !rounded-xl !border-[#242932] !bg-[#0E1014] !px-2.5 !text-xs !font-medium !text-[#A3A6AE] !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418]"
+            triggerClassName={cn(
+              "!h-8 !w-full xl:!w-[236px] !rounded-xl !bg-[#0E1014] !px-2.5 !text-xs !font-medium !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418]",
+              isCustomRange
+                ? "!border-[#D6A84F]/45 !text-[#F5F2EA] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
+                : "!border-[#242932] !text-[#A3A6AE]"
+            )}
             popoverClassName="!z-50 !border !border-[#242932] !bg-[#08090B]"
           />
         </div>
@@ -524,6 +536,7 @@ function PeriodActions({
 
 export function PerformanceDashboard() {
   const initialRange = useMemo(() => RANGE_PRESETS[2].getRange(), []);
+  const maxSelectableDate = useMemo(() => endOfDay(new Date()), []);
   const [activeRange, setActiveRange] = useState("30d");
   const [range, setRange] = useState(initialRange);
   const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
@@ -561,6 +574,11 @@ export function PerformanceDashboard() {
   function selectCalendarRange(value: RangeValue | null) {
     setCalendarValue(value);
 
+    if (!value) {
+      setActiveRange("custom");
+      return;
+    }
+
     if (value?.start && value.end) {
       setActiveRange("custom");
       setRange({ from: value.start, to: value.end });
@@ -577,6 +595,7 @@ export function PerformanceDashboard() {
             activeRange={activeRange}
             range={range}
             calendarValue={calendarValue}
+            maxDate={maxSelectableDate}
             onSelect={selectPreset}
             onCalendarChange={selectCalendarRange}
           />
