@@ -2,9 +2,9 @@ import Sidebar from "./sidebar";
 
 export default function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#050505] text-[#F5F2EA]">
       <Sidebar />
-      <main className="flex-1 min-h-screen bg-gray-50 overflow-y-auto">
+      <main className="min-h-screen flex-1 overflow-y-auto bg-[#050505]">
         {children}
       </main>
     </div>
