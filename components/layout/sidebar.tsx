@@ -92,85 +92,106 @@ function SidebarLink({
   );
 }
 
+function MobileNavLink({
+  href,
+  label,
+  Icone,
+  ativo,
+}: {
+  href: string;
+  label: string;
+  Icone: LucideIcon;
+  ativo: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={ativo ? "page" : undefined}
+      className={[
+        "relative flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[11px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        ativo
+          ? "bg-[#17181B] text-[#F5F2EA]"
+          : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",
+      ].join(" ")}
+    >
+      {ativo ? (
+        <span
+          aria-hidden="true"
+          className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#D6A84F]"
+        />
+      ) : null}
+      <Icone
+        size={18}
+        strokeWidth={2.1}
+        className={[
+          "shrink-0 transition-colors duration-150",
+          ativo ? "text-[#D6A84F]" : "text-[#747882]",
+        ].join(" ")}
+      />
+      <span className="max-w-full truncate leading-none">{label}</span>
+    </Link>
+  );
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden rounded-r-2xl border-r border-[#1C2026] bg-[#0B0C0E] shadow-[10px_0_30px_rgba(0,0,0,0.18)]">
-      <div className="px-3 pb-3 pt-4">
-        <div className="flex h-11 items-center justify-between gap-2">
-          <button
-            type="button"
-            title="Workspace Flynow"
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl px-1.5 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-[#151619] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-          >
-            <span className="flex size-8 items-center justify-center">
-              <FlyNowMark />
-            </span>
-            <span
-              className="block shrink-0 whitespace-nowrap leading-none"
-              style={{
-                color: "#F5F2EA",
-                fontFamily: "var(--font-dm-sans), sans-serif",
-                fontSize: "20px",
-                fontWeight: 700,
-                letterSpacing: "-0.2px",
-              }}
-            >
-              Flynow
-            </span>
-            <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-[#5E636D]" />
-          </button>
-
-          <div className="flex shrink-0 items-center gap-1">
+    <>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden rounded-r-2xl border-r border-[#1C2026] bg-[#0B0C0E] shadow-[10px_0_30px_rgba(0,0,0,0.18)] xl:flex">
+        <div className="px-3 pb-3 pt-4">
+          <div className="flex h-11 items-center justify-between gap-2">
             <button
               type="button"
-              aria-label="Buscar"
-              title="Buscar"
-              className="flex size-7 cursor-pointer items-center justify-center rounded-md text-[#858A94] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#DADDE2] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              title="Workspace Flynow"
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl px-1.5 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-[#151619] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
             >
-              <Search size={15} strokeWidth={2.2} />
+              <span className="flex size-8 items-center justify-center">
+                <FlyNowMark />
+              </span>
+              <span
+                className="block shrink-0 whitespace-nowrap leading-none"
+                style={{
+                  color: "#F5F2EA",
+                  fontFamily: "var(--font-dm-sans), sans-serif",
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  letterSpacing: "-0.2px",
+                }}
+              >
+                Flynow
+              </span>
+              <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-[#5E636D]" />
             </button>
-            <Link
-              href="/pedidos"
-              aria-label="Criar pedido"
-              title="Criar pedido"
-              className="flex size-7 items-center justify-center rounded-md border border-[#242932] bg-[#121418] text-[#DADDE2] outline-none transition-colors duration-150 hover:border-[#343A44] hover:bg-[#171A20] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-            >
-              <Plus size={16} strokeWidth={2.3} />
-            </Link>
+
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                aria-label="Buscar"
+                title="Buscar"
+                className="flex size-7 cursor-pointer items-center justify-center rounded-md text-[#858A94] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#DADDE2] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              >
+                <Search size={15} strokeWidth={2.2} />
+              </button>
+              <Link
+                href="/pedidos"
+                aria-label="Criar pedido"
+                title="Criar pedido"
+                className="flex size-7 items-center justify-center rounded-md border border-[#242932] bg-[#121418] text-[#DADDE2] outline-none transition-colors duration-150 hover:border-[#343A44] hover:bg-[#171A20] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              >
+                <Plus size={16} strokeWidth={2.3} />
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
 
-      <nav
-        aria-label="Navegação principal"
-        className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2"
-      >
-        <div className="space-y-1">
-          {PRIMARY_NAV.map(({ href, label, Icone }) => (
-            <SidebarLink
-              key={href}
-              href={href}
-              label={label}
-              Icone={Icone}
-              ativo={isActive(href)}
-            />
-          ))}
-        </div>
-
-        <div className="mt-7">
-          <button
-            type="button"
-            className="mb-1 flex h-7 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-semibold text-[#666B75] outline-none transition-colors duration-150 hover:text-[#A3A6AE] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-          >
-            <span>Workspace</span>
-            <ChevronDown size={14} strokeWidth={2.2} />
-          </button>
-
+        <nav
+          aria-label="Navegação principal"
+          className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2"
+        >
           <div className="space-y-1">
-            {WORKSPACE_NAV.map(({ href, label, Icone }) => (
+            {PRIMARY_NAV.map(({ href, label, Icone }) => (
               <SidebarLink
                 key={href}
                 href={href}
@@ -179,34 +200,73 @@ export default function Sidebar() {
                 ativo={isActive(href)}
               />
             ))}
+          </div>
 
+          <div className="mt-7">
             <button
               type="button"
-              className="group flex h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold text-[#A3A6AE] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#E8E9EC] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              className="mb-1 flex h-7 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-semibold text-[#666B75] outline-none transition-colors duration-150 hover:text-[#A3A6AE] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
             >
-              <MoreHorizontal
-                size={18}
-                strokeWidth={2}
-                className="shrink-0 text-[#747882] transition-colors duration-150 group-hover:text-[#AEB2BB]"
-              />
-              <span className="truncate">Mais</span>
+              <span>Workspace</span>
+              <ChevronDown size={14} strokeWidth={2.2} />
             </button>
+
+            <div className="space-y-1">
+              {WORKSPACE_NAV.map(({ href, label, Icone }) => (
+                <SidebarLink
+                  key={href}
+                  href={href}
+                  label={label}
+                  Icone={Icone}
+                  ativo={isActive(href)}
+                />
+              ))}
+
+              <button
+                type="button"
+                className="group flex h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold text-[#A3A6AE] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#E8E9EC] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              >
+                <MoreHorizontal
+                  size={18}
+                  strokeWidth={2}
+                  className="shrink-0 text-[#747882] transition-colors duration-150 group-hover:text-[#AEB2BB]"
+                />
+                <span className="truncate">Mais</span>
+              </button>
+            </div>
           </div>
+        </nav>
+
+        <div className="shrink-0 px-3 pb-4 pt-2">
+          <div className="flex h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-150 hover:bg-[#151619]">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#151619] text-xs font-semibold text-[#D6A84F] ring-1 ring-[#242932]">
+              AF
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-[#E8E9EC]">Admin</p>
+              <p className="text-xs font-medium text-[#6B707A]">Online</p>
+            </div>
+            <LogOut size={15} className="shrink-0 text-[#5E636D]" />
+          </div>
+        </div>
+      </aside>
+
+      <nav
+        aria-label="Navegação mobile"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.07] bg-[#08090B]/92 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-18px_44px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-2xl xl:hidden"
+      >
+        <div className="mx-auto grid max-w-[520px] grid-cols-4 gap-1">
+          {PRIMARY_NAV.map(({ href, label, Icone }) => (
+            <MobileNavLink
+              key={href}
+              href={href}
+              label={label}
+              Icone={Icone}
+              ativo={isActive(href)}
+            />
+          ))}
         </div>
       </nav>
-
-      <div className="shrink-0 px-3 pb-4 pt-2">
-        <div className="flex h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-150 hover:bg-[#151619]">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#151619] text-xs font-semibold text-[#D6A84F] ring-1 ring-[#242932]">
-            AF
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#E8E9EC]">Admin</p>
-            <p className="text-xs font-medium text-[#6B707A]">Online</p>
-          </div>
-          <LogOut size={15} className="shrink-0 text-[#5E636D]" />
-        </div>
-      </div>
-    </aside>
+    </>
   );
 }

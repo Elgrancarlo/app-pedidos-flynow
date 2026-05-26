@@ -42,7 +42,7 @@ export function DashboardHeader({
       <div ref={sentinelRef} aria-hidden="true" className="h-px" />
       <header
         className={cn(
-          "sticky top-0 z-40 flex min-h-[92px] flex-col justify-end gap-4 border-b px-6 pb-4 pt-5 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-200 xl:flex-row xl:items-end xl:justify-between",
+          "sticky top-0 z-40 flex min-h-[86px] flex-col justify-end gap-3 border-b px-4 pb-4 pt-4 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-200 sm:px-5 sm:pt-5 lg:min-h-[92px] lg:flex-row lg:items-end lg:justify-between lg:px-6",
           isElevated
             ? "border-white/[0.06] bg-[#050505]/72 shadow-[0_16px_50px_rgba(0,0,0,0.36)] backdrop-blur-2xl"
             : "border-transparent bg-[#050505] shadow-none backdrop-blur-0"
@@ -55,12 +55,12 @@ export function DashboardHeader({
               className="mt-0.5 h-10 w-px shrink-0 rounded-full bg-gradient-to-b from-[#D6A84F]/85 via-[#D6A84F]/28 to-transparent"
             />
             <div className="min-w-0">
-              <h1 className="text-[26px] font-semibold leading-none text-[#F5F2EA]">
+              <h1 className="text-[22px] font-semibold leading-none text-[#F5F2EA] sm:text-[26px]">
                 {title}
               </h1>
 
               {description ? (
-                <p className="mt-2 max-w-[520px] text-sm leading-5 text-[#9B968C]">
+                <p className="mt-2 max-w-[520px] text-[13px] leading-5 text-[#9B968C] sm:text-sm">
                   {description}
                 </p>
               ) : null}
@@ -69,7 +69,7 @@ export function DashboardHeader({
         </div>
 
         {actions ? (
-          <div className="flex w-full items-end gap-2 xl:w-auto xl:shrink-0 xl:-translate-y-1">
+          <div className="flex w-full min-w-0 items-end gap-2 lg:w-auto lg:shrink-0 lg:-translate-y-1">
             {actions}
           </div>
         ) : null}
