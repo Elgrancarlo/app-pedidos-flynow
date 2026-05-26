@@ -145,6 +145,11 @@
   }
 }
 
+html,
+body {
+  background: #050505;
+}
+
 body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
@@ -338,6 +343,232 @@ body {
   cursor: not-allowed;
 }
 
+@keyframes flynow-dashboard-content-in {
+  0% {
+    opacity: 0;
+    filter: blur(10px) saturate(0.82);
+    transform: translate3d(0, 12px, 0) scale(0.992);
+  }
+
+  64% {
+    opacity: 1;
+    filter: blur(0) saturate(1.02);
+    transform: translate3d(0, -1px, 0) scale(1.001);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes flynow-dashboard-panel-in {
+  0% {
+    opacity: 0;
+    filter: blur(12px);
+    transform: translate3d(0, 18px, 0) scale(0.988);
+  }
+
+  60% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, -1px, 0) scale(1.001);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes flynow-dashboard-refresh-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(-120%, 0, 0);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(120%, 0, 0);
+  }
+}
+
+@keyframes flynow-dashboard-shimmer {
+  0% {
+    transform: translate3d(-115%, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(115%, 0, 0);
+  }
+}
+
+@keyframes flynow-dashboard-chart-stage-in {
+  0% {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translate3d(0, 8px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes flynow-dashboard-chart-plot-in {
+  0% {
+    opacity: 0;
+    filter: blur(8px) saturate(0.86);
+    transform: translate3d(0, 14px, 0) scaleY(0.985);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+    transform: translate3d(0, 0, 0) scaleY(1);
+  }
+}
+
+@keyframes flynow-dashboard-chart-scan {
+  0% {
+    opacity: 0;
+    transform: translate3d(-22%, 0, 0);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(112%, 0, 0);
+  }
+}
+
+@keyframes flynow-dashboard-bar-in {
+  0% {
+    opacity: 0.28;
+    transform: scaleX(0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.flynow-dashboard-content {
+  animation: flynow-dashboard-content-in 520ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  isolation: isolate;
+  transform-origin: center top;
+  will-change: opacity, filter, transform;
+}
+
+.flynow-dashboard-enter-item {
+  animation: flynow-dashboard-panel-in 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--flynow-enter-delay, 0ms);
+  transform-origin: center top;
+  will-change: opacity, filter, transform;
+}
+
+.flynow-dashboard-content--refreshing {
+  filter: saturate(0.78) contrast(0.96);
+  opacity: 0.74;
+  transition:
+    filter 180ms ease,
+    opacity 180ms ease;
+}
+
+.flynow-dashboard-content--refreshing::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 10;
+  border-radius: 10px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(214, 168, 79, 0.045) 42%,
+    rgba(255, 255, 255, 0.055) 50%,
+    transparent 64%
+  );
+  transform: translate3d(-120%, 0, 0);
+  animation: flynow-dashboard-refresh-sweep 900ms cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.flynow-dashboard-skeleton {
+  animation: flynow-dashboard-content-in 420ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+}
+
+.flynow-dashboard-skeleton-panel {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.025),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.flynow-dashboard-skeleton-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.045) 42%,
+    rgba(214, 168, 79, 0.06) 50%,
+    transparent 62%
+  );
+  transform: translate3d(-115%, 0, 0);
+  animation: flynow-dashboard-shimmer 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.flynow-chart-stage {
+  position: relative;
+  overflow: hidden;
+  animation: flynow-dashboard-chart-stage-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  transform-origin: center;
+  will-change: opacity, filter, transform;
+}
+
+.flynow-chart-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(214, 168, 79, 0.06) 45%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 62%
+  );
+  transform: translate3d(-22%, 0, 0);
+  animation: flynow-dashboard-chart-scan 980ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
+}
+
+.flynow-chart-plot {
+  animation: flynow-dashboard-chart-plot-in 780ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+  transform-origin: center bottom;
+  will-change: opacity, filter, transform;
+}
+
+.flynow-conversion-bar {
+  animation: flynow-dashboard-bar-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+  transform-origin: left center;
+  will-change: transform, opacity;
+}
+
 @keyframes flynow-calendar-popover-in {
   0% {
     opacity: 0;
@@ -410,6 +641,31 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .flynow-dashboard-content,
+  .flynow-dashboard-enter-item,
+  .flynow-dashboard-skeleton,
+  .flynow-dashboard-skeleton-panel::after,
+  .flynow-chart-stage,
+  .flynow-chart-stage::after,
+  .flynow-chart-plot,
+  .flynow-conversion-bar {
+    animation: none;
+    filter: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .flynow-dashboard-content--refreshing {
+    filter: none;
+    opacity: 1;
+  }
+
+  .flynow-dashboard-content--refreshing::after {
+    display: none;
+  }
+
   .flynow-calendar-popover {
     animation: none;
     will-change: auto;

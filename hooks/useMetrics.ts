@@ -23,7 +23,11 @@ export function useMetrics(from: Date, to: Date): UseMetricsState {
     const fromParam = format(from, "yyyy-MM-dd");
     const toParam = format(to, "yyyy-MM-dd");
 
-    setState({ data: null, loading: true, error: null });
+    setState((currentState) => ({
+      data: currentState.data,
+      loading: true,
+      error: null,
+    }));
 
     const timer = window.setTimeout(() => {
       setState({
@@ -31,7 +35,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsState {
         loading: false,
         error: null,
       });
-    }, 150);
+    }, 360);
 
     void fromParam;
     void toParam;

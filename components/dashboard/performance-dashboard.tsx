@@ -3,21 +3,12 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart3,
-  Banknote,
   Bot,
   Headset,
   Mail,
-  Megaphone,
   MessageSquareText,
-  PackageCheck,
-  RefreshCw,
-  ShoppingBag,
-  TrendingUp,
 } from "lucide-react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
   Line,
   LineChart,
@@ -54,22 +45,21 @@ type RangePreset = {
   getRange: () => { from: Date; to: Date };
 };
 
-type KpiCardProps = {
+type KpiMetricProps = {
   label: string;
   value: string;
   supportingText: string;
-  icon: React.ReactNode;
   tone?: "gold" | "blue" | "green";
 };
 
-type ConversionCardProps = {
+type ConversionItemProps = {
   label: string;
   quantidade: number;
   receita: number;
   taxa?: number;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   percentage: number;
-  accent?: "gold" | "blue";
+  accent?: "neutral" | "blue";
 };
 
 const RANGE_PRESETS: RangePreset[] = [
@@ -126,11 +116,10 @@ const RANGE_PRESETS: RangePreset[] = [
 const PRODUCT_LABELS: Array<{
   key: keyof MetricsData["conversoes_produto"];
   label: string;
-  icon: React.ReactNode;
 }> = [
-  { key: "frontend", label: "Frontend", icon: <ShoppingBag /> },
-  { key: "upsell", label: "Upsell", icon: <TrendingUp /> },
-  { key: "downsell", label: "Downsell", icon: <PackageCheck /> },
+  { key: "frontend", label: "Frontend" },
+  { key: "upsell", label: "Upsell" },
+  { key: "downsell", label: "Downsell" },
 ];
 
 const CHANNEL_LABELS: Array<{
@@ -168,131 +157,213 @@ function SectionHeader({
   description: string;
 }) {
   return (
-    <div>
-      <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
-        {title}
-      </h2>
-      <p className="mt-1.5 text-sm text-[#7D7A73]">{description}</p>
+    <div className="flex min-w-0 items-start gap-3">
+      <span
+        aria-hidden="true"
+        className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-white/[0.18] via-white/[0.08] to-transparent"
+      />
+      <div className="min-w-0">
+        <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
+          {title}
+        </h2>
+        <p className="mt-1.5 text-sm leading-5 text-[#858A94]">
+          {description}
+        </p>
+      </div>
     </div>
   );
 }
 
-function KpiCard({
+function KpiMetric({
   label,
   value,
   supportingText,
-  icon,
   tone = "gold",
-}: KpiCardProps) {
-  const toneClass = {
-    gold: "border-[#D6A84F]/30 text-[#F0C76A]",
-    blue: "border-[#60A5FA]/30 text-[#93C5FD]",
-    green: "border-[#4ADE80]/30 text-[#86EFAC]",
-  }[tone];
-
-  const accentClass = {
+}: KpiMetricProps) {
+  const dotClass = {
     gold: "bg-[#D6A84F]",
     blue: "bg-[#60A5FA]",
     green: "bg-[#4ADE80]",
   }[tone];
 
   return (
-    <article className="group relative overflow-hidden rounded-lg border border-[#242932] bg-[#12151A] p-5 transition-colors duration-150 hover:border-[#303640]">
-      <span
-        aria-hidden="true"
-        className={cn("absolute inset-x-0 top-0 h-px opacity-70", accentClass)}
-      />
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#7D7A73]">
-            {label}
-          </p>
-          <p className="mt-2.5 text-[32px] font-semibold leading-none tabular-nums text-[#F5F2EA]">
-            {value}
-          </p>
-        </div>
+    <div className="min-w-0">
+      <div className="flex items-center gap-2">
         <span
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-md border bg-[#0A0A0B] [&_svg]:size-4",
-            toneClass
-          )}
-        >
-          {icon}
-        </span>
+          aria-hidden="true"
+          className={cn("size-1.5 rounded-full", dotClass)}
+        />
+        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#858A94]">
+          {label}
+        </p>
       </div>
-      <p className="mt-4 text-sm leading-5 text-[#7D7A73]">{supportingText}</p>
-    </article>
+      <p className="mt-3 text-[30px] font-semibold leading-none tracking-normal tabular-nums text-[#F5F2EA] md:text-[32px]">
+        {value}
+      </p>
+      <p className="mt-3 max-w-[28ch] text-[13px] leading-5 text-[#8B9099]">
+        {supportingText}
+      </p>
+    </div>
   );
 }
 
-function ConversionCard({
+function OverviewPanel({ data }: { data: MetricsData }) {
+  const metrics: KpiMetricProps[] = [
+    {
+      label: "Faturamento",
+      value: formatCurrency(data.faturamento_total),
+      supportingText: "Receita consolidada no período",
+      tone: "gold",
+    },
+    {
+      label: "Investimento",
+      value: formatCurrency(data.investimento_total),
+      supportingText: "Mídia paga aplicada no período",
+      tone: "blue",
+    },
+    {
+      label: "ROAS",
+      value: `${data.roas.toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}x`,
+      supportingText: "Retorno sobre investimento em anúncios",
+      tone: "green",
+    },
+  ];
+
+  return (
+    <section className="overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <span
+        aria-hidden="true"
+        className="block h-px bg-gradient-to-r from-transparent via-[#D6A84F]/45 to-transparent"
+      />
+      <div className="flex flex-col gap-1 border-b border-white/[0.06] px-5 py-4">
+        <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
+          Visão geral
+        </h2>
+        <p className="text-sm leading-5 text-[#858A94]">
+          Resumo do período selecionado
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3">
+        {metrics.map((metric, index) => (
+          <div
+            key={metric.label}
+            className={cn(
+              "px-5 py-5",
+              index > 0 &&
+                "border-t border-white/[0.06] md:border-l md:border-t-0"
+          )}
+          >
+            <KpiMetric {...metric} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ConversionItem({
   label,
   quantidade,
   receita,
   taxa,
   icon,
   percentage,
-  accent = "gold",
-}: ConversionCardProps) {
-  const barClass = accent === "gold" ? "bg-[#D6A84F]" : "bg-[#60A5FA]";
+  accent = "neutral",
+}: ConversionItemProps) {
+  const barClass =
+    accent === "blue"
+      ? "bg-gradient-to-r from-[#2563EB] to-[#93C5FD]"
+      : "bg-gradient-to-r from-white/30 to-white/55";
+  const iconClass =
+    accent === "blue"
+      ? "border-[#60A5FA]/18 text-[#93C5FD]"
+      : "border-white/[0.08] text-[#A3A8B1]";
 
   return (
-    <article className="rounded-lg border border-[#242932] bg-[#12151A] p-4 transition-colors duration-150 hover:border-[#303640]">
+    <div className="rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3.5 py-3 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035]">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-[#242932] bg-[#0A0A0B] text-[#B8B3A7] [&_svg]:size-4">
-            {icon}
-          </span>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {icon ? (
+            <span
+              className={cn(
+                "flex size-7 shrink-0 items-center justify-center rounded-[6px] border bg-[#050607] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] [&_svg]:size-3.5",
+                iconClass
+              )}
+            >
+              {icon}
+            </span>
+          ) : null}
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-medium text-[#F5F2EA]">
+            <h3 className="truncate text-[13px] font-medium text-[#F5F2EA]">
               {label}
             </h3>
-            <p className="text-xs text-[#7D7A73]">
-              {quantidade.toLocaleString("pt-BR")} conversoes
+            <p className="mt-0.5 text-xs text-[#858A94]">
+              {quantidade.toLocaleString("pt-BR")} conversões
             </p>
           </div>
         </div>
         {taxa !== undefined ? (
-          <span className="rounded-full border border-[#4ADE80]/20 bg-[#10291B]/70 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
+          <span className="rounded-md border border-[#4ADE80]/16 bg-[#0D1F14]/80 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
             {formatPercent(taxa)}
           </span>
         ) : null}
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <div className="flex items-end justify-between gap-3">
-          <p className="text-lg font-semibold tabular-nums text-[#F5F2EA]">
+          <p className="text-[16px] font-semibold leading-none tabular-nums text-[#F5F2EA]">
             {formatCurrency(receita)}
           </p>
-          <p className="text-xs tabular-nums text-[#7D7A73]">
+          <p className="text-xs tabular-nums text-[#858A94]">
             {Math.round(percentage)}% do maior
           </p>
         </div>
-        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#242932]">
+        <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
           <div
-            className={cn("h-full rounded-full opacity-80", barClass)}
+            className={cn("flynow-conversion-bar h-full rounded-full", barClass)}
             style={{ width: `${Math.max(percentage, 4)}%` }}
           />
         </div>
       </div>
-    </article>
+    </div>
+  );
+}
+
+function ConversionPanel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <SectionHeader title={title} description={description} />
+      <div className="mt-4 space-y-2.5">{children}</div>
+    </section>
   );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 xl:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
+    <div className="flynow-dashboard-skeleton space-y-5">
+      <div className="flynow-dashboard-skeleton-panel h-[214px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12]" />
+
+      <div className="flynow-dashboard-skeleton-panel h-[520px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12]" />
+
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, index) => (
           <div
             key={index}
-            className="h-32 animate-pulse rounded-lg border border-[#242932] bg-[#12151A]"
+            className="flynow-dashboard-skeleton-panel h-[316px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12]"
           />
         ))}
-      </div>
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="h-[430px] animate-pulse rounded-lg border border-[#242932] bg-[#12151A]" />
-        <div className="h-[430px] animate-pulse rounded-lg border border-[#242932] bg-[#12151A]" />
       </div>
     </div>
   );
@@ -302,7 +373,7 @@ function ErrorState({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="rounded-lg border border-[#F87171]/30 bg-[#2B1515] p-5 text-sm text-[#FCA5A5]"
+      className="rounded-[8px] border border-[#F87171]/30 bg-[#2B1515] p-5 text-sm text-[#FCA5A5]"
     >
       {message}
     </div>
@@ -311,131 +382,88 @@ function ErrorState({ message }: { message: string }) {
 
 function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   return (
-    <section className="min-w-0 rounded-lg border border-[#242932] bg-[#12151A] p-5">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <SectionHeader
           title="Faturamento vs investimento"
-          description="Evolucao diaria no periodo selecionado"
+          description="Evolução diária no período selecionado"
         />
-        <span className="flex size-8 items-center justify-center rounded-md border border-[#242932] bg-[#0A0A0B] text-[#B8B3A7]">
-          <BarChart3 size={16} />
-        </span>
+        <div className="flex items-center gap-4 rounded-md border border-white/[0.06] bg-[#050607] px-3 py-2 text-xs text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span className="size-1.5 rounded-full bg-[#D6A84F]" />
+            Faturamento
+          </span>
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span className="size-1.5 rounded-full bg-[#60A5FA]" />
+            Investimento
+          </span>
+        </div>
       </div>
 
-      <div className="h-[360px] min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#242932" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="data"
-              tick={{ fill: "#7D7A73", fontSize: 11 }}
-              tickFormatter={formatDateLabel}
-              axisLine={false}
-              tickLine={false}
-              minTickGap={24}
-            />
-            <YAxis
-              tick={{ fill: "#7D7A73", fontSize: 11 }}
-              tickFormatter={(value) => compactCurrency(Number(value))}
-              axisLine={false}
-              tickLine={false}
-              width={72}
-            />
-            <Tooltip
-              formatter={(value, name) => [
-                formatCurrency(Number(value)),
-                name === "faturamento" ? "Faturamento" : "Investimento",
-              ]}
-              labelFormatter={(value) => formatDateLabel(String(value))}
-              contentStyle={{
-                background: "#0A0A0B",
-                border: "1px solid #242932",
-                borderRadius: 8,
-                color: "#F5F2EA",
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "#B8B3A7" }}
-            />
-            <Line
-              type="monotone"
-              dataKey="faturamento"
-              stroke="#D6A84F"
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, fill: "#F0C76A", stroke: "#0A0A0B" }}
-            />
-            <Line
-              type="monotone"
-              dataKey="investimento"
-              stroke="#60A5FA"
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4, fill: "#93C5FD", stroke: "#0A0A0B" }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </section>
-  );
-}
-
-function ChannelMixChart({
-  data,
-}: {
-  data: Record<RecoveryChannelKey, ChannelConversion>;
-}) {
-  const chartData = CHANNEL_LABELS.map((item) => ({
-    name: item.label,
-    receita: data[item.key].receita,
-  }));
-
-  return (
-    <section className="min-w-0 rounded-lg border border-[#242932] bg-[#12151A] p-5">
-      <div className="mb-5">
-        <SectionHeader
-          title="Receita por recuperacao"
-          description="Distribuicao entre canais ativos"
-        />
-      </div>
-
-      <div className="h-[248px] min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#242932" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="name"
-              tick={{ fill: "#7D7A73", fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fill: "#7D7A73", fontSize: 11 }}
-              tickFormatter={(value) => compactCurrency(Number(value))}
-              axisLine={false}
-              tickLine={false}
-              width={64}
-            />
-            <Tooltip
-              formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
-              contentStyle={{
-                background: "#0A0A0B",
-                border: "1px solid #242932",
-                borderRadius: 8,
-                color: "#F5F2EA",
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "#B8B3A7" }}
-            />
-            <Area
-              type="monotone"
-              dataKey="receita"
-              stroke="#60A5FA"
-              fill="#60A5FA"
-              fillOpacity={0.14}
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="flynow-chart-stage h-[420px] min-w-0">
+        <div className="flynow-chart-plot h-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={data}
+              margin={{ top: 8, right: 12, bottom: 0, left: 0 }}
+            >
+              <CartesianGrid
+                stroke="rgba(255,255,255,0.065)"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="data"
+                tick={{ fill: "#858A94", fontSize: 11 }}
+                tickFormatter={formatDateLabel}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={24}
+              />
+              <YAxis
+                tick={{ fill: "#858A94", fontSize: 11 }}
+                tickFormatter={(value) => compactCurrency(Number(value))}
+                axisLine={false}
+                tickLine={false}
+                width={72}
+              />
+              <Tooltip
+                formatter={(value, name) => [
+                  formatCurrency(Number(value)),
+                  name === "faturamento" ? "Faturamento" : "Investimento",
+                ]}
+                labelFormatter={(value) => formatDateLabel(String(value))}
+                contentStyle={{
+                  background: "rgba(5,6,7,0.96)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 8,
+                  color: "#F5F2EA",
+                  fontSize: 12,
+                  boxShadow: "0 18px 44px rgba(0,0,0,0.45)",
+                }}
+                labelStyle={{ color: "#A3A8B1" }}
+              />
+              <Line
+                isAnimationActive={false}
+                type="monotone"
+                dataKey="faturamento"
+                stroke="#D6A84F"
+                strokeWidth={2.25}
+                dot={false}
+                activeDot={{ r: 4, fill: "#F0C76A", stroke: "#0A0A0B" }}
+              />
+              <Line
+                isAnimationActive={false}
+                type="monotone"
+                dataKey="investimento"
+                stroke="#60A5FA"
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: "#93C5FD", stroke: "#0A0A0B" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </section>
   );
@@ -631,6 +659,14 @@ function PeriodActions({
 export function PerformanceDashboard() {
   const initialRange = useMemo(() => RANGE_PRESETS[2].getRange(), []);
   const maxSelectableDate = useMemo(() => endOfDay(new Date()), []);
+  const initialRangeKey = useMemo(
+    () =>
+      `${format(initialRange.from, "yyyy-MM-dd")}:${format(
+        initialRange.to,
+        "yyyy-MM-dd"
+      )}`,
+    [initialRange]
+  );
   const [activeRange, setActiveRange] = useState("30d");
   const [range, setRange] = useState(initialRange);
   const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
@@ -638,6 +674,18 @@ export function PerformanceDashboard() {
     end: initialRange.to,
   });
   const { data, loading, error } = useMetrics(range.from, range.to);
+  const rangeKey = useMemo(
+    () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
+    [range]
+  );
+  const [contentVersion, setContentVersion] = useState(initialRangeKey);
+  const isInitialLoading = loading && !data;
+
+  useEffect(() => {
+    if (!loading && data) {
+      setContentVersion(rangeKey);
+    }
+  }, [data, loading, rangeKey]);
 
   const productMax = data
     ? Math.max(
@@ -696,84 +744,71 @@ export function PerformanceDashboard() {
         }
       />
 
-      <div className="px-6 py-6">
-        {loading ? <DashboardSkeleton /> : null}
+      <div className="px-6 pb-10 pt-6">
+        {isInitialLoading ? <DashboardSkeleton /> : null}
 
-        {!loading && error ? (
-          <ErrorState message="Nao foi possivel carregar as metricas. Tente novamente em alguns instantes." />
+        {!isInitialLoading && error ? (
+          <ErrorState message="Não foi possível carregar as métricas. Tente novamente em alguns instantes." />
         ) : null}
 
-        {!loading && !error && data ? (
-          <div className="space-y-6">
-            <section className="grid gap-4 xl:grid-cols-3">
-              <KpiCard
-                label="Faturamento total"
-                value={formatCurrency(data.faturamento_total)}
-                supportingText="Receita consolidada no periodo"
-                icon={<Banknote />}
-                tone="gold"
-              />
-              <KpiCard
-                label="Investimento em anuncios"
-                value={formatCurrency(data.investimento_total)}
-                supportingText="Midia paga aplicada no periodo"
-                icon={<Megaphone />}
-                tone="blue"
-              />
-              <KpiCard
-                label="ROAS"
-                value={`${data.roas.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}x`}
-                supportingText="Retorno sobre investimento em anuncios"
-                icon={<TrendingUp />}
-                tone="green"
-              />
-            </section>
+        {!error && data ? (
+          <div
+            key={contentVersion}
+            aria-busy={loading}
+            className={cn(
+              "flynow-dashboard-content relative space-y-5",
+              loading && "flynow-dashboard-content--refreshing"
+            )}
+          >
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
+            >
+              <OverviewPanel data={data} />
+            </div>
 
-            <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "90ms" } as CSSProperties}
+            >
               <RevenueChart data={data.serie_temporal} />
-              <ChannelMixChart data={data.conversoes_canal} />
-            </section>
+            </div>
 
-            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="space-y-4">
-                <SectionHeader
-                  title="Conversao por produto"
-                  description="Receita, quantidade e taxa por etapa comercial"
-                />
-                <div className="grid gap-3 lg:grid-cols-3">
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "180ms" } as CSSProperties}
+            >
+              <section className="grid items-start gap-5 xl:grid-cols-2">
+                <ConversionPanel
+                  title="Conversão por produto"
+                  description="Frontend, upsell e downsell no período selecionado"
+                >
                   {PRODUCT_LABELS.map((item) => {
                     const conversion = data.conversoes_produto[item.key];
 
                     return (
-                      <ConversionCard
+                      <ConversionItem
                         key={item.key}
                         label={item.label}
                         quantidade={conversion.quantidade}
                         receita={conversion.receita}
                         taxa={conversion.taxa}
-                        icon={item.icon}
                         percentage={(conversion.receita / productMax) * 100}
-                        accent="gold"
+                        accent="neutral"
                       />
                     );
                   })}
-                </div>
-              </div>
+                </ConversionPanel>
 
-              <div className="space-y-4">
-                <SectionHeader
-                  title="Canais de recuperacao"
-                  description="Receita recuperada por canal ativo"
-                />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <ConversionPanel
+                  title="Conversão por canal de recuperação"
+                  description="IA, Email, Call Center e SMS no período selecionado"
+                >
                   {CHANNEL_LABELS.map((item) => {
                     const conversion = data.conversoes_canal[item.key];
 
                     return (
-                      <ConversionCard
+                      <ConversionItem
                         key={item.key}
                         label={item.label}
                         quantidade={conversion.quantidade}
@@ -784,13 +819,8 @@ export function PerformanceDashboard() {
                       />
                     );
                   })}
-                </div>
-              </div>
-            </section>
-
-            <div className="flex items-center gap-2 text-xs text-[#7D7A73]">
-              <RefreshCw size={13} />
-              <span>Dados mockados para desenvolvimento ate a API final entrar.</span>
+                </ConversionPanel>
+              </section>
             </div>
           </div>
         ) : null}
