@@ -23,10 +23,11 @@ import {
   subYears,
 } from "date-fns";
 import React, { useEffect, useRef, useState } from "react";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button-1";
 import { Material } from "@/components/ui/material-1";
 import { Input } from "@/components/ui/input";
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { useClickOutside } from "@/components/ui/use-click-outside";
 import clsx from "clsx";
 import { ptBR } from "date-fns/locale";
@@ -122,6 +123,7 @@ const ClearIcon = () => (
 );
 
 const FLYNOW_TIMEZONE = "America/Sao_Paulo";
+const CALENDAR_POPOVER_EXIT_MS = 150;
 
 const parseRelativeDate = (input: string) => {
   const regex = /(\d+)\s*(day|week|month|year|hour)s?/i;
@@ -556,9 +558,12 @@ export const Calendar = ({
   maxValue
 }: CalendarProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isPopoverMounted, setIsPopoverMounted] = useState<boolean>(false);
+  const [isPopoverClosing, setIsPopoverClosing] = useState<boolean>(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [hoverDate, setHoverDate] = useState<Date | null>(null);
   const [isSelecting, setIsSelecting] = useState<boolean>(false);
+  const [draftValue, setDraftValue] = useState<RangeValue | null>(value);
   const selectedTimezone = FLYNOW_TIMEZONE;
   const [startDate, setStartDate] = useState<string>(formatInTimeZone(value?.start || new Date(), selectedTimezone, "dd/MM/yyyy"));
   const [startTime, setStartTime] = useState<string>(formatInTimeZone(startOfDay(value?.start || new Date()), selectedTimezone, "HH:mm"));
@@ -569,20 +574,78 @@ export const Calendar = ({
   const [endDateError, setEndDateError] = useState<boolean>(false);
   const [endTimeError, setEndTimeError] = useState<boolean>(false);
   const calendarRef = useRef<HTMLDivElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const isOpenRef = useRef(false);
+  const ignoreNextTriggerClickRef = useRef(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>();
 
-  useClickOutside(calendarRef, () => setIsOpen(false));
+  const updatePopoverPosition = () => {
+    if (!triggerRef.current) {
+      return;
+    }
 
-  useEffect(() => {
-    const closeCalendar = () => setIsOpen(false);
+    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const viewportPadding = 16;
+    const popoverWidth = Math.min(
+      horizontalLayout ? 462 : 280,
+      window.innerWidth - viewportPadding * 2
+    );
+    let left = triggerRect.left;
 
-    window.addEventListener("resize", closeCalendar);
-    window.addEventListener("scroll", closeCalendar);
+    if (popoverAlignment === "center") {
+      left = triggerRect.left + triggerRect.width / 2 - popoverWidth / 2;
+    }
 
-    return () => {
-      window.removeEventListener("resize", closeCalendar);
-      window.removeEventListener("scroll", closeCalendar);
-    };
-  }, []);
+    if (popoverAlignment === "end") {
+      left = triggerRect.right - popoverWidth;
+    }
+
+    left = Math.max(
+      viewportPadding,
+      Math.min(left, window.innerWidth - popoverWidth - viewportPadding)
+    );
+
+    setPopoverStyle({
+      left,
+      top: triggerRect.bottom + 8,
+      width: popoverWidth,
+    });
+  };
+
+  const closeCalendar = () => {
+    isOpenRef.current = false;
+    setIsOpen(false);
+    setIsPopoverClosing(true);
+  };
+
+  const openCalendar = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+
+    updatePopoverPosition();
+    isOpenRef.current = true;
+    setIsPopoverMounted(true);
+    setIsPopoverClosing(false);
+    setIsOpen(true);
+  };
+
+  const toggleCalendar = () => {
+    if (ignoreNextTriggerClickRef.current) {
+      ignoreNextTriggerClickRef.current = false;
+      return;
+    }
+
+    if (isOpenRef.current) {
+      closeCalendar();
+      return;
+    }
+
+    openCalendar();
+  };
 
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const isNextMonthDisabled = maxValue
@@ -594,6 +657,17 @@ export const Calendar = ({
     }
   };
 
+  const setDraftDateInputs = (nextValue: RangeValue | null) => {
+    if (!nextValue?.start) {
+      return;
+    }
+
+    setStartDate(formatInTimeZone(nextValue.start, selectedTimezone, "dd/MM/yyyy"));
+    setStartTime(formatInTimeZone(nextValue.start, selectedTimezone, "HH:mm"));
+    setEndDate(formatInTimeZone(nextValue.end || nextValue.start, selectedTimezone, "dd/MM/yyyy"));
+    setEndTime(formatInTimeZone(nextValue.end || endOfDay(nextValue.start), selectedTimezone, "HH:mm"));
+  };
+
   const daysArray = [];
   let day = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
   while (day <= endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 })) {
@@ -602,24 +676,33 @@ export const Calendar = ({
   }
 
   const handleDateClick = (day: Date) => {
-    if (!value?.start || (value.start && value.end)) {
-      onChange({ start: startOfDay(day), end: null });
+    const selectedStart = startOfDay(day);
+
+    if (!draftValue?.start || (draftValue.start && draftValue.end)) {
+      const nextValue = { start: selectedStart, end: null };
+
+      setDraftValue(nextValue);
+      setDraftDateInputs(nextValue);
       setHoverDate(day);
       setIsSelecting(true);
-    } else if (isSelecting) {
-      if (day > value.start) {
-        onChange({ ...value, end: endOfDay(day) });
-      } else {
-        onChange({ start: startOfDay(day), end: endOfDay(value.start) });
-      }
+      return;
+    }
+
+    if (isSelecting) {
+      const nextValue =
+        day > draftValue.start
+          ? { start: draftValue.start, end: endOfDay(day) }
+          : { start: selectedStart, end: endOfDay(draftValue.start) };
+
+      setDraftValue(nextValue);
+      setDraftDateInputs(nextValue);
       setIsSelecting(false);
       setHoverDate(null);
-      setIsOpen(false);
     }
   };
 
   const handleMouseEnter = (day: Date) => {
-    if (value?.start && !value.end) {
+    if (draftValue?.start && !draftValue.end) {
       setHoverDate(day);
     }
   };
@@ -668,11 +751,16 @@ export const Calendar = ({
       start: fromZonedTime(parsedStart, selectedTimezone),
       end: fromZonedTime(parsedEnd, selectedTimezone)
     });
-    setIsOpen(false);
+    setDraftValue({
+      start: fromZonedTime(parsedStart, selectedTimezone),
+      end: fromZonedTime(parsedEnd, selectedTimezone)
+    });
+    closeCalendar();
   };
 
   const onClear = () => {
     onChange(null);
+    setDraftValue(null);
     setHoverDate(null);
     setIsSelecting(false);
     setStartDateError(false);
@@ -682,14 +770,95 @@ export const Calendar = ({
   };
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setDraftValue(value);
     setStartDate(formatInTimeZone(value?.start || new Date(), selectedTimezone, "dd/MM/yyyy"));
     setStartTime(formatInTimeZone(value?.start || startOfDay(new Date()), selectedTimezone, "HH:mm"));
     setEndDate(formatInTimeZone(value?.end || new Date(), selectedTimezone, "dd/MM/yyyy"));
     setEndTime(formatInTimeZone(value?.end || endOfDay(new Date()), selectedTimezone, "HH:mm"));
-  }, [isOpen, value]);
+  }, [isOpen, value, selectedTimezone]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePopoverPosition();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as Node;
+      const clickedTrigger = calendarRef.current?.contains(target);
+      const clickedPopover = popoverRef.current?.contains(target);
+
+      if (clickedPopover) {
+        return;
+      }
+
+      if (clickedTrigger) {
+        ignoreNextTriggerClickRef.current = true;
+        closeCalendar();
+        return;
+      }
+
+      closeCalendar();
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isPopoverClosing) {
+      return;
+    }
+
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsPopoverMounted(false);
+      setIsPopoverClosing(false);
+      closeTimeoutRef.current = null;
+    }, CALENDAR_POPOVER_EXIT_MS);
+
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, [isPopoverClosing]);
+
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const popoverOriginClass =
+    popoverAlignment === "end"
+      ? "origin-top-right"
+      : popoverAlignment === "center"
+        ? "origin-top"
+        : "origin-top-left";
 
   return (
-    <div className={twMerge(clsx("relative", className))}>
+    <div ref={calendarRef} className={twMerge(clsx("relative", className))}>
       <div className={clsx(
         presets && "flex",
         presets && stacked && "flex-col",
@@ -708,7 +877,18 @@ export const Calendar = ({
           </div>
         )}
         <div className="flex justify-between items-center">
-          <div className="relative">
+          <div
+            ref={triggerRef}
+            className="relative"
+            onClickCapture={(event) => {
+              if (isOpenRef.current) {
+                ignoreNextTriggerClickRef.current = true;
+                event.preventDefault();
+                event.stopPropagation();
+                closeCalendar();
+              }
+            }}
+          >
             <Button
               aria-pressed={triggerActive}
               className={clsx(
@@ -721,7 +901,7 @@ export const Calendar = ({
               )}
               prefix={<CalendarIcon />}
               type="secondary"
-              onClick={() => setIsOpen((prevState) => !prevState)}
+              onClick={toggleCalendar}
             >
               <div className="truncate pr-4">
                 {value?.start && value?.end ?
@@ -729,13 +909,6 @@ export const Calendar = ({
                   : "Selecionar período"
                 }
               </div>
-              <span
-                aria-hidden="true"
-                className={clsx(
-                  "absolute inset-x-3 bottom-1 h-px rounded-full bg-[#D6A84F] transition-opacity duration-150",
-                  triggerActive ? "opacity-100" : "opacity-0"
-                )}
-              />
             </Button>
             {allowClear && value?.start && value?.end && (
               <Button
@@ -751,20 +924,16 @@ export const Calendar = ({
           </div>
         </div>
       </div>
-      {isOpen && (
+      {isPopoverMounted && createPortal(
         <Material
-          ref={calendarRef}
+          ref={popoverRef}
           type="menu"
+          style={popoverStyle}
           className={twMerge(clsx(
-            "absolute top-12 z-10 border border-[#2B2F38]/80 bg-[#08090B]/90 p-3 font-sans shadow-[0_24px_80px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl",
+            "flynow-calendar-popover fixed z-50 border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+            isPopoverClosing && "flynow-calendar-popover--closing",
+            popoverOriginClass,
             horizontalLayout ? "w-[min(462px,calc(100vw-2rem))]" : "w-[min(280px,calc(100vw-2rem))]",
-            presets && !stacked && !compact && "left-[250px]",
-            presets && stacked && "top-[88px]",
-            !presets && popoverAlignment === "start" && "left-0",
-            !presets && popoverAlignment === "center" && "left-1/2 -translate-x-1/2",
-            !presets && popoverAlignment === "end" && "right-0",
-            presets && popoverAlignment === "center" && "left-[125px] -translate-x-1/2",
-            presets && popoverAlignment === "end" && "left-[250px] -translate-x-full",
             popoverClassName
           ))}
         >
@@ -803,13 +972,13 @@ export const Calendar = ({
               </div>
               <div className="grid grid-cols-7 items-center gap-y-2">
                 {daysArray.map((day) => {
-                  const isStart = value?.start && isSameDay(day, value.start);
-                  const isEnd = value?.end && isSameDay(day, value.end);
+                  const isStart = draftValue?.start && isSameDay(day, draftValue.start);
+                  const isEnd = draftValue?.end && isSameDay(day, draftValue.end);
                   const currentHover = hoverDate && isSelecting && isSameDay(day, hoverDate);
                   const isInRange =
-                    value?.start &&
-                    ((value.end && isWithinInterval(day, { start: value.start, end: value.end })) ||
-                      (hoverDate && isWithinInterval(day, { start: value.start, end: hoverDate })));
+                    draftValue?.start &&
+                    ((draftValue.end && isWithinInterval(day, { start: draftValue.start, end: draftValue.end })) ||
+                      (hoverDate && isWithinInterval(day, { start: draftValue.start, end: hoverDate })));
                   const isAllowedDate =
                     (minValue ? day >= startOfDay(minValue) : true) &&
                     (maxValue ? day <= endOfDay(maxValue) : true);
@@ -921,7 +1090,8 @@ export const Calendar = ({
               </div>
             </div>
           </div>
-        </Material>
+        </Material>,
+        document.body
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   Banknote,
@@ -455,8 +456,98 @@ function PeriodActions({
   onSelect: (preset: RangePreset) => void;
   onCalendarChange: (value: RangeValue | null) => void;
 }) {
+  const presetGroupRef = useRef<HTMLDivElement | null>(null);
+  const presetButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const activePreset = RANGE_PRESETS.find((preset) => preset.key === activeRange);
   const isCustomRange =
     activeRange === "custom" && Boolean(calendarValue?.start && calendarValue.end);
+  const [presetUnderline, setPresetUnderline] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    visible: false,
+  });
+
+  const updatePresetUnderline = useCallback(() => {
+    const group = presetGroupRef.current;
+    const activeButton = activePreset
+      ? presetButtonRefs.current[activePreset.key]
+      : null;
+
+    if (!group || !activeButton) {
+      setPresetUnderline((currentUnderline) =>
+        currentUnderline.visible
+          ? { ...currentUnderline, visible: false }
+          : currentUnderline
+      );
+      return;
+    }
+
+    const groupRect = group.getBoundingClientRect();
+    const buttonRect = activeButton.getBoundingClientRect();
+    const nextUnderline = {
+      x: buttonRect.left - groupRect.left + 8,
+      y: buttonRect.bottom - groupRect.top - 5,
+      width: Math.max(buttonRect.width - 16, 12),
+      visible: true,
+    };
+
+    setPresetUnderline((currentUnderline) => {
+      if (
+        currentUnderline.visible === nextUnderline.visible &&
+        Math.abs(currentUnderline.x - nextUnderline.x) < 0.5 &&
+        Math.abs(currentUnderline.y - nextUnderline.y) < 0.5 &&
+        Math.abs(currentUnderline.width - nextUnderline.width) < 0.5
+      ) {
+        return currentUnderline;
+      }
+
+      return nextUnderline;
+    });
+  }, [activePreset]);
+
+  useEffect(() => {
+    const animationFrame = window.requestAnimationFrame(updatePresetUnderline);
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [updatePresetUnderline]);
+
+  useEffect(() => {
+    const group = presetGroupRef.current;
+
+    if (!group) {
+      return;
+    }
+
+    const handleResize = () => updatePresetUnderline();
+    window.addEventListener("resize", handleResize);
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updatePresetUnderline)
+        : null;
+
+    resizeObserver?.observe(group);
+
+    if (activePreset) {
+      const activeButton = presetButtonRefs.current[activePreset.key];
+
+      if (activeButton) {
+        resizeObserver?.observe(activeButton);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
+    };
+  }, [activePreset, updatePresetUnderline]);
+
+  const presetUnderlineStyle = {
+    "--flynow-preset-underline-x": `${presetUnderline.x}px`,
+    "--flynow-preset-underline-y": `${presetUnderline.y}px`,
+    "--flynow-preset-underline-width": `${presetUnderline.width}px`,
+  } as CSSProperties;
 
   return (
     <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
@@ -481,7 +572,7 @@ function PeriodActions({
                 ? "!border-[#D6A84F]/45 !text-[#F5F2EA] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
                 : "!border-[#242932] !text-[#A3A6AE]"
             )}
-            popoverClassName="!z-50 !border !border-[#242932] !bg-[#08090B]"
+            popoverClassName="!z-50 !border-[#D6A84F]/20 !bg-[#08090B]/62"
           />
         </div>
 
@@ -491,16 +582,26 @@ function PeriodActions({
         />
 
         <div
+          ref={presetGroupRef}
           role="group"
           aria-label="Selecionar período"
-          className="grid w-full grid-cols-2 gap-1 md:grid-cols-5 xl:flex xl:w-auto xl:items-center"
+          className="relative grid w-full grid-cols-2 gap-1 md:grid-cols-5 xl:flex xl:w-auto xl:items-center"
         >
+          <span
+            aria-hidden="true"
+            className="flynow-preset-underline"
+            data-visible={presetUnderline.visible ? "true" : "false"}
+            style={presetUnderlineStyle}
+          />
           {RANGE_PRESETS.map((preset) => {
             const isActive = activeRange === preset.key;
 
             return (
               <button
                 key={preset.key}
+                ref={(element) => {
+                  presetButtonRefs.current[preset.key] = element;
+                }}
                 type="button"
                 title={preset.label}
                 aria-label={preset.label}
@@ -513,13 +614,6 @@ function PeriodActions({
                     : "text-[#858A94] hover:bg-[#111318] hover:text-[#DADDE2]"
                 )}
               >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute inset-x-2 bottom-1 h-px rounded-full bg-[#D6A84F] transition-opacity duration-150",
-                    isActive ? "opacity-100" : "opacity-0"
-                  )}
-                />
                 {preset.displayLabel}
               </button>
             );
@@ -589,7 +683,7 @@ export function PerformanceDashboard() {
     <>
       <DashboardHeader
         title="Central da Operação"
-        description="Receita, mídia e pedidos em tempo real"
+        description="Receita, mídia e conversão em tempo real"
         actions={
           <PeriodActions
             activeRange={activeRange}

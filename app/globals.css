@@ -337,3 +337,91 @@ body {
 .flynow-dashboard-shell select:disabled {
   cursor: not-allowed;
 }
+
+@keyframes flynow-calendar-popover-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0) scale(0.965);
+  }
+
+  52% {
+    opacity: 1;
+    transform: translate3d(0, 1px, 0) scale(1.006);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes flynow-calendar-popover-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -5px, 0) scale(0.982);
+  }
+}
+
+.flynow-calendar-popover {
+  animation: flynow-calendar-popover-in 260ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: opacity, transform;
+}
+
+.flynow-calendar-popover--closing {
+  animation: flynow-calendar-popover-out 150ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  pointer-events: none;
+}
+
+.flynow-preset-underline {
+  --flynow-preset-underline-width: 0px;
+  --flynow-preset-underline-x: 0px;
+  --flynow-preset-underline-y: 0px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 20;
+  height: 1px;
+  width: var(--flynow-preset-underline-width);
+  border-radius: 999px;
+  background: #d6a84f;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(
+    var(--flynow-preset-underline-x),
+    var(--flynow-preset-underline-y),
+    0
+  );
+  transition:
+    opacity 150ms ease,
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform, width;
+}
+
+.flynow-preset-underline[data-visible="true"] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flynow-calendar-popover {
+    animation: none;
+    will-change: auto;
+  }
+
+  .flynow-calendar-popover--closing {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  .flynow-preset-underline {
+    transition: none;
+    will-change: auto;
+  }
+}
