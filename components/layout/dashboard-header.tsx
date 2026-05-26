@@ -10,12 +10,12 @@ export function DashboardHeader({
   actions,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-[#252B33] bg-[#050505] px-6 py-4">
+    <header className="flex min-h-[68px] items-center justify-between border-b border-[#242932] bg-[#050505] px-6 py-3.5">
       <div>
-        <h1 className="text-xl font-semibold text-[#F5F2EA]">{title}</h1>
+        <h1 className="text-[22px] font-semibold leading-tight text-[#F5F2EA]">{title}</h1>
 
         {description ? (
-          <p className="mt-1 text-sm text-[#B8B3A7]">
+          <p className="mt-1 text-sm text-[#7D7A73]">
             {description}
           </p>
         ) : null}

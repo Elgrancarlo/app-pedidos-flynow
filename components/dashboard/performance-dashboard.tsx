@@ -64,6 +64,7 @@ type ConversionCardProps = {
   taxa?: number;
   icon: React.ReactNode;
   percentage: number;
+  accent?: "gold" | "blue";
 };
 
 const RANGE_PRESETS: RangePreset[] = [
@@ -149,29 +150,67 @@ function formatDateLabel(value: string) {
   });
 }
 
-function KpiCard({ label, value, supportingText, icon, tone = "gold" }: KpiCardProps) {
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
+        {title}
+      </h2>
+      <p className="mt-1.5 text-sm text-[#7D7A73]">{description}</p>
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  supportingText,
+  icon,
+  tone = "gold",
+}: KpiCardProps) {
   const toneClass = {
-    gold: "border-[#D6A84F]/25 bg-[#2A2112] text-[#F0C76A]",
-    blue: "border-[#60A5FA]/25 bg-[#102033] text-[#93C5FD]",
-    green: "border-[#4ADE80]/25 bg-[#10291B] text-[#86EFAC]",
+    gold: "border-[#D6A84F]/30 text-[#F0C76A]",
+    blue: "border-[#60A5FA]/30 text-[#93C5FD]",
+    green: "border-[#4ADE80]/30 text-[#86EFAC]",
+  }[tone];
+
+  const accentClass = {
+    gold: "bg-[#D6A84F]",
+    blue: "bg-[#60A5FA]",
+    green: "bg-[#4ADE80]",
   }[tone];
 
   return (
-    <article className="rounded-lg border border-[#252B33] bg-[#111418] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.22)]">
+    <article className="group relative overflow-hidden rounded-lg border border-[#242932] bg-[#12151A] p-5 transition-colors duration-150 hover:border-[#303640]">
+      <span
+        aria-hidden="true"
+        className={cn("absolute inset-x-0 top-0 h-px opacity-70", accentClass)}
+      />
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[#7D7A73]">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#7D7A73]">
             {label}
           </p>
-          <p className="mt-3 text-3xl font-semibold tabular-nums text-[#F5F2EA]">
+          <p className="mt-2.5 text-[32px] font-semibold leading-none tabular-nums text-[#F5F2EA]">
             {value}
           </p>
         </div>
-        <span className={cn("flex size-10 items-center justify-center rounded-lg border", toneClass)}>
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-md border bg-[#0A0A0B] [&_svg]:size-4",
+            toneClass
+          )}
+        >
           {icon}
         </span>
       </div>
-      <p className="mt-4 text-sm text-[#B8B3A7]">{supportingText}</p>
+      <p className="mt-4 text-sm leading-5 text-[#7D7A73]">{supportingText}</p>
     </article>
   );
 }
@@ -183,23 +222,28 @@ function ConversionCard({
   taxa,
   icon,
   percentage,
+  accent = "gold",
 }: ConversionCardProps) {
+  const barClass = accent === "gold" ? "bg-[#D6A84F]" : "bg-[#60A5FA]";
+
   return (
-    <article className="rounded-lg border border-[#252B33] bg-[#111418] p-4">
+    <article className="rounded-lg border border-[#242932] bg-[#12151A] p-4 transition-colors duration-150 hover:border-[#303640]">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-lg border border-[#D6A84F]/20 bg-[#2A2112] text-[#F0C76A] [&_svg]:size-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-[#242932] bg-[#0A0A0B] text-[#B8B3A7] [&_svg]:size-4">
             {icon}
           </span>
-          <div>
-            <h3 className="text-sm font-semibold text-[#F5F2EA]">{label}</h3>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-medium text-[#F5F2EA]">
+              {label}
+            </h3>
             <p className="text-xs text-[#7D7A73]">
               {quantidade.toLocaleString("pt-BR")} conversoes
             </p>
           </div>
         </div>
         {taxa !== undefined ? (
-          <span className="rounded-full border border-[#4ADE80]/20 bg-[#10291B] px-2 py-0.5 text-xs font-medium text-[#86EFAC]">
+          <span className="rounded-full border border-[#4ADE80]/20 bg-[#10291B]/70 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
             {formatPercent(taxa)}
           </span>
         ) : null}
@@ -211,12 +255,12 @@ function ConversionCard({
             {formatCurrency(receita)}
           </p>
           <p className="text-xs tabular-nums text-[#7D7A73]">
-            {Math.round(percentage)}%
+            {Math.round(percentage)}% do maior
           </p>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#252B33]">
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#242932]">
           <div
-            className="h-full rounded-full bg-[#D6A84F]"
+            className={cn("h-full rounded-full opacity-80", barClass)}
             style={{ width: `${Math.max(percentage, 4)}%` }}
           />
         </div>
@@ -232,13 +276,13 @@ function DashboardSkeleton() {
         {Array.from({ length: 3 }).map((_, index) => (
           <div
             key={index}
-            className="h-36 animate-pulse rounded-lg border border-[#252B33] bg-[#111418]"
+            className="h-32 animate-pulse rounded-lg border border-[#242932] bg-[#12151A]"
           />
         ))}
       </div>
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="h-72 animate-pulse rounded-lg border border-[#252B33] bg-[#111418] xl:col-span-2" />
-        <div className="h-72 animate-pulse rounded-lg border border-[#252B33] bg-[#111418]" />
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="h-[430px] animate-pulse rounded-lg border border-[#242932] bg-[#12151A]" />
+        <div className="h-[430px] animate-pulse rounded-lg border border-[#242932] bg-[#12151A]" />
       </div>
     </div>
   );
@@ -246,7 +290,10 @@ function DashboardSkeleton() {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-[#F87171]/30 bg-[#2B1515] p-5 text-sm text-[#FCA5A5]">
+    <div
+      role="alert"
+      className="rounded-lg border border-[#F87171]/30 bg-[#2B1515] p-5 text-sm text-[#FCA5A5]"
+    >
       {message}
     </div>
   );
@@ -254,25 +301,21 @@ function ErrorState({ message }: { message: string }) {
 
 function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   return (
-    <section className="rounded-lg border border-[#252B33] bg-[#111418] p-5">
+    <section className="min-w-0 rounded-lg border border-[#242932] bg-[#12151A] p-5">
       <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-[#F5F2EA]">
-            Faturamento vs investimento
-          </h2>
-          <p className="mt-1 text-sm text-[#7D7A73]">
-            Evolucao diaria no periodo selecionado
-          </p>
-        </div>
-        <span className="flex size-9 items-center justify-center rounded-lg border border-[#60A5FA]/25 bg-[#102033] text-[#93C5FD]">
-          <BarChart3 size={17} />
+        <SectionHeader
+          title="Faturamento vs investimento"
+          description="Evolucao diaria no periodo selecionado"
+        />
+        <span className="flex size-8 items-center justify-center rounded-md border border-[#242932] bg-[#0A0A0B] text-[#B8B3A7]">
+          <BarChart3 size={16} />
         </span>
       </div>
 
-      <div className="h-[320px]">
+      <div className="h-[360px] min-w-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#252B33" strokeDasharray="3 3" vertical={false} />
+          <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+            <CartesianGrid stroke="#242932" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="data"
               tick={{ fill: "#7D7A73", fontSize: 11 }}
@@ -295,8 +338,8 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
               ]}
               labelFormatter={(value) => formatDateLabel(String(value))}
               contentStyle={{
-                background: "#0B0D10",
-                border: "1px solid #252B33",
+                background: "#0A0A0B",
+                border: "1px solid #242932",
                 borderRadius: 8,
                 color: "#F5F2EA",
                 fontSize: 12,
@@ -307,9 +350,9 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
               type="monotone"
               dataKey="faturamento"
               stroke="#D6A84F"
-              strokeWidth={3}
+              strokeWidth={2.5}
               dot={false}
-              activeDot={{ r: 4, fill: "#F0C76A", stroke: "#2A2112" }}
+              activeDot={{ r: 4, fill: "#F0C76A", stroke: "#0A0A0B" }}
             />
             <Line
               type="monotone"
@@ -317,7 +360,7 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
               stroke="#60A5FA"
               strokeWidth={2}
               dot={false}
-              activeDot={{ r: 4, fill: "#93C5FD", stroke: "#102033" }}
+              activeDot={{ r: 4, fill: "#93C5FD", stroke: "#0A0A0B" }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -326,27 +369,29 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   );
 }
 
-function ChannelMixChart({ data }: { data: Record<RecoveryChannelKey, ChannelConversion> }) {
+function ChannelMixChart({
+  data,
+}: {
+  data: Record<RecoveryChannelKey, ChannelConversion>;
+}) {
   const chartData = CHANNEL_LABELS.map((item) => ({
     name: item.label,
     receita: data[item.key].receita,
   }));
 
   return (
-    <section className="rounded-lg border border-[#252B33] bg-[#111418] p-5">
+    <section className="min-w-0 rounded-lg border border-[#242932] bg-[#12151A] p-5">
       <div className="mb-5">
-        <h2 className="text-base font-semibold text-[#F5F2EA]">
-          Receita por recuperacao
-        </h2>
-        <p className="mt-1 text-sm text-[#7D7A73]">
-          Distribuicao entre IA, email, call center e SMS
-        </p>
+        <SectionHeader
+          title="Receita por recuperacao"
+          description="Distribuicao entre canais ativos"
+        />
       </div>
 
-      <div className="h-[220px]">
+      <div className="h-[248px] min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#252B33" strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid stroke="#242932" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="name"
               tick={{ fill: "#7D7A73", fontSize: 11 }}
@@ -363,8 +408,8 @@ function ChannelMixChart({ data }: { data: Record<RecoveryChannelKey, ChannelCon
             <Tooltip
               formatter={(value) => [formatCurrency(Number(value)), "Receita"]}
               contentStyle={{
-                background: "#0B0D10",
-                border: "1px solid #252B33",
+                background: "#0A0A0B",
+                border: "1px solid #242932",
                 borderRadius: 8,
                 color: "#F5F2EA",
                 fontSize: 12,
@@ -374,15 +419,65 @@ function ChannelMixChart({ data }: { data: Record<RecoveryChannelKey, ChannelCon
             <Area
               type="monotone"
               dataKey="receita"
-              stroke="#D6A84F"
-              fill="#D6A84F"
-              fillOpacity={0.18}
+              stroke="#60A5FA"
+              fill="#60A5FA"
+              fillOpacity={0.14}
               strokeWidth={2}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </section>
+  );
+}
+
+function PeriodControl({
+  activeRange,
+  range,
+  onSelect,
+}: {
+  activeRange: string;
+  range: { from: Date; to: Date };
+  onSelect: (preset: RangePreset) => void;
+}) {
+  return (
+    <div className="mb-6 flex flex-col gap-4 rounded-lg border border-[#242932] bg-[#0A0A0B] p-3.5 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex items-center gap-3">
+        <span className="flex size-8 items-center justify-center rounded-md border border-[#242932] bg-[#12151A] text-[#B8B3A7]">
+          <CalendarDays size={16} />
+        </span>
+        <div>
+          <p className="text-sm font-medium tabular-nums text-[#F5F2EA]">
+            {format(range.from, "dd/MM/yyyy")} - {format(range.to, "dd/MM/yyyy")}
+          </p>
+          <p className="text-xs text-[#7D7A73]">
+            Periodo aplicado a todas as metricas
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {RANGE_PRESETS.map((preset) => {
+          const isActive = activeRange === preset.key;
+
+          return (
+            <button
+              key={preset.key}
+              type="button"
+              onClick={() => onSelect(preset)}
+              className={cn(
+                "h-8 rounded-md border px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/40",
+                isActive
+                  ? "border-[#D6A84F]/30 bg-[#2A2112]/70 text-[#F0C76A]"
+                  : "border-[#242932] bg-[#12151A] text-[#B8B3A7] hover:border-[#303640] hover:bg-[#171B21] hover:text-[#F5F2EA]"
+              )}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -417,43 +512,11 @@ export function PerformanceDashboard() {
 
   return (
     <div className="px-6 py-6">
-      <div className="mb-6 flex flex-col gap-4 rounded-lg border border-[#252B33] bg-[#0B0D10] p-4 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg border border-[#D6A84F]/25 bg-[#2A2112] text-[#F0C76A]">
-            <CalendarDays size={18} />
-          </span>
-          <div>
-            <p className="text-sm font-medium text-[#F5F2EA]">
-              {format(range.from, "dd/MM/yyyy")} - {format(range.to, "dd/MM/yyyy")}
-            </p>
-            <p className="text-xs text-[#7D7A73]">
-              Dados de performance do periodo selecionado
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {RANGE_PRESETS.map((preset) => {
-            const isActive = activeRange === preset.key;
-
-            return (
-              <button
-                key={preset.key}
-                type="button"
-                onClick={() => selectPreset(preset)}
-                className={cn(
-                  "h-8 rounded-lg border px-3 text-sm font-medium transition-colors",
-                  isActive
-                    ? "border-[#D6A84F]/40 bg-[#2A2112] text-[#F0C76A]"
-                    : "border-[#252B33] bg-[#111418] text-[#B8B3A7] hover:bg-[#171B21] hover:text-[#F5F2EA]"
-                )}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <PeriodControl
+        activeRange={activeRange}
+        range={range}
+        onSelect={selectPreset}
+      />
 
       {loading ? <DashboardSkeleton /> : null}
 
@@ -468,14 +531,14 @@ export function PerformanceDashboard() {
               label="Faturamento total"
               value={formatCurrency(data.faturamento_total)}
               supportingText="Receita consolidada no periodo"
-              icon={<Banknote size={18} />}
+              icon={<Banknote />}
               tone="gold"
             />
             <KpiCard
               label="Investimento em anuncios"
               value={formatCurrency(data.investimento_total)}
               supportingText="Midia paga aplicada no periodo"
-              icon={<Megaphone size={18} />}
+              icon={<Megaphone />}
               tone="blue"
             />
             <KpiCard
@@ -485,22 +548,23 @@ export function PerformanceDashboard() {
                 maximumFractionDigits: 1,
               })}x`}
               supportingText="Retorno sobre investimento em anuncios"
-              icon={<TrendingUp size={18} />}
+              icon={<TrendingUp />}
               tone="green"
             />
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <RevenueChart data={data.serie_temporal} />
+            <ChannelMixChart data={data.conversoes_canal} />
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-semibold text-[#F5F2EA]">
-                  Conversao por produto
-                </h2>
-                <p className="mt-1 text-sm text-[#7D7A73]">
-                  Receita, quantidade e taxa por etapa comercial
-                </p>
-              </div>
-              <div className="grid gap-4 lg:grid-cols-3">
+              <SectionHeader
+                title="Conversao por produto"
+                description="Receita, quantidade e taxa por etapa comercial"
+              />
+              <div className="grid gap-3 lg:grid-cols-3">
                 {PRODUCT_LABELS.map((item) => {
                   const conversion = data.conversoes_produto[item.key];
 
@@ -513,6 +577,7 @@ export function PerformanceDashboard() {
                       taxa={conversion.taxa}
                       icon={item.icon}
                       percentage={(conversion.receita / productMax) * 100}
+                      accent="gold"
                     />
                   );
                 })}
@@ -520,15 +585,11 @@ export function PerformanceDashboard() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <h2 className="text-base font-semibold text-[#F5F2EA]">
-                  Canais de recuperacao
-                </h2>
-                <p className="mt-1 text-sm text-[#7D7A73]">
-                  Receita recuperada por canal ativo
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <SectionHeader
+                title="Canais de recuperacao"
+                description="Receita recuperada por canal ativo"
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
                 {CHANNEL_LABELS.map((item) => {
                   const conversion = data.conversoes_canal[item.key];
 
@@ -540,16 +601,12 @@ export function PerformanceDashboard() {
                       receita={conversion.receita}
                       icon={item.icon}
                       percentage={(conversion.receita / channelMax) * 100}
+                      accent="blue"
                     />
                   );
                 })}
               </div>
             </div>
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-            <RevenueChart data={data.serie_temporal} />
-            <ChannelMixChart data={data.conversoes_canal} />
           </section>
 
           <div className="flex items-center gap-2 text-xs text-[#7D7A73]">
