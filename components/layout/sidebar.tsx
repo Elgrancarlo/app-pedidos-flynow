@@ -43,41 +43,26 @@ function FlyNowMark() {
   return (
     <svg
       aria-hidden="true"
-      width="22"
-      height="22"
-      viewBox="0 0 72 72"
+      width="32"
+      height="32"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0"
+      className="shrink-0 text-[#D6A84F]"
     >
       <path
-        d="M36 8 C36 8 48 18 48 34 L48 52 L36 46 L24 52 L24 34 C24 18 36 8 36 8 Z"
-        fill="#D6A84F"
-      />
-      <ellipse cx="36" cy="30" rx="5" ry="5" fill="#0E1013" />
-      <path
-        d="M24 38 L16 44 L20 52 L24 46 Z"
-        fill="#9C7430"
+        d="M32 6 C32 6 42 16 42 34 L42 50 L32 46 L22 50 L22 34 C22 16 32 6 32 6 Z"
+        fill="currentColor"
       />
       <path
-        d="M48 38 L56 44 L52 52 L48 46 Z"
-        fill="#9C7430"
+        d="M22 36 L14 42 L22 46 Z"
+        fill="currentColor"
       />
       <path
-        d="M29 52 Q33 58 36 60 Q39 58 43 52"
-        fill="#F0C76A"
-        opacity="0.7"
+        d="M42 36 L50 42 L42 46 Z"
+        fill="currentColor"
       />
-      <path
-        d="M32 58 H35 V63 H32 Z"
-        fill="#F0C76A"
-        opacity="0.45"
-      />
-      <path
-        d="M37 56 H40 V63 H37 Z"
-        fill="#F0C76A"
-        opacity="0.3"
-      />
+      <rect x="27" y="50" width="10" height="4" rx="1" fill="#9C7430" />
     </svg>
   );
 }
@@ -88,27 +73,22 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden border-r border-[#242932] bg-[#0E1013]">
       <div className="border-b border-[#242932] px-4 py-4">
-        <div className="flex items-center gap-3 rounded-lg border border-transparent px-2 py-1.5">
-          <span className="flex size-8 items-center justify-center rounded-md border border-[#D6A84F]/25 bg-[#2A2112]/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <div className="flex h-10 items-center gap-3 px-2">
+          <span className="flex size-8 items-center justify-center">
             <FlyNowMark />
           </span>
-          <div className="min-w-0">
-            <span
-              className="block leading-none"
-              style={{
-                color: "#D6A84F",
-                fontFamily: "var(--font-space-grotesk), sans-serif",
-                fontSize: "16px",
-                fontWeight: 700,
-                letterSpacing: "-0.45px",
-              }}
-            >
-              FLYNOW
-            </span>
-            <p className="mt-0.5 text-xs font-medium text-[#7D7A73]">
-              Direct Response Ops
-            </p>
-          </div>
+          <span
+            className="block leading-none"
+            style={{
+              color: "#F5F2EA",
+              fontFamily: "var(--font-space-grotesk), sans-serif",
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "0.5px",
+            }}
+          >
+            FLYNOW
+          </span>
         </div>
       </div>
 
