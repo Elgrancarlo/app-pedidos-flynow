@@ -10,19 +10,23 @@ export function DashboardHeader({
   actions,
 }: DashboardHeaderProps) {
   return (
-    <header className="flex min-h-[68px] items-center justify-between border-b border-[#242932] bg-[#050505] px-6 py-3.5">
-      <div>
-        <h1 className="text-[22px] font-semibold leading-tight text-[#F5F2EA]">{title}</h1>
+    <header className="flex min-h-[88px] flex-col justify-end gap-4 bg-[#050505] px-6 pb-4 pt-6 xl:flex-row xl:items-end xl:justify-between">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold leading-none text-[#F5F2EA]">
+          {title}
+        </h1>
 
         {description ? (
-          <p className="mt-1 text-sm text-[#7D7A73]">
+          <p className="mt-2 max-w-xl text-sm leading-5 text-[#7D7A73]">
             {description}
           </p>
         ) : null}
       </div>
 
       {actions ? (
-        <div className="flex items-center gap-2">{actions}</div>
+        <div className="flex w-full items-end gap-2 xl:w-auto xl:shrink-0">
+          {actions}
+        </div>
       ) : null}
     </header>
   );

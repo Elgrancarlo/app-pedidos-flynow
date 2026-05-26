@@ -5,7 +5,6 @@ import {
   BarChart3,
   Banknote,
   Bot,
-  CalendarDays,
   Headset,
   Mail,
   Megaphone,
@@ -27,13 +26,17 @@ import {
   YAxis,
 } from "recharts";
 import {
+  endOfDay,
   endOfMonth,
   format,
   startOfMonth,
+  startOfDay,
   subDays,
   subMonths,
 } from "date-fns";
 
+import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { Calendar, type RangeValue } from "@/components/ui/calendar";
 import { useMetrics } from "@/hooks/useMetrics";
 import type {
   ChannelConversion,
@@ -46,6 +49,7 @@ import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 type RangePreset = {
   key: string;
   label: string;
+  displayLabel: string;
   getRange: () => { from: Date; to: Date };
 };
 
@@ -71,38 +75,43 @@ const RANGE_PRESETS: RangePreset[] = [
   {
     key: "today",
     label: "Hoje",
+    displayLabel: "Hoje",
     getRange: () => {
       const today = new Date();
-      return { from: today, to: today };
+      return { from: startOfDay(today), to: endOfDay(today) };
     },
   },
   {
     key: "7d",
     label: "7 dias",
+    displayLabel: "7D",
     getRange: () => {
       const today = new Date();
-      return { from: subDays(today, 6), to: today };
+      return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) };
     },
   },
   {
     key: "30d",
     label: "30 dias",
+    displayLabel: "30D",
     getRange: () => {
       const today = new Date();
-      return { from: subDays(today, 29), to: today };
+      return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
     },
   },
   {
     key: "month",
-    label: "Este mes",
+    label: "Este mês",
+    displayLabel: "Este mês",
     getRange: () => {
       const today = new Date();
-      return { from: startOfMonth(today), to: today };
+      return { from: startOfMonth(today), to: endOfDay(today) };
     },
   },
   {
     key: "last-month",
-    label: "Mes anterior",
+    label: "Mês anterior",
+    displayLabel: "Mês anterior",
     getRange: () => {
       const previousMonth = subMonths(new Date(), 1);
       return {
@@ -431,52 +440,84 @@ function ChannelMixChart({
   );
 }
 
-function PeriodControl({
+function PeriodActions({
   activeRange,
   range,
+  calendarValue,
   onSelect,
+  onCalendarChange,
 }: {
   activeRange: string;
   range: { from: Date; to: Date };
+  calendarValue: RangeValue | null;
   onSelect: (preset: RangePreset) => void;
+  onCalendarChange: (value: RangeValue | null) => void;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 rounded-lg border border-[#242932] bg-[#0A0A0B] p-3.5 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex items-center gap-3">
-        <span className="flex size-8 items-center justify-center rounded-md border border-[#242932] bg-[#12151A] text-[#B8B3A7]">
-          <CalendarDays size={16} />
-        </span>
-        <div>
-          <p className="text-sm font-medium tabular-nums text-[#F5F2EA]">
-            {format(range.from, "dd/MM/yyyy")} - {format(range.to, "dd/MM/yyyy")}
-          </p>
-          <p className="text-xs text-[#7D7A73]">
-            Periodo aplicado a todas as metricas
-          </p>
+    <div className="flex w-full flex-col items-start gap-2 xl:w-auto xl:items-end">
+      <div
+        role="group"
+        aria-label="Filtro de período"
+        className="flex w-full max-w-full flex-col gap-1.5 rounded-2xl border border-[#1D2026] bg-[#08090B] p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)] xl:w-auto xl:flex-row xl:items-center"
+      >
+        <div className="flynow-date-picker dark w-full xl:w-auto">
+          <Calendar
+            value={calendarValue}
+            onChange={onCalendarChange}
+            horizontalLayout
+            showTimeInput={false}
+            popoverAlignment="end"
+            className="w-full xl:w-auto"
+            triggerClassName="!h-8 !w-full xl:!w-[236px] !rounded-xl !border-[#242932] !bg-[#0E1014] !px-2.5 !text-xs !font-medium !text-[#A3A6AE] !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418]"
+            popoverClassName="!z-50 !border !border-[#242932] !bg-[#08090B]"
+          />
+        </div>
+
+        <div
+          aria-hidden="true"
+          className="hidden h-5 w-px bg-[#20242B] xl:block"
+        />
+
+        <div
+          role="group"
+          aria-label="Selecionar período"
+          className="grid w-full grid-cols-2 gap-1 md:grid-cols-5 xl:flex xl:w-auto xl:items-center"
+        >
+          {RANGE_PRESETS.map((preset) => {
+            const isActive = activeRange === preset.key;
+
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                title={preset.label}
+                aria-label={preset.label}
+                aria-pressed={isActive}
+                onClick={() => onSelect(preset)}
+                className={cn(
+                  "relative h-8 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 xl:min-w-10",
+                  isActive
+                    ? "bg-[#17191E] text-[#F5F2EA] shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
+                    : "text-[#858A94] hover:bg-[#111318] hover:text-[#DADDE2]"
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "absolute inset-x-2 bottom-1 h-px rounded-full bg-[#D6A84F] transition-opacity duration-150",
+                    isActive ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {preset.displayLabel}
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-2">
-        {RANGE_PRESETS.map((preset) => {
-          const isActive = activeRange === preset.key;
-
-          return (
-            <button
-              key={preset.key}
-              type="button"
-              onClick={() => onSelect(preset)}
-              className={cn(
-                "h-8 rounded-md border px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/40",
-                isActive
-                  ? "border-[#D6A84F]/30 bg-[#2A2112]/70 text-[#F0C76A]"
-                  : "border-[#242932] bg-[#12151A] text-[#B8B3A7] hover:border-[#303640] hover:bg-[#171B21] hover:text-[#F5F2EA]"
-              )}
-            >
-              {preset.label}
-            </button>
-          );
-        })}
-      </div>
+      <span className="sr-only">
+        Período aplicado: {format(range.from, "dd/MM/yyyy")} -{" "}
+        {format(range.to, "dd/MM/yyyy")}
+      </span>
     </div>
   );
 }
@@ -485,6 +526,10 @@ export function PerformanceDashboard() {
   const initialRange = useMemo(() => RANGE_PRESETS[2].getRange(), []);
   const [activeRange, setActiveRange] = useState("30d");
   const [range, setRange] = useState(initialRange);
+  const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
+    start: initialRange.from,
+    end: initialRange.to,
+  });
   const { data, loading, error } = useMetrics(range.from, range.to);
 
   const productMax = data
@@ -506,115 +551,137 @@ export function PerformanceDashboard() {
     : 1;
 
   function selectPreset(preset: RangePreset) {
+    const nextRange = preset.getRange();
+
     setActiveRange(preset.key);
-    setRange(preset.getRange());
+    setRange(nextRange);
+    setCalendarValue({ start: nextRange.from, end: nextRange.to });
+  }
+
+  function selectCalendarRange(value: RangeValue | null) {
+    setCalendarValue(value);
+
+    if (value?.start && value.end) {
+      setActiveRange("custom");
+      setRange({ from: value.start, to: value.end });
+    }
   }
 
   return (
-    <div className="px-6 py-6">
-      <PeriodControl
-        activeRange={activeRange}
-        range={range}
-        onSelect={selectPreset}
+    <>
+      <DashboardHeader
+        title="Central da Operação"
+        description="Receita, mídia e pedidos em tempo real"
+        actions={
+          <PeriodActions
+            activeRange={activeRange}
+            range={range}
+            calendarValue={calendarValue}
+            onSelect={selectPreset}
+            onCalendarChange={selectCalendarRange}
+          />
+        }
       />
 
-      {loading ? <DashboardSkeleton /> : null}
+      <div className="px-6 py-6">
+        {loading ? <DashboardSkeleton /> : null}
 
-      {!loading && error ? (
-        <ErrorState message="Nao foi possivel carregar as metricas. Tente novamente em alguns instantes." />
-      ) : null}
+        {!loading && error ? (
+          <ErrorState message="Nao foi possivel carregar as metricas. Tente novamente em alguns instantes." />
+        ) : null}
 
-      {!loading && !error && data ? (
-        <div className="space-y-6">
-          <section className="grid gap-4 xl:grid-cols-3">
-            <KpiCard
-              label="Faturamento total"
-              value={formatCurrency(data.faturamento_total)}
-              supportingText="Receita consolidada no periodo"
-              icon={<Banknote />}
-              tone="gold"
-            />
-            <KpiCard
-              label="Investimento em anuncios"
-              value={formatCurrency(data.investimento_total)}
-              supportingText="Midia paga aplicada no periodo"
-              icon={<Megaphone />}
-              tone="blue"
-            />
-            <KpiCard
-              label="ROAS"
-              value={`${data.roas.toLocaleString("pt-BR", {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })}x`}
-              supportingText="Retorno sobre investimento em anuncios"
-              icon={<TrendingUp />}
-              tone="green"
-            />
-          </section>
-
-          <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <RevenueChart data={data.serie_temporal} />
-            <ChannelMixChart data={data.conversoes_canal} />
-          </section>
-
-          <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-            <div className="space-y-4">
-              <SectionHeader
-                title="Conversao por produto"
-                description="Receita, quantidade e taxa por etapa comercial"
+        {!loading && !error && data ? (
+          <div className="space-y-6">
+            <section className="grid gap-4 xl:grid-cols-3">
+              <KpiCard
+                label="Faturamento total"
+                value={formatCurrency(data.faturamento_total)}
+                supportingText="Receita consolidada no periodo"
+                icon={<Banknote />}
+                tone="gold"
               />
-              <div className="grid gap-3 lg:grid-cols-3">
-                {PRODUCT_LABELS.map((item) => {
-                  const conversion = data.conversoes_produto[item.key];
-
-                  return (
-                    <ConversionCard
-                      key={item.key}
-                      label={item.label}
-                      quantidade={conversion.quantidade}
-                      receita={conversion.receita}
-                      taxa={conversion.taxa}
-                      icon={item.icon}
-                      percentage={(conversion.receita / productMax) * 100}
-                      accent="gold"
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <SectionHeader
-                title="Canais de recuperacao"
-                description="Receita recuperada por canal ativo"
+              <KpiCard
+                label="Investimento em anuncios"
+                value={formatCurrency(data.investimento_total)}
+                supportingText="Midia paga aplicada no periodo"
+                icon={<Megaphone />}
+                tone="blue"
               />
-              <div className="grid gap-3 sm:grid-cols-2">
-                {CHANNEL_LABELS.map((item) => {
-                  const conversion = data.conversoes_canal[item.key];
+              <KpiCard
+                label="ROAS"
+                value={`${data.roas.toLocaleString("pt-BR", {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}x`}
+                supportingText="Retorno sobre investimento em anuncios"
+                icon={<TrendingUp />}
+                tone="green"
+              />
+            </section>
 
-                  return (
-                    <ConversionCard
-                      key={item.key}
-                      label={item.label}
-                      quantidade={conversion.quantidade}
-                      receita={conversion.receita}
-                      icon={item.icon}
-                      percentage={(conversion.receita / channelMax) * 100}
-                      accent="blue"
-                    />
-                  );
-                })}
+            <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <RevenueChart data={data.serie_temporal} />
+              <ChannelMixChart data={data.conversoes_canal} />
+            </section>
+
+            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+              <div className="space-y-4">
+                <SectionHeader
+                  title="Conversao por produto"
+                  description="Receita, quantidade e taxa por etapa comercial"
+                />
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {PRODUCT_LABELS.map((item) => {
+                    const conversion = data.conversoes_produto[item.key];
+
+                    return (
+                      <ConversionCard
+                        key={item.key}
+                        label={item.label}
+                        quantidade={conversion.quantidade}
+                        receita={conversion.receita}
+                        taxa={conversion.taxa}
+                        icon={item.icon}
+                        percentage={(conversion.receita / productMax) * 100}
+                        accent="gold"
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          </section>
 
-          <div className="flex items-center gap-2 text-xs text-[#7D7A73]">
-            <RefreshCw size={13} />
-            <span>Dados mockados para desenvolvimento ate a API final entrar.</span>
+              <div className="space-y-4">
+                <SectionHeader
+                  title="Canais de recuperacao"
+                  description="Receita recuperada por canal ativo"
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {CHANNEL_LABELS.map((item) => {
+                    const conversion = data.conversoes_canal[item.key];
+
+                    return (
+                      <ConversionCard
+                        key={item.key}
+                        label={item.label}
+                        quantidade={conversion.quantidade}
+                        receita={conversion.receita}
+                        icon={item.icon}
+                        percentage={(conversion.receita / channelMax) * 100}
+                        accent="blue"
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+
+            <div className="flex items-center gap-2 text-xs text-[#7D7A73]">
+              <RefreshCw size={13} />
+              <span>Dados mockados para desenvolvimento ate a API final entrar.</span>
+            </div>
           </div>
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </div>
+    </>
   );
 }
