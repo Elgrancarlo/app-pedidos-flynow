@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -15,6 +16,7 @@ import {
   Search,
   ShoppingCart,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 const PRIMARY_NAV = [
@@ -27,6 +29,13 @@ const PRIMARY_NAV = [
 const WORKSPACE_NAV = [
   { href: "/estoque", label: "Estoque", Icone: Box },
   { href: "/configuracoes", label: "Configurações", Icone: SlidersHorizontal },
+];
+
+const MOBILE_NAV = [
+  { href: "/pedidos", label: "Pedidos", Icone: Inbox },
+  { href: "/carrinhos", label: "Carrinhos", Icone: ShoppingCart },
+  { href: "/dashboard", label: "Dashboard", Icone: Activity, featured: true },
+  { href: "/financeiro", label: "Financeiro", Icone: ChartSpline },
 ];
 
 function FlyNowMark() {
@@ -97,21 +106,25 @@ function MobileNavLink({
   label,
   Icone,
   ativo,
+  featured = false,
 }: {
   href: string;
   label: string;
   Icone: LucideIcon;
   ativo: boolean;
+  featured?: boolean;
 }) {
   return (
     <Link
       href={href}
       aria-current={ativo ? "page" : undefined}
       className={[
-        "relative flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[11px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
-        ativo
-          ? "bg-[#17181B] text-[#F5F2EA]"
+        "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        featured ? "h-16 -translate-y-2" : "h-14",
+        ativo || featured
+          ? "text-[#F5F2EA]"
           : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",
+        ativo && !featured ? "bg-[#17181B]" : "",
       ].join(" ")}
     >
       {ativo ? (
@@ -120,15 +133,73 @@ function MobileNavLink({
           className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#D6A84F]"
         />
       ) : null}
+      <span
+        className={[
+          "flex items-center justify-center transition-colors duration-150",
+          featured
+            ? [
+                "size-10 rounded-[12px] border",
+                ativo
+                  ? "border-[#D6A84F]/38 bg-[#1A1710] shadow-[0_8px_22px_rgba(214,168,79,0.1),inset_0_1px_0_rgba(255,255,255,0.055)]"
+                  : "border-white/[0.08] bg-[#111318] shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.035)]",
+              ].join(" ")
+            : "",
+        ].join(" ")}
+      >
+        <Icone
+          size={featured ? 19 : 18}
+          strokeWidth={2.1}
+          className={[
+            "shrink-0 transition-colors duration-150",
+            ativo || featured ? "text-[#D6A84F]" : "text-[#747882]",
+          ].join(" ")}
+        />
+      </span>
+      <span
+        className={[
+          "block w-max max-w-[64px] truncate leading-none",
+        ].join(" ")}
+      >
+        {label}
+      </span>
+    </Link>
+  );
+}
+
+function MobileSheetLink({
+  href,
+  label,
+  Icone,
+  ativo,
+  onClick,
+}: {
+  href: string;
+  label: string;
+  Icone: LucideIcon;
+  ativo: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={ativo ? "page" : undefined}
+      onClick={onClick}
+      className={[
+        "group flex h-12 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        ativo
+          ? "bg-[#17181B] text-[#F5F2EA]"
+          : "text-[#A3A6AE] hover:bg-[#151619] hover:text-[#E8E9EC]",
+      ].join(" ")}
+    >
       <Icone
         size={18}
-        strokeWidth={2.1}
+        strokeWidth={2}
         className={[
           "shrink-0 transition-colors duration-150",
-          ativo ? "text-[#D6A84F]" : "text-[#747882]",
+          ativo ? "text-[#D6A84F]" : "text-[#747882] group-hover:text-[#AEB2BB]",
         ].join(" ")}
       />
-      <span className="max-w-full truncate leading-none">{label}</span>
+      <span className="truncate">{label}</span>
     </Link>
   );
 }
@@ -136,6 +207,37 @@ function MobileNavLink({
 export default function Sidebar() {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const moreSheetTitleId = useId();
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
+  const closeMobileMore = () => setIsMobileMoreOpen(false);
+  const isMoreActive = WORKSPACE_NAV.some(({ href }) => isActive(href));
+
+  useEffect(() => {
+    setIsMobileMoreOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMobileMoreOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsMobileMoreOpen(false);
+      }
+    };
+    const originalOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    closeButtonRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileMoreOpen]);
 
   return (
     <>
@@ -251,20 +353,165 @@ export default function Sidebar() {
         </div>
       </aside>
 
+      {isMobileMoreOpen ? (
+        <div className="fixed inset-0 z-[60] xl:hidden">
+          <button
+            type="button"
+            aria-label="Fechar navegação"
+            className="flynow-mobile-more-backdrop absolute inset-0 cursor-default bg-black/58 backdrop-blur-[10px]"
+            onClick={closeMobileMore}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={moreSheetTitleId}
+            className="flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-hidden rounded-t-[22px] border-t border-white/[0.09] bg-[#08090B]/96 shadow-[0_-24px_70px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl"
+          >
+            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/[0.16]" />
+
+            <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[12px] border border-[#D6A84F]/18 bg-[#12100A] text-[#D6A84F]">
+                  <FlyNowMark />
+                </span>
+                <div className="min-w-0">
+                  <h2
+                    id={moreSheetTitleId}
+                    className="truncate text-[15px] font-semibold leading-none text-[#F5F2EA]"
+                  >
+                    Navegação Flynow
+                  </h2>
+                  <p className="mt-1.5 truncate text-xs font-medium text-[#858A94]">
+                    Acesso completo do workspace
+                  </p>
+                </div>
+              </div>
+
+              <button
+                ref={closeButtonRef}
+                type="button"
+                aria-label="Fechar"
+                onClick={closeMobileMore}
+                className="flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border border-white/[0.07] bg-white/[0.035] text-[#A3A6AE] outline-none transition-colors duration-150 hover:border-white/[0.12] hover:bg-white/[0.055] hover:text-[#F5F2EA] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+              >
+                <X size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(78dvh-88px)] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+              <div className="border-t border-white/[0.06] pt-3">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
+                  Workspace
+                </p>
+                <div className="space-y-1">
+                  {WORKSPACE_NAV.map(({ href, label, Icone }) => (
+                    <MobileSheetLink
+                      key={href}
+                      href={href}
+                      label={label}
+                      Icone={Icone}
+                      ativo={isActive(href)}
+                      onClick={closeMobileMore}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-white/[0.06] pt-3">
+                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
+                  Ações
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-white/[0.07] bg-white/[0.035] px-3 text-sm font-semibold text-[#DADDE2] outline-none transition-colors duration-150 hover:border-white/[0.12] hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                  >
+                    <Search size={16} strokeWidth={2.2} />
+                    <span>Buscar</span>
+                  </button>
+                  <Link
+                    href="/pedidos"
+                    onClick={closeMobileMore}
+                    className="flex h-12 items-center justify-center gap-2 rounded-[10px] border border-[#D6A84F]/22 bg-[#151208] px-3 text-sm font-semibold text-[#F5F2EA] outline-none transition-colors duration-150 hover:border-[#D6A84F]/36 hover:bg-[#1A160C] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                  >
+                    <Plus size={16} strokeWidth={2.3} />
+                    <span>Criar pedido</span>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-4 border-t border-white/[0.06] pt-3">
+                <div className="flex h-14 items-center gap-3 rounded-[12px] bg-white/[0.025] px-3 ring-1 ring-white/[0.055]">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#151619] text-xs font-semibold text-[#D6A84F] ring-1 ring-[#242932]">
+                    AF
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[#E8E9EC]">
+                      Admin
+                    </p>
+                    <p className="text-xs font-medium text-[#6B707A]">Online</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Sair"
+                    className="flex size-9 cursor-pointer items-center justify-center rounded-[10px] text-[#6B707A] outline-none transition-colors duration-150 hover:bg-white/[0.045] hover:text-[#DADDE2] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                  >
+                    <LogOut size={16} strokeWidth={2.1} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <nav
         aria-label="Navegação mobile"
         className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.07] bg-[#08090B]/92 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-[0_-18px_44px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-2xl xl:hidden"
       >
-        <div className="mx-auto grid max-w-[520px] grid-cols-4 gap-1">
-          {PRIMARY_NAV.map(({ href, label, Icone }) => (
+        <div className="mx-auto grid max-w-[520px] grid-cols-5 items-end gap-1 px-8">
+          {MOBILE_NAV.map(({ href, label, Icone, featured }) => (
             <MobileNavLink
               key={href}
               href={href}
               label={label}
               Icone={Icone}
               ativo={isActive(href)}
+              featured={featured}
             />
           ))}
+
+          <button
+            type="button"
+            aria-controls={moreSheetTitleId}
+            aria-expanded={isMobileMoreOpen}
+            onClick={() => setIsMobileMoreOpen(true)}
+            className={[
+              "relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+              isMoreActive
+                ? "bg-[#17181B] text-[#F5F2EA]"
+                : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",
+            ].join(" ")}
+          >
+            {isMoreActive ? (
+              <span
+                aria-hidden="true"
+                className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#D6A84F]"
+              />
+            ) : null}
+            <MoreHorizontal
+              size={19}
+              strokeWidth={2.1}
+              className={[
+                "shrink-0 transition-colors duration-150",
+                isMoreActive ? "text-[#D6A84F]" : "text-[#747882]",
+              ].join(" ")}
+            />
+            <span className="block w-max max-w-[64px] truncate leading-none">
+              Mais
+            </span>
+          </button>
         </div>
       </nav>
     </>
