@@ -29,5 +29,9 @@ export type MetricsData = {
   roas: number;
   conversoes_produto: Record<ProductConversionKey, ProductConversion>;
   conversoes_canal: Record<RecoveryChannelKey, ChannelConversion>;
+  conversoes_canal_por_produto?: Record<
+    ProductConversionKey,
+    Record<RecoveryChannelKey, ChannelConversion>
+  >;
   serie_temporal: TimeSeriesMetric[];
 };

@@ -33,7 +33,7 @@ import { useMetrics } from "@/hooks/useMetrics";
 import type {
   ChannelConversion,
   MetricsData,
-  ProductConversion,
+  ProductConversionKey,
   RecoveryChannelKey,
 } from "@/lib/metrics";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
@@ -61,6 +61,8 @@ type ConversionItemProps = {
   percentage: number;
   accent?: "neutral" | "blue";
 };
+
+type ProductFilterKey = "all" | ProductConversionKey;
 
 const RANGE_PRESETS: RangePreset[] = [
   {
@@ -114,12 +116,23 @@ const RANGE_PRESETS: RangePreset[] = [
 ];
 
 const PRODUCT_LABELS: Array<{
-  key: keyof MetricsData["conversoes_produto"];
+  key: ProductConversionKey;
   label: string;
 }> = [
   { key: "frontend", label: "Frontend" },
   { key: "upsell", label: "Upsell" },
   { key: "downsell", label: "Downsell" },
+];
+
+const PRODUCT_FILTERS: Array<{
+  key: ProductFilterKey;
+  label: string;
+  ariaLabel: string;
+}> = [
+  { key: "all", label: "Todos", ariaLabel: "Todos os produtos" },
+  { key: "frontend", label: "Frontend", ariaLabel: "Produto Frontend" },
+  { key: "upsell", label: "Upsell", ariaLabel: "Produto Upsell" },
+  { key: "downsell", label: "Downsell", ariaLabel: "Produto Downsell" },
 ];
 
 const CHANNEL_LABELS: Array<{
@@ -147,6 +160,16 @@ function formatDateLabel(value: string) {
     day: "2-digit",
     month: "2-digit",
   });
+}
+
+function getProductFilterLabel(value: ProductFilterKey) {
+  const option = PRODUCT_FILTERS.find((item) => item.key === value);
+
+  if (!option || option.key === "all") {
+    return "Todos os produtos";
+  }
+
+  return option.label;
 }
 
 function useCompactViewport() {
@@ -186,6 +209,46 @@ function SectionHeader({
           {description}
         </p>
       </div>
+    </div>
+  );
+}
+
+function ProductFilterControl({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: ProductFilterKey;
+  onChange: (value: ProductFilterKey) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="flex max-w-full items-center gap-1 overflow-x-auto rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+    >
+      {PRODUCT_FILTERS.map((option) => {
+        const isActive = value === option.key;
+
+        return (
+          <button
+            key={option.key}
+            type="button"
+            aria-label={option.ariaLabel}
+            aria-pressed={isActive}
+            onClick={() => onChange(option.key)}
+            className={cn(
+              "h-7 shrink-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[var(--fly-text-muted)] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-border)]",
+              isActive
+                ? "bg-[var(--fly-control-active)] text-[var(--fly-text)] shadow-[0_1px_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.045)]"
+                : "hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)]"
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -352,15 +415,22 @@ function ConversionItem({
 function ConversionPanel({
   title,
   description,
+  action,
   children,
 }: {
   title: string;
   description: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
-      <SectionHeader title={title} description={description} />
+      <div className="flex min-w-0 flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
+        <SectionHeader title={title} description={description} />
+        {action ? (
+          <div className="min-w-0 2xl:max-w-[260px] 2xl:shrink-0">{action}</div>
+        ) : null}
+      </div>
       <div className="mt-4 space-y-2.5">{children}</div>
     </section>
   );
@@ -716,6 +786,10 @@ export function PerformanceDashboard() {
     start: initialRange.from,
     end: initialRange.to,
   });
+  const [productConversionFilter, setProductConversionFilter] =
+    useState<ProductFilterKey>("all");
+  const [channelProductFilter, setChannelProductFilter] =
+    useState<ProductFilterKey>("all");
   const { data, loading, error } = useMetrics(range.from, range.to);
   const rangeKey = useMemo(
     () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
@@ -730,23 +804,44 @@ export function PerformanceDashboard() {
     }
   }, [data, loading, rangeKey]);
 
+  const visibleProductLabels = PRODUCT_LABELS.filter(
+    (item) =>
+      productConversionFilter === "all" || item.key === productConversionFilter
+  );
+
+  const selectedChannelConversions =
+    data && channelProductFilter !== "all"
+      ? data.conversoes_canal_por_produto?.[channelProductFilter] ??
+        data.conversoes_canal
+      : data?.conversoes_canal;
+
   const productMax = data
     ? Math.max(
-        ...Object.values(data.conversoes_produto).map(
-          (item: ProductConversion) => item.receita
+        ...visibleProductLabels.map(
+          (item) => data.conversoes_produto[item.key].receita
         ),
         1
       )
     : 1;
 
-  const channelMax = data
+  const channelMax = selectedChannelConversions
     ? Math.max(
-        ...Object.values(data.conversoes_canal).map(
+        ...Object.values(selectedChannelConversions).map(
           (item: ChannelConversion) => item.receita
         ),
         1
       )
     : 1;
+
+  const productConversionDescription =
+    productConversionFilter === "all"
+      ? "Todos os produtos no período selecionado"
+      : `${getProductFilterLabel(productConversionFilter)} no período selecionado`;
+
+  const channelDescription =
+    channelProductFilter === "all"
+      ? "Todos os produtos no período selecionado"
+      : `${getProductFilterLabel(channelProductFilter)} no período selecionado`;
 
   function selectPreset(preset: RangePreset) {
     const nextRange = preset.getRange();
@@ -824,9 +919,16 @@ export function PerformanceDashboard() {
               <section className="grid items-start gap-5 xl:grid-cols-2">
                 <ConversionPanel
                   title="Conversão por produto"
-                  description="Frontend, upsell e downsell no período selecionado"
+                  description={productConversionDescription}
+                  action={
+                    <ProductFilterControl
+                      value={productConversionFilter}
+                      onChange={setProductConversionFilter}
+                      ariaLabel="Escolher produto para conversão por produto"
+                    />
+                  }
                 >
-                  {PRODUCT_LABELS.map((item) => {
+                  {visibleProductLabels.map((item) => {
                     const conversion = data.conversoes_produto[item.key];
 
                     return (
@@ -845,10 +947,19 @@ export function PerformanceDashboard() {
 
                 <ConversionPanel
                   title="Conversão por canal de recuperação"
-                  description="IA, Email, Call Center e SMS no período selecionado"
+                  description={channelDescription}
+                  action={
+                    <ProductFilterControl
+                      value={channelProductFilter}
+                      onChange={setChannelProductFilter}
+                      ariaLabel="Escolher produto para conversão por canal de recuperação"
+                    />
+                  }
                 >
                   {CHANNEL_LABELS.map((item) => {
-                    const conversion = data.conversoes_canal[item.key];
+                    const conversion =
+                      selectedChannelConversions?.[item.key] ??
+                      data.conversoes_canal[item.key];
 
                     return (
                       <ConversionItem

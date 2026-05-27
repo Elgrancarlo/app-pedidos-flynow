@@ -15,6 +15,26 @@ export const mockMetrics: MetricsData = {
     call_center: { quantidade: 22, receita: 3960 },
     ia_recuperacao: { quantidade: 18, receita: 1620 },
   },
+  conversoes_canal_por_produto: {
+    frontend: {
+      email: { quantidade: 26, receita: 2340 },
+      sms: { quantidade: 18, receita: 1620 },
+      call_center: { quantidade: 10, receita: 1800 },
+      ia_recuperacao: { quantidade: 11, receita: 990 },
+    },
+    upsell: {
+      email: { quantidade: 13, receita: 1170 },
+      sms: { quantidade: 8, receita: 720 },
+      call_center: { quantidade: 8, receita: 1440 },
+      ia_recuperacao: { quantidade: 5, receita: 450 },
+    },
+    downsell: {
+      email: { quantidade: 6, receita: 540 },
+      sms: { quantidade: 4, receita: 360 },
+      call_center: { quantidade: 4, receita: 720 },
+      ia_recuperacao: { quantidade: 2, receita: 180 },
+    },
+  },
   serie_temporal: Array.from({ length: 30 }, (_, index) => {
     const day = index + 1;
 
