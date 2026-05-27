@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
+
+const MOBILE_HEADER_SCROLL_RANGE = 118;
+const MOBILE_ELEVATION_PROGRESS = 0.04;
 
 type DashboardHeaderProps = {
   title: string;
@@ -15,52 +18,110 @@ export function DashboardHeader({
   description,
   actions,
 }: DashboardHeaderProps) {
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isElevated, setIsElevated] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
-    const sentinel = sentinelRef.current;
+    const mobileQuery = window.matchMedia("(max-width: 639px)");
 
-    if (!sentinel) {
-      return;
-    }
+    const updateElevation = () => {
+      const scrollY = Math.max(window.scrollY, 0);
+      const nextProgress = mobileQuery.matches
+        ? Math.min(scrollY / MOBILE_HEADER_SCROLL_RANGE, 1)
+        : scrollY > 0
+          ? 1
+          : 0;
+      const nextElevation = mobileQuery.matches
+        ? nextProgress > MOBILE_ELEVATION_PROGRESS
+        : nextProgress > 0;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsElevated(!entry.isIntersecting);
-      },
-      { threshold: 0 }
-    );
+      setScrollProgress((currentProgress) =>
+        Math.abs(currentProgress - nextProgress) < 0.005
+          ? currentProgress
+          : nextProgress
+      );
+      setIsElevated((currentElevation) =>
+        currentElevation === nextElevation ? currentElevation : nextElevation
+      );
+    };
 
-    observer.observe(sentinel);
+    const scheduleUpdate = () => {
+      if (animationFrameRef.current !== null) {
+        return;
+      }
 
-    return () => observer.disconnect();
+      animationFrameRef.current = window.requestAnimationFrame(() => {
+        animationFrameRef.current = null;
+        updateElevation();
+      });
+    };
+
+    updateElevation();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    mobileQuery.addEventListener("change", scheduleUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      mobileQuery.removeEventListener("change", scheduleUpdate);
+
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
+
+  const visibleProgress = 1 - scrollProgress;
+  const headerStyle = {
+    "--flynow-header-progress": scrollProgress.toFixed(3),
+    "--flynow-mobile-header-min-height": `${104 - 40 * scrollProgress}px`,
+    "--flynow-mobile-header-row-gap": `${8 * visibleProgress}px`,
+    "--flynow-presets-max-height": `${44 * visibleProgress}px`,
+    "--flynow-presets-padding-top": `${2 * visibleProgress}px`,
+    "--flynow-presets-padding-bottom": `${4 * visibleProgress}px`,
+    "--flynow-presets-opacity": visibleProgress.toFixed(3),
+    "--flynow-presets-translate-y": `${-8 * scrollProgress}px`,
+    "--flynow-presets-clip-top": `${-4 * visibleProgress}px`,
+    "--flynow-presets-clip-bottom": `calc(${(
+      100 * scrollProgress
+    ).toFixed(2)}% - ${8 * visibleProgress}px)`,
+  } as CSSProperties;
+  const arePresetsCollapsed = scrollProgress >= 0.985;
 
   return (
     <>
-      <div ref={sentinelRef} aria-hidden="true" className="h-px" />
       <header
+        data-elevated={isElevated ? "true" : "false"}
+        data-presets-collapsed={arePresetsCollapsed ? "true" : "false"}
+        style={headerStyle}
         className={cn(
-          "sticky top-0 z-40 flex min-h-[86px] flex-col justify-end gap-3 border-b px-4 pb-4 pt-4 transition-[background-color,border-color,box-shadow,backdrop-filter] duration-200 sm:px-5 sm:pt-5 lg:min-h-[92px] lg:flex-row lg:items-end lg:justify-between lg:px-6",
+          "sticky top-0 z-40 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b px-4 pb-3 pt-4 transition-[background-color,border-color,box-shadow,backdrop-filter,min-height,row-gap] duration-200 sm:px-5 sm:pb-4 sm:pt-5 lg:flex lg:min-h-[92px] lg:items-end lg:justify-between lg:gap-4 lg:px-6",
           isElevated
-            ? "border-white/[0.06] bg-[#050505]/72 shadow-[0_16px_50px_rgba(0,0,0,0.36)] backdrop-blur-2xl"
-            : "border-transparent bg-[#050505] shadow-none backdrop-blur-0"
+            ? "min-h-[86px] border-white/[0.06] bg-[#050505]/72 shadow-[0_16px_50px_rgba(0,0,0,0.36)] backdrop-blur-2xl sm:min-h-[112px] lg:min-h-[92px]"
+            : "min-h-[104px] border-transparent bg-[#050505] shadow-none backdrop-blur-0 sm:min-h-[116px] lg:min-h-[92px]"
         )}
       >
         <div className="min-w-0">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span
               aria-hidden="true"
-              className="mt-0.5 h-10 w-px shrink-0 rounded-full bg-gradient-to-b from-[#D6A84F]/85 via-[#D6A84F]/28 to-transparent"
+              className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-[#D6A84F]/85 via-[#D6A84F]/28 to-transparent sm:h-10"
             />
             <div className="min-w-0">
-              <h1 className="text-[22px] font-semibold leading-none text-[#F5F2EA] sm:text-[26px]">
+              <h1 className="truncate text-[19px] font-semibold leading-none text-[#F5F2EA] sm:text-[26px]">
                 {title}
               </h1>
 
               {description ? (
-                <p className="mt-2 max-w-[520px] text-[13px] leading-5 text-[#9B968C] sm:text-sm">
+                <p
+                  className={cn(
+                    "mt-1.5 hidden max-w-[520px] text-[12px] leading-5 text-[#9B968C] transition-[opacity,transform] duration-200 sm:mt-2 sm:block sm:text-sm lg:block",
+                    isElevated &&
+                      "hidden -translate-y-1 opacity-0 sm:block sm:translate-y-0 sm:opacity-100"
+                  )}
+                >
                   {description}
                 </p>
               ) : null}
@@ -69,7 +130,7 @@ export function DashboardHeader({
         </div>
 
         {actions ? (
-          <div className="flex w-full min-w-0 items-end gap-2 lg:w-auto lg:shrink-0 lg:-translate-y-1">
+          <div className="contents lg:flex lg:w-auto lg:shrink-0 lg:-translate-y-1 lg:items-end lg:gap-2">
             {actions}
           </div>
         ) : null}

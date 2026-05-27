@@ -291,6 +291,18 @@ const formatDateRange = (start: Date, end: Date, timezone: string) => {
   return `${formatSingle(start)} - ${formatSingle(end)}`;
 };
 
+const formatCompactDateRange = (start: Date, end: Date, timezone: string) => {
+  const sameDay = isSameDay(start, end);
+  const formatSingle = (date: Date) =>
+    formatInTimeZone(date, timezone, "dd/MM");
+
+  if (sameDay) {
+    return formatSingle(start);
+  }
+
+  return `${formatSingle(start)}-${formatSingle(end)}`;
+};
+
 const typeRelativeTimes = [
   {
     text: "45m",
@@ -524,6 +536,7 @@ interface CalendarProps {
   triggerClassName?: string;
   triggerActive?: boolean;
   popoverClassName?: string;
+  compactMobileLabel?: boolean;
   value: RangeValue | null;
   onChange: (date: RangeValue | null) => void;
   presets?: {
@@ -550,6 +563,7 @@ export const Calendar = ({
   triggerClassName,
   triggerActive = false,
   popoverClassName,
+  compactMobileLabel = false,
   value,
   onChange,
   presets,
@@ -580,6 +594,8 @@ export const Calendar = ({
   const ignoreNextTriggerClickRef = useRef(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>();
+  const [isSheetMode, setIsSheetMode] = useState(false);
+  const [useCompactLabel, setUseCompactLabel] = useState(false);
 
   const updatePopoverPosition = () => {
     if (!triggerRef.current) {
@@ -588,6 +604,22 @@ export const Calendar = ({
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const viewportPadding = 16;
+    const sheetMode = window.innerWidth < 640;
+
+    setIsSheetMode(sheetMode);
+
+    if (sheetMode) {
+      setPopoverStyle({
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: "auto",
+        width: "100%",
+        maxHeight: "min(78dvh, 640px)",
+      });
+      return;
+    }
+
     const popoverWidth = Math.min(
       horizontalLayout ? 462 : 280,
       window.innerWidth - viewportPadding * 2
@@ -615,8 +647,10 @@ export const Calendar = ({
     }
 
     setPopoverStyle({
+      bottom: "auto",
       left,
       top,
+      right: "auto",
       width: popoverWidth,
       maxHeight: window.innerHeight - top - viewportPadding,
     });
@@ -800,6 +834,16 @@ export const Calendar = ({
   }, [isOpen]);
 
   useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const updateLabelMode = () => setUseCompactLabel(query.matches);
+
+    updateLabelMode();
+    query.addEventListener("change", updateLabelMode);
+
+    return () => query.removeEventListener("change", updateLabelMode);
+  }, []);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -920,12 +964,22 @@ export const Calendar = ({
                 triggerClassName
               )}
               prefix={<CalendarIcon />}
+              suffix={
+                <ArrowBottomIcon
+                  className={clsx(
+                    "hidden fill-[#858A94] transition-transform duration-200 sm:block",
+                    isOpen && "rotate-180"
+                  )}
+                />
+              }
               type="secondary"
               onClick={toggleCalendar}
             >
-              <div className="truncate pr-4">
+              <div className="truncate pr-1">
                 {value?.start && value?.end ?
-                  formatDateRange(value.start, value.end, selectedTimezone)
+                  compactMobileLabel && useCompactLabel
+                    ? formatCompactDateRange(value.start, value.end, selectedTimezone)
+                    : formatDateRange(value.start, value.end, selectedTimezone)
                   : "Selecionar período"
                 }
               </div>
@@ -945,18 +999,46 @@ export const Calendar = ({
         </div>
       </div>
       {isPopoverMounted && createPortal(
-        <Material
-          ref={popoverRef}
-          type="menu"
-          style={popoverStyle}
-          className={twMerge(clsx(
-            "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
-            isPopoverClosing && "flynow-calendar-popover--closing",
-            popoverOriginClass,
-            horizontalLayout ? "w-[min(462px,calc(100vw-2rem))]" : "w-[min(280px,calc(100vw-2rem))]",
-            popoverClassName
-          ))}
-        >
+        <>
+          {isSheetMode ? (
+            <button
+              type="button"
+              aria-label="Fechar calendário"
+              className={clsx(
+                "flynow-calendar-sheet-backdrop fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]",
+                isPopoverClosing && "flynow-calendar-sheet-backdrop--closing"
+              )}
+              onClick={closeCalendar}
+            />
+          ) : null}
+          <Material
+            ref={popoverRef}
+            type="menu"
+            style={popoverStyle}
+            className={twMerge(clsx(
+              "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+              isSheetMode && "flynow-calendar-popover--sheet",
+              isPopoverClosing && "flynow-calendar-popover--closing",
+              !isSheetMode && popoverOriginClass,
+              horizontalLayout ? "w-[min(462px,calc(100vw-2rem))]" : "w-[min(280px,calc(100vw-2rem))]",
+              popoverClassName
+            ))}
+          >
+            {isSheetMode ? (
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#858A94]">
+                  Período
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Fechar calendário"
+                  className="flex size-8 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.035] fill-[#858A94] transition-colors hover:border-white/[0.12] hover:bg-white/[0.055] hover:fill-[#F5F2EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35"
+                  onClick={closeCalendar}
+                >
+                  <ClearIcon />
+                </button>
+              </div>
+            ) : null}
           <div className={clsx(horizontalLayout && "flex flex-col gap-4 min-[520px]:flex-row min-[520px]:gap-5")}>
             <div>
               <div className="flex justify-between items-center mb-3">
@@ -1110,7 +1192,8 @@ export const Calendar = ({
               </div>
             </div>
           </div>
-        </Material>,
+          </Material>
+        </>,
         document.body
       )}
     </div>

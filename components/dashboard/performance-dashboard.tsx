@@ -539,12 +539,10 @@ function PeriodActions({
       return;
     }
 
-    const groupRect = group.getBoundingClientRect();
-    const buttonRect = activeButton.getBoundingClientRect();
     const nextUnderline = {
-      x: buttonRect.left - groupRect.left + group.scrollLeft + 8,
-      y: buttonRect.bottom - groupRect.top - 5,
-      width: Math.max(buttonRect.width - 16, 12),
+      x: activeButton.offsetLeft + 8,
+      y: activeButton.offsetTop + activeButton.offsetHeight - 5,
+      width: Math.max(activeButton.offsetWidth - 16, 12),
       visible: true,
     };
 
@@ -608,13 +606,13 @@ function PeriodActions({
   } as CSSProperties;
 
   return (
-    <div className="flex w-full min-w-0 flex-col items-start gap-2 lg:w-auto lg:items-end">
+    <div className="contents lg:flex lg:w-auto lg:min-w-0 lg:flex-col lg:items-end lg:gap-2">
       <div
         role="group"
         aria-label="Filtro de período"
-        className="flex w-full max-w-full flex-col gap-1.5 rounded-[14px] border border-[#1D2026] bg-[#08090B] p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)] lg:w-auto lg:flex-row lg:items-center"
+        className="contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[#1D2026] lg:bg-[#08090B] lg:p-1.5 lg:shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)]"
       >
-        <div className="flynow-date-picker dark w-full lg:w-auto">
+        <div className="flynow-date-picker dark col-start-2 row-start-1 justify-self-end self-center lg:col-auto lg:row-auto lg:w-auto">
           <Calendar
             value={calendarValue}
             onChange={onCalendarChange}
@@ -623,12 +621,13 @@ function PeriodActions({
             maxValue={maxDate}
             popoverAlignment="end"
             triggerActive={isCustomRange}
-            className="w-full lg:w-auto"
+            compactMobileLabel
+            className="w-auto lg:w-auto"
             triggerClassName={cn(
-              "!h-9 !w-full !rounded-xl !bg-[#0E1014] !px-2.5 !text-xs !font-medium !shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:!bg-[#121418] sm:!h-8 lg:!w-[236px]",
+              "!h-8 !w-[132px] !rounded-full !border-white/[0.08] !bg-white/[0.035] !px-2.5 !text-[11px] !font-medium !text-[#DADDE2] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-white/[0.14] hover:!bg-white/[0.055] min-[390px]:!w-[146px] sm:!w-[236px] lg:!rounded-xl lg:!border-[#242932] lg:!bg-[#0E1014] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[#121418]",
               isCustomRange
                 ? "!border-[#D6A84F]/45 !text-[#F5F2EA] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
-                : "!border-[#242932] !text-[#A3A6AE]"
+                : "lg:!text-[#A3A6AE]"
             )}
             popoverClassName="!z-50 !border-[#D6A84F]/20 !bg-[#08090B]/62"
           />
@@ -643,7 +642,7 @@ function PeriodActions({
           ref={presetGroupRef}
           role="group"
           aria-label="Selecionar período"
-          className="flynow-period-presets relative flex w-full max-w-full gap-1 overflow-x-auto overscroll-x-contain pb-1 md:grid md:grid-cols-5 md:overflow-visible md:pb-0 lg:flex lg:w-auto lg:items-center"
+          className="flynow-period-presets relative col-span-2 row-start-2 -mx-4 flex max-w-[calc(100vw-1px)] gap-1 overflow-x-auto overscroll-x-contain px-4 pb-1 pt-0.5 sm:-mx-5 sm:px-5 md:mx-0 md:grid md:w-full md:max-w-full md:grid-cols-5 md:overflow-visible md:px-0 md:pb-0 lg:col-auto lg:row-auto lg:flex lg:w-auto lg:items-center"
         >
           <span
             aria-hidden="true"
@@ -668,8 +667,8 @@ function PeriodActions({
                 className={cn(
                   "relative h-8 shrink-0 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 md:shrink lg:min-w-10",
                   isActive
-                    ? "bg-[#17191E] text-[#F5F2EA] shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
-                    : "text-[#858A94] hover:bg-[#111318] hover:text-[#DADDE2]"
+                    ? "bg-white/[0.035] text-[#F5F2EA] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[#17191E] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
+                    : "text-[#858A94] hover:bg-white/[0.035] hover:text-[#DADDE2] lg:hover:bg-[#111318]"
                 )}
               >
                 {preset.displayLabel}

@@ -600,6 +600,50 @@ body {
   }
 }
 
+@keyframes flynow-calendar-sheet-in {
+  0% {
+    opacity: 0.86;
+    transform: translate3d(0, 100%, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes flynow-calendar-sheet-out {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0.86;
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes flynow-calendar-backdrop-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes flynow-calendar-backdrop-out {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
 .flynow-calendar-popover {
   animation: flynow-calendar-popover-in 260ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
   backface-visibility: hidden;
@@ -610,6 +654,28 @@ body {
 .flynow-calendar-popover--closing {
   animation: flynow-calendar-popover-out 150ms cubic-bezier(0.4, 0, 0.2, 1) both;
   pointer-events: none;
+}
+
+.flynow-calendar-sheet-backdrop {
+  animation: flynow-calendar-backdrop-in 180ms ease both;
+}
+
+.flynow-calendar-sheet-backdrop--closing {
+  animation: flynow-calendar-backdrop-out 150ms ease both;
+  pointer-events: none;
+}
+
+.flynow-calendar-popover--sheet {
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 18px 18px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: flynow-calendar-sheet-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.flynow-calendar-popover--sheet.flynow-calendar-popover--closing {
+  animation: flynow-calendar-sheet-out 170ms cubic-bezier(0.4, 0, 1, 1) both;
 }
 
 .flynow-preset-underline {
@@ -642,12 +708,66 @@ body {
   opacity: 1;
 }
 
+.flynow-period-presets > .flynow-preset-underline {
+  display: block;
+}
+
+.flynow-period-presets.flynow-period-presets
+  button[aria-pressed="true"]::after {
+  content: none;
+}
+
 .flynow-period-presets {
   scrollbar-width: none;
 }
 
 .flynow-period-presets::-webkit-scrollbar {
   display: none;
+}
+
+@media (max-width: 639px) {
+  .flynow-dashboard-shell header {
+    --flynow-header-progress: 0;
+    min-height: var(--flynow-mobile-header-min-height, 104px);
+    row-gap: var(--flynow-mobile-header-row-gap, 0.5rem);
+  }
+
+  .flynow-dashboard-shell .flynow-period-presets {
+    max-height: var(--flynow-presets-max-height, 44px);
+    overflow-y: clip;
+    padding-top: var(--flynow-presets-padding-top, 2px);
+    padding-bottom: var(--flynow-presets-padding-bottom, 4px);
+    opacity: var(--flynow-presets-opacity, 1);
+    clip-path: inset(
+      var(--flynow-presets-clip-top, -4px) 0
+        var(--flynow-presets-clip-bottom, -8px) 0
+    );
+    transform: translate3d(
+      0,
+      var(--flynow-presets-translate-y, 0),
+      0
+    );
+    transition:
+      opacity 90ms linear,
+      transform 90ms linear,
+      max-height 90ms linear,
+      padding-top 90ms linear,
+      padding-bottom 90ms linear,
+      clip-path 90ms linear;
+    will-change: opacity, transform, max-height, clip-path;
+  }
+
+  .flynow-dashboard-shell
+    header[data-presets-collapsed="true"]
+    .flynow-period-presets {
+    pointer-events: none;
+  }
+
+  .flynow-dashboard-shell
+    .flynow-period-presets
+    > .flynow-preset-underline[data-visible="true"] {
+    opacity: var(--flynow-presets-opacity, 1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -681,9 +801,26 @@ body {
     will-change: auto;
   }
 
+  .flynow-calendar-sheet-backdrop {
+    animation: none;
+  }
+
   .flynow-calendar-popover--closing {
     opacity: 0;
     transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  .flynow-calendar-popover--sheet.flynow-calendar-popover--closing {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .flynow-calendar-sheet-backdrop--closing {
+    opacity: 0;
+  }
+
+  .flynow-period-presets {
+    transition: none;
+    will-change: auto;
   }
 
   .flynow-preset-underline {
