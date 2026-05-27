@@ -4,10 +4,13 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
+  Check,
+  ChevronDown,
   Headset,
   Mail,
   MessageSquareText,
 } from "lucide-react";
+import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
 import {
   CartesianGrid,
   Line,
@@ -33,7 +36,8 @@ import { useMetrics } from "@/hooks/useMetrics";
 import type {
   ChannelConversion,
   MetricsData,
-  ProductConversionKey,
+  Offer,
+  OfferStageKey,
   RecoveryChannelKey,
 } from "@/lib/metrics";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
@@ -56,13 +60,13 @@ type ConversionItemProps = {
   label: string;
   quantidade: number;
   receita: number;
-  taxa?: number;
+  taxa?: number | null;
   icon?: React.ReactNode;
   percentage: number;
   accent?: "neutral" | "blue";
 };
 
-type ProductFilterKey = "all" | ProductConversionKey;
+const ALL_OFFERS_KEY = "all";
 
 const RANGE_PRESETS: RangePreset[] = [
   {
@@ -115,24 +119,13 @@ const RANGE_PRESETS: RangePreset[] = [
   },
 ];
 
-const PRODUCT_LABELS: Array<{
-  key: ProductConversionKey;
+const STAGE_LABELS: Array<{
+  key: OfferStageKey;
   label: string;
 }> = [
   { key: "frontend", label: "Frontend" },
   { key: "upsell", label: "Upsell" },
   { key: "downsell", label: "Downsell" },
-];
-
-const PRODUCT_FILTERS: Array<{
-  key: ProductFilterKey;
-  label: string;
-  ariaLabel: string;
-}> = [
-  { key: "all", label: "Todos", ariaLabel: "Todos os produtos" },
-  { key: "frontend", label: "Frontend", ariaLabel: "Produto Frontend" },
-  { key: "upsell", label: "Upsell", ariaLabel: "Produto Upsell" },
-  { key: "downsell", label: "Downsell", ariaLabel: "Produto Downsell" },
 ];
 
 const CHANNEL_LABELS: Array<{
@@ -162,14 +155,14 @@ function formatDateLabel(value: string) {
   });
 }
 
-function getProductFilterLabel(value: ProductFilterKey) {
-  const option = PRODUCT_FILTERS.find((item) => item.key === value);
+function getOfferLabel(offers: Offer[], value: string) {
+  const option = offers.find((item) => item.id === value);
 
-  if (!option || option.key === "all") {
-    return "Todos os produtos";
+  if (value === ALL_OFFERS_KEY || !option) {
+    return "Todas as ofertas";
   }
 
-  return option.label;
+  return option.nome;
 }
 
 function useCompactViewport() {
@@ -213,43 +206,86 @@ function SectionHeader({
   );
 }
 
-function ProductFilterControl({
+function OfferSelectControl({
   value,
+  offers,
+  open,
   onChange,
-  ariaLabel,
+  onOpenChange,
 }: {
-  value: ProductFilterKey;
-  onChange: (value: ProductFilterKey) => void;
-  ariaLabel: string;
+  value: string;
+  offers: Offer[];
+  open: boolean;
+  onChange: (value: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const selectedLabel = getOfferLabel(offers, value);
+
+  return (
+    <RadixDropdownMenu.Root
+      modal={false}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <RadixDropdownMenu.Trigger
+        aria-label="Selecionar oferta"
+        className="group flex h-8 w-full min-w-[190px] max-w-full items-center justify-between gap-2 rounded-full border border-[var(--fly-border)] bg-[var(--fly-control)] px-2.5 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] data-[state=open]:border-[var(--fly-brand-border)] data-[state=open]:bg-[var(--fly-control-hover)] sm:w-[236px] sm:min-w-[236px] lg:rounded-xl lg:border-[var(--fly-border-strong)] lg:bg-[var(--fly-control-solid)] lg:text-xs lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+      >
+        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+          Oferta
+        </span>
+        <span
+          aria-hidden="true"
+          className="h-3.5 w-px shrink-0 bg-[var(--fly-border)]"
+        />
+        <span className="min-w-0 flex-1 truncate">{selectedLabel}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-3.5 shrink-0 text-[var(--fly-text-muted)] transition-transform duration-200 group-data-[state=open]:rotate-180"
+        />
+      </RadixDropdownMenu.Trigger>
+
+      <RadixDropdownMenu.Portal>
+        <RadixDropdownMenu.Content
+          align="end"
+          avoidCollisions={false}
+          side="bottom"
+          sideOffset={8}
+          className="flynow-calendar-popover flynow-offer-select-content z-[80] max-h-[280px] min-w-[236px] overflow-hidden rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
+        >
+          <RadixDropdownMenu.RadioGroup value={value} onValueChange={onChange}>
+            <OfferSelectItem value={ALL_OFFERS_KEY}>
+              Todas as ofertas
+            </OfferSelectItem>
+            {offers.map((offer) => (
+              <OfferSelectItem key={offer.id} value={offer.id}>
+                {offer.nome}
+              </OfferSelectItem>
+            ))}
+          </RadixDropdownMenu.RadioGroup>
+        </RadixDropdownMenu.Content>
+      </RadixDropdownMenu.Portal>
+    </RadixDropdownMenu.Root>
+  );
+}
+
+function OfferSelectItem({
+  value,
+  children,
+}: {
+  value: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className="flex max-w-full items-center gap-1 overflow-x-auto rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+    <RadixDropdownMenu.RadioItem
+      value={value}
+      className="relative flex h-8 cursor-pointer select-none items-center rounded-[8px] py-1.5 pl-8 pr-3 text-xs font-medium text-[var(--fly-text-soft)] outline-none transition-colors duration-150 data-[highlighted]:bg-[var(--fly-control-hover)] data-[highlighted]:text-[var(--fly-text)] data-[state=checked]:text-[var(--fly-text)]"
     >
-      {PRODUCT_FILTERS.map((option) => {
-        const isActive = value === option.key;
-
-        return (
-          <button
-            key={option.key}
-            type="button"
-            aria-label={option.ariaLabel}
-            aria-pressed={isActive}
-            onClick={() => onChange(option.key)}
-            className={cn(
-              "h-7 shrink-0 rounded-[8px] px-2.5 text-[11px] font-medium text-[var(--fly-text-muted)] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-border)]",
-              isActive
-                ? "bg-[var(--fly-control-active)] text-[var(--fly-text)] shadow-[0_1px_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.045)]"
-                : "hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)]"
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
+      <RadixDropdownMenu.ItemIndicator className="absolute left-2.5 inline-flex size-3.5 items-center justify-center text-[var(--fly-chart-revenue)]">
+        <Check aria-hidden="true" className="size-3.5" />
+      </RadixDropdownMenu.ItemIndicator>
+      <span className="truncate">{children}</span>
+    </RadixDropdownMenu.RadioItem>
   );
 }
 
@@ -385,7 +421,7 @@ function ConversionItem({
             </p>
           </div>
         </div>
-        {taxa !== undefined ? (
+        {typeof taxa === "number" ? (
           <span className="shrink-0 rounded-md border border-[#4ADE80]/16 bg-[#0D1F14]/80 px-2 py-0.5 text-xs font-medium tabular-nums text-[#86EFAC]">
             {formatPercent(taxa)}
           </span>
@@ -586,15 +622,19 @@ function PeriodActions({
   range,
   calendarValue,
   maxDate,
+  calendarCloseSignal,
   onSelect,
   onCalendarChange,
+  onCalendarBeforeOpen,
 }: {
   activeRange: string;
   range: { from: Date; to: Date };
   calendarValue: RangeValue | null;
   maxDate: Date;
+  calendarCloseSignal: number;
   onSelect: (preset: RangePreset) => void;
   onCalendarChange: (value: RangeValue | null) => void;
+  onCalendarBeforeOpen: () => void;
 }) {
   const presetGroupRef = useRef<HTMLDivElement | null>(null);
   const presetButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -705,6 +745,8 @@ function PeriodActions({
             maxValue={maxDate}
             popoverAlignment="end"
             triggerActive={isCustomRange}
+            closeSignal={calendarCloseSignal}
+            onBeforeOpen={onCalendarBeforeOpen}
             compactMobileLabel
             className="w-auto lg:w-auto"
             triggerClassName={cn(
@@ -786,10 +828,14 @@ export function PerformanceDashboard() {
     start: initialRange.from,
     end: initialRange.to,
   });
-  const [productConversionFilter, setProductConversionFilter] =
-    useState<ProductFilterKey>("all");
-  const [channelProductFilter, setChannelProductFilter] =
-    useState<ProductFilterKey>("all");
+  const [selectedOfferId, setSelectedOfferId] = useState(ALL_OFFERS_KEY);
+  const [isOfferSelectOpen, setIsOfferSelectOpen] = useState(false);
+  const [calendarCloseSignal, setCalendarCloseSignal] = useState(0);
+  const [offerTransitionKey, setOfferTransitionKey] = useState(0);
+  const [isOfferTransitioning, setIsOfferTransitioning] = useState(false);
+  const offerTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const { data, loading, error } = useMetrics(range.from, range.to);
   const rangeKey = useMemo(
     () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
@@ -804,21 +850,40 @@ export function PerformanceDashboard() {
     }
   }, [data, loading, rangeKey]);
 
-  const visibleProductLabels = PRODUCT_LABELS.filter(
-    (item) =>
-      productConversionFilter === "all" || item.key === productConversionFilter
-  );
+  useEffect(() => {
+    return () => {
+      if (offerTransitionTimeoutRef.current) {
+        clearTimeout(offerTransitionTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      data &&
+      selectedOfferId !== ALL_OFFERS_KEY &&
+      !data.ofertas.some((offer) => offer.id === selectedOfferId)
+    ) {
+      setSelectedOfferId(ALL_OFFERS_KEY);
+    }
+  }, [data, selectedOfferId]);
+
+  const selectedStageConversions =
+    data && selectedOfferId !== ALL_OFFERS_KEY
+      ? data.conversoes_etapa_por_oferta?.[selectedOfferId] ??
+        data.conversoes_etapa
+      : data?.conversoes_etapa;
 
   const selectedChannelConversions =
-    data && channelProductFilter !== "all"
-      ? data.conversoes_canal_por_produto?.[channelProductFilter] ??
+    data && selectedOfferId !== ALL_OFFERS_KEY
+      ? data.conversoes_canal_por_oferta?.[selectedOfferId] ??
         data.conversoes_canal
       : data?.conversoes_canal;
 
-  const productMax = data
+  const stageMax = selectedStageConversions
     ? Math.max(
-        ...visibleProductLabels.map(
-          (item) => data.conversoes_produto[item.key].receita
+        ...Object.values(selectedStageConversions).map(
+          (item) => item.receita
         ),
         1
       )
@@ -833,15 +898,13 @@ export function PerformanceDashboard() {
       )
     : 1;
 
-  const productConversionDescription =
-    productConversionFilter === "all"
-      ? "Todos os produtos no período selecionado"
-      : `${getProductFilterLabel(productConversionFilter)} no período selecionado`;
-
-  const channelDescription =
-    channelProductFilter === "all"
-      ? "Todos os produtos no período selecionado"
-      : `${getProductFilterLabel(channelProductFilter)} no período selecionado`;
+  const selectedOfferLabel = data
+    ? getOfferLabel(data.ofertas, selectedOfferId)
+    : "Todas as ofertas";
+  const conversionsDescription =
+    selectedOfferId === ALL_OFFERS_KEY
+      ? "Todas as ofertas no período selecionado"
+      : `${selectedOfferLabel} no período selecionado`;
 
   function selectPreset(preset: RangePreset) {
     const nextRange = preset.getRange();
@@ -865,6 +928,37 @@ export function PerformanceDashboard() {
     }
   }
 
+  const closeOfferSelect = useCallback(() => {
+    setIsOfferSelectOpen(false);
+  }, []);
+
+  const handleOfferSelectOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      setCalendarCloseSignal((currentSignal) => currentSignal + 1);
+    }
+
+    setIsOfferSelectOpen(open);
+  }, []);
+
+  function selectOffer(offerId: string) {
+    if (offerId === selectedOfferId) {
+      return;
+    }
+
+    setSelectedOfferId(offerId);
+    setOfferTransitionKey((currentKey) => currentKey + 1);
+    setIsOfferTransitioning(true);
+
+    if (offerTransitionTimeoutRef.current) {
+      clearTimeout(offerTransitionTimeoutRef.current);
+    }
+
+    offerTransitionTimeoutRef.current = setTimeout(() => {
+      setIsOfferTransitioning(false);
+      offerTransitionTimeoutRef.current = null;
+    }, 620);
+  }
+
   return (
     <>
       <DashboardHeader
@@ -876,8 +970,10 @@ export function PerformanceDashboard() {
             range={range}
             calendarValue={calendarValue}
             maxDate={maxSelectableDate}
+            calendarCloseSignal={calendarCloseSignal}
             onSelect={selectPreset}
             onCalendarChange={selectCalendarRange}
+            onCalendarBeforeOpen={closeOfferSelect}
           />
         }
       />
@@ -916,65 +1012,80 @@ export function PerformanceDashboard() {
               className="flynow-dashboard-enter-item"
               style={{ "--flynow-enter-delay": "180ms" } as CSSProperties}
             >
-              <section className="grid items-start gap-5 xl:grid-cols-2">
-                <ConversionPanel
-                  title="Conversão por produto"
-                  description={productConversionDescription}
-                  action={
-                    <ProductFilterControl
-                      value={productConversionFilter}
-                      onChange={setProductConversionFilter}
-                      ariaLabel="Escolher produto para conversão por produto"
-                    />
-                  }
+              <div
+                aria-busy={isOfferTransitioning}
+                className={cn(
+                  "flynow-offer-conversions relative space-y-4",
+                  isOfferTransitioning &&
+                    "flynow-offer-conversions--refreshing"
+                )}
+              >
+                <div className="flex min-w-0 flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
+                  <SectionHeader
+                    title="Conversões por oferta"
+                    description={conversionsDescription}
+                  />
+                  <OfferSelectControl
+                    value={selectedOfferId}
+                    offers={data.ofertas}
+                    open={isOfferSelectOpen}
+                    onChange={selectOffer}
+                    onOpenChange={handleOfferSelectOpenChange}
+                  />
+                </div>
+
+                <section
+                  key={offerTransitionKey}
+                  className="flynow-offer-conversions-grid grid items-start gap-5 xl:grid-cols-2"
                 >
-                  {visibleProductLabels.map((item) => {
-                    const conversion = data.conversoes_produto[item.key];
+                  <ConversionPanel
+                    title="Conversão por etapa"
+                    description="Frontend, upsell e downsell"
+                  >
+                    {STAGE_LABELS.map((item) => {
+                      const conversion =
+                        selectedStageConversions?.[item.key] ??
+                        data.conversoes_etapa[item.key];
 
-                    return (
-                      <ConversionItem
-                        key={item.key}
-                        label={item.label}
-                        quantidade={conversion.quantidade}
-                        receita={conversion.receita}
-                        taxa={conversion.taxa}
-                        percentage={(conversion.receita / productMax) * 100}
-                        accent="neutral"
-                      />
-                    );
-                  })}
-                </ConversionPanel>
+                      return (
+                        <ConversionItem
+                          key={item.key}
+                          label={item.label}
+                          quantidade={conversion.quantidade}
+                          receita={conversion.receita}
+                          taxa={conversion.taxa}
+                          percentage={(conversion.receita / stageMax) * 100}
+                          accent="neutral"
+                        />
+                      );
+                    })}
+                  </ConversionPanel>
 
-                <ConversionPanel
-                  title="Conversão por canal de recuperação"
-                  description={channelDescription}
-                  action={
-                    <ProductFilterControl
-                      value={channelProductFilter}
-                      onChange={setChannelProductFilter}
-                      ariaLabel="Escolher produto para conversão por canal de recuperação"
-                    />
-                  }
-                >
-                  {CHANNEL_LABELS.map((item) => {
-                    const conversion =
-                      selectedChannelConversions?.[item.key] ??
-                      data.conversoes_canal[item.key];
+                  <ConversionPanel
+                    title="Conversão por canal de recuperação"
+                    description="IA, Email, Call Center e SMS"
+                  >
+                    {CHANNEL_LABELS.map((item) => {
+                      const conversion =
+                        selectedChannelConversions?.[item.key] ??
+                        data.conversoes_canal[item.key];
 
-                    return (
-                      <ConversionItem
-                        key={item.key}
-                        label={item.label}
-                        quantidade={conversion.quantidade}
-                        receita={conversion.receita}
-                        icon={item.icon}
-                        percentage={(conversion.receita / channelMax) * 100}
-                        accent="blue"
-                      />
-                    );
-                  })}
-                </ConversionPanel>
-              </section>
+                      return (
+                        <ConversionItem
+                          key={item.key}
+                          label={item.label}
+                          quantidade={conversion.quantidade}
+                          receita={conversion.receita}
+                          taxa={conversion.taxa}
+                          icon={item.icon}
+                          percentage={(conversion.receita / channelMax) * 100}
+                          accent="blue"
+                        />
+                      );
+                    })}
+                  </ConversionPanel>
+                </section>
+              </div>
             </div>
           </div>
         ) : null}

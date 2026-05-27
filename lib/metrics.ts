@@ -1,4 +1,4 @@
-export type ProductConversionKey = "frontend" | "upsell" | "downsell";
+export type OfferStageKey = "frontend" | "upsell" | "downsell";
 
 export type RecoveryChannelKey =
   | "email"
@@ -6,15 +6,21 @@ export type RecoveryChannelKey =
   | "call_center"
   | "ia_recuperacao";
 
-export type ProductConversion = {
+export type Offer = {
+  id: string;
+  nome: string;
+};
+
+export type StageConversion = {
   quantidade: number;
   receita: number;
-  taxa: number;
+  taxa: number | null;
 };
 
 export type ChannelConversion = {
   quantidade: number;
   receita: number;
+  taxa?: number | null;
 };
 
 export type TimeSeriesMetric = {
@@ -27,10 +33,15 @@ export type MetricsData = {
   faturamento_total: number;
   investimento_total: number;
   roas: number;
-  conversoes_produto: Record<ProductConversionKey, ProductConversion>;
+  ofertas: Offer[];
+  conversoes_etapa: Record<OfferStageKey, StageConversion>;
+  conversoes_etapa_por_oferta?: Record<
+    string,
+    Record<OfferStageKey, StageConversion>
+  >;
   conversoes_canal: Record<RecoveryChannelKey, ChannelConversion>;
-  conversoes_canal_por_produto?: Record<
-    ProductConversionKey,
+  conversoes_canal_por_oferta?: Record<
+    string,
     Record<RecoveryChannelKey, ChannelConversion>
   >;
   serie_temporal: TimeSeriesMetric[];

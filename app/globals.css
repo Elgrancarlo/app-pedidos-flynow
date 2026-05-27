@@ -469,7 +469,8 @@ html[data-flynow-theme="light"] body {
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-mobile-more-sheet,
-html[data-flynow-theme="light"] .flynow-calendar-popover {
+html[data-flynow-theme="light"] .flynow-calendar-popover,
+html[data-flynow-theme="light"] .flynow-offer-select-content {
   background-color: var(--fly-surface-elevated) !important;
   border-color: var(--fly-border) !important;
   box-shadow:
@@ -795,6 +796,42 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   animation: flynow-dashboard-refresh-sweep 900ms cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
+.flynow-offer-conversions {
+  isolation: isolate;
+  transform-origin: center top;
+}
+
+.flynow-offer-conversions-grid {
+  animation: flynow-dashboard-panel-in 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center top;
+  will-change: opacity, filter, transform;
+}
+
+.flynow-offer-conversions--refreshing {
+  filter: saturate(0.82) contrast(0.98);
+  transition:
+    filter 160ms ease,
+    opacity 160ms ease;
+}
+
+.flynow-offer-conversions--refreshing::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  z-index: 8;
+  border-radius: 12px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(214, 168, 79, 0.04) 42%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 64%
+  );
+  transform: translate3d(-120%, 0, 0);
+  animation: flynow-dashboard-refresh-sweep 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 .flynow-dashboard-skeleton {
   animation: flynow-dashboard-content-in 420ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
 }
@@ -1094,6 +1131,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   .flynow-dashboard-enter-item,
   .flynow-dashboard-skeleton,
   .flynow-dashboard-skeleton-panel::after,
+  .flynow-offer-conversions-grid,
+  .flynow-offer-conversions--refreshing::after,
   .flynow-chart-stage,
   .flynow-chart-stage::after,
   .flynow-chart-plot,
@@ -1113,6 +1152,11 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 
   .flynow-dashboard-content--refreshing::after {
     display: none;
+  }
+
+  .flynow-offer-conversions--refreshing {
+    filter: none;
+    opacity: 1;
   }
 
   .flynow-calendar-popover {

@@ -274,7 +274,6 @@ export default function Sidebar() {
               >
                 Flynow
               </span>
-              <ChevronDown size={16} strokeWidth={2.2} className="shrink-0 text-[#5E636D]" />
             </button>
 
             <div className="flex shrink-0 items-center gap-1">

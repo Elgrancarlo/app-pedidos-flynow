@@ -537,6 +537,9 @@ interface CalendarProps {
   triggerActive?: boolean;
   popoverClassName?: string;
   compactMobileLabel?: boolean;
+  closeSignal?: number;
+  onBeforeOpen?: () => void;
+  onOpenChange?: (open: boolean) => void;
   value: RangeValue | null;
   onChange: (date: RangeValue | null) => void;
   presets?: {
@@ -564,6 +567,9 @@ export const Calendar = ({
   triggerActive = false,
   popoverClassName,
   compactMobileLabel = false,
+  closeSignal,
+  onBeforeOpen,
+  onOpenChange,
   value,
   onChange,
   presets,
@@ -593,6 +599,7 @@ export const Calendar = ({
   const isOpenRef = useRef(false);
   const ignoreNextTriggerClickRef = useRef(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousCloseSignalRef = useRef(closeSignal);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>();
   const [isSheetMode, setIsSheetMode] = useState(false);
   const [useCompactLabel, setUseCompactLabel] = useState(false);
@@ -657,12 +664,19 @@ export const Calendar = ({
   };
 
   const closeCalendar = () => {
+    if (!isOpenRef.current && !isPopoverMounted) {
+      return;
+    }
+
     isOpenRef.current = false;
     setIsOpen(false);
     setIsPopoverClosing(true);
+    onOpenChange?.(false);
   };
 
   const openCalendar = () => {
+    onBeforeOpen?.();
+
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
@@ -673,6 +687,7 @@ export const Calendar = ({
     setIsPopoverMounted(true);
     setIsPopoverClosing(false);
     setIsOpen(true);
+    onOpenChange?.(true);
   };
 
   const toggleCalendar = () => {
@@ -832,6 +847,18 @@ export const Calendar = ({
       updatePopoverPosition();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (closeSignal === previousCloseSignalRef.current) {
+      return;
+    }
+
+    previousCloseSignalRef.current = closeSignal;
+
+    if (isOpenRef.current || isPopoverMounted) {
+      closeCalendar();
+    }
+  }, [closeSignal, isPopoverMounted]);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
