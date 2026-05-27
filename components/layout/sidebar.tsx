@@ -12,12 +12,15 @@ import {
   Inbox,
   LogOut,
   MoreHorizontal,
+  Moon,
   Plus,
   Search,
   ShoppingCart,
   SlidersHorizontal,
+  Sun,
   X,
 } from "lucide-react";
+import { useDashboardTheme } from "./theme-provider";
 
 const PRIMARY_NAV = [
   { href: "/dashboard", label: "Dashboard", Icone: Activity },
@@ -47,7 +50,7 @@ function FlyNowMark() {
       viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0 text-[#D6A84F]"
+      className="shrink-0 text-[var(--fly-brand)]"
     >
       <path
         d="M32 6 C32 6 42 16 42 34 L42 50 L32 46 L22 50 L22 34 C22 16 32 6 32 6 Z"
@@ -61,7 +64,7 @@ function FlyNowMark() {
         d="M42 36 L50 42 L42 46 Z"
         fill="currentColor"
       />
-      <rect x="27" y="50" width="10" height="4" rx="1" fill="#9C7430" />
+      <rect x="27" y="50" width="10" height="4" rx="1" fill="var(--fly-brand-shadow)" />
     </svg>
   );
 }
@@ -206,12 +209,19 @@ function MobileSheetLink({
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { theme, toggleTheme } = useDashboardTheme();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const moreSheetTitleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const closeMobileMore = () => setIsMobileMoreOpen(false);
   const isMoreActive = WORKSPACE_NAV.some(({ href }) => isActive(href));
+  const isLightTheme = theme === "light";
+  const ThemeIcon = isLightTheme ? Moon : Sun;
+  const themeActionLabel = isLightTheme
+    ? "Ativar tema dark"
+    : "Ativar tema white";
+  const themeShortLabel = isLightTheme ? "Tema dark" : "Tema white";
 
   useEffect(() => {
     setIsMobileMoreOpen(false);
@@ -255,7 +265,7 @@ export default function Sidebar() {
               <span
                 className="block shrink-0 whitespace-nowrap leading-none"
                 style={{
-                  color: "#F5F2EA",
+                  color: "var(--fly-text)",
                   fontFamily: "var(--font-dm-sans), sans-serif",
                   fontSize: "20px",
                   fontWeight: 700,
@@ -275,6 +285,15 @@ export default function Sidebar() {
                 className="flex size-7 cursor-pointer items-center justify-center rounded-md text-[#858A94] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#DADDE2] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
               >
                 <Search size={15} strokeWidth={2.2} />
+              </button>
+              <button
+                type="button"
+                aria-label={themeActionLabel}
+                title={themeActionLabel}
+                onClick={toggleTheme}
+                className="flex size-7 cursor-pointer items-center justify-center rounded-md text-[var(--fly-text-muted)] outline-none transition-colors duration-150 hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              >
+                <ThemeIcon size={15} strokeWidth={2.2} />
               </button>
               <Link
                 href="/pedidos"
@@ -439,6 +458,14 @@ export default function Sidebar() {
                     <span>Criar pedido</span>
                   </Link>
                 </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="mt-2 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                >
+                  <ThemeIcon size={16} strokeWidth={2.2} />
+                  <span>{themeShortLabel}</span>
+                </button>
               </div>
 
               <div className="mt-4 border-t border-white/[0.06] pt-3">

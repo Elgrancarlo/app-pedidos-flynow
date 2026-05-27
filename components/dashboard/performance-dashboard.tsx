@@ -408,11 +408,11 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
         />
         <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-3 py-2 text-xs text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:w-auto sm:justify-start sm:gap-4">
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span className="size-1.5 rounded-full bg-[#D6A84F]" />
+            <span className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]" />
             Faturamento
           </span>
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span className="size-1.5 rounded-full bg-[#60A5FA]" />
+            <span className="size-1.5 rounded-full bg-[var(--fly-chart-investment)]" />
             Investimento
           </span>
         </div>
@@ -436,20 +436,26 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
               }
             >
               <CartesianGrid
-                stroke="rgba(255,255,255,0.065)"
+                stroke="var(--fly-border-subtle)"
                 strokeDasharray="3 3"
                 vertical={false}
               />
               <XAxis
                 dataKey="data"
-                tick={{ fill: "#858A94", fontSize: isCompact ? 10 : 11 }}
+                tick={{
+                  fill: "var(--fly-text-muted)",
+                  fontSize: isCompact ? 10 : 11,
+                }}
                 tickFormatter={formatDateLabel}
                 axisLine={false}
                 tickLine={false}
                 minTickGap={isCompact ? 16 : 24}
               />
               <YAxis
-                tick={{ fill: "#858A94", fontSize: isCompact ? 10 : 11 }}
+                tick={{
+                  fill: "var(--fly-text-muted)",
+                  fontSize: isCompact ? 10 : 11,
+                }}
                 tickFormatter={(value) => compactCurrency(Number(value))}
                 axisLine={false}
                 tickLine={false}
@@ -462,32 +468,40 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                 ]}
                 labelFormatter={(value) => formatDateLabel(String(value))}
                 contentStyle={{
-                  background: "rgba(5,6,7,0.96)",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--fly-surface-elevated)",
+                  border: "1px solid var(--fly-border)",
                   borderRadius: 8,
-                  color: "#F5F2EA",
+                  color: "var(--fly-text)",
                   fontSize: 12,
                   boxShadow: "0 18px 44px rgba(0,0,0,0.45)",
                 }}
-                labelStyle={{ color: "#A3A8B1" }}
+                labelStyle={{ color: "var(--fly-text-soft)" }}
               />
               <Line
                 isAnimationActive={false}
                 type="monotone"
                 dataKey="faturamento"
-                stroke="#D6A84F"
+                stroke="var(--fly-chart-revenue)"
                 strokeWidth={2.25}
                 dot={false}
-                activeDot={{ r: 4, fill: "#F0C76A", stroke: "#0A0A0B" }}
+                activeDot={{
+                  r: 4,
+                  fill: "var(--fly-chart-revenue-active)",
+                  stroke: "var(--fly-surface)",
+                }}
               />
               <Line
                 isAnimationActive={false}
                 type="monotone"
                 dataKey="investimento"
-                stroke="#60A5FA"
+                stroke="var(--fly-chart-investment)"
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4, fill: "#93C5FD", stroke: "#0A0A0B" }}
+                activeDot={{
+                  r: 4,
+                  fill: "var(--fly-chart-investment-active)",
+                  stroke: "var(--fly-surface)",
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -610,7 +624,7 @@ function PeriodActions({
       <div
         role="group"
         aria-label="Filtro de período"
-        className="contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[#1D2026] lg:bg-[#08090B] lg:p-1.5 lg:shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)]"
+        className="flynow-period-filter contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1.5 lg:shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)]"
       >
         <div className="flynow-date-picker dark col-start-2 row-start-1 justify-self-end self-center lg:col-auto lg:row-auto lg:w-auto">
           <Calendar
@@ -624,18 +638,18 @@ function PeriodActions({
             compactMobileLabel
             className="w-auto lg:w-auto"
             triggerClassName={cn(
-              "!h-8 !w-[132px] !rounded-full !border-white/[0.08] !bg-white/[0.035] !px-2.5 !text-[11px] !font-medium !text-[#DADDE2] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-white/[0.14] hover:!bg-white/[0.055] min-[390px]:!w-[146px] sm:!w-[236px] lg:!rounded-xl lg:!border-[#242932] lg:!bg-[#0E1014] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[#121418]",
+              "!h-8 !w-[132px] !rounded-full !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-2.5 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] min-[390px]:!w-[146px] sm:!w-[236px] lg:!rounded-xl lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[var(--fly-control-hover)]",
               isCustomRange
-                ? "!border-[#D6A84F]/45 !text-[#F5F2EA] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
-                : "lg:!text-[#A3A6AE]"
+                ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
+                : "lg:!text-[var(--fly-text-soft)]"
             )}
-            popoverClassName="!z-50 !border-[#D6A84F]/20 !bg-[#08090B]/62"
+            popoverClassName="!z-50 !border-[var(--fly-brand-border)] !bg-[var(--fly-surface-elevated)]"
           />
         </div>
 
         <div
           aria-hidden="true"
-          className="hidden h-5 w-px bg-[#20242B] lg:block"
+          className="hidden h-5 w-px bg-[var(--fly-border)] lg:block"
         />
 
         <div
@@ -667,8 +681,8 @@ function PeriodActions({
                 className={cn(
                   "relative h-8 shrink-0 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 md:shrink lg:min-w-10",
                   isActive
-                    ? "bg-white/[0.035] text-[#F5F2EA] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[#17191E] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
-                    : "text-[#858A94] hover:bg-white/[0.035] hover:text-[#DADDE2] lg:hover:bg-[#111318]"
+                    ? "bg-[var(--fly-control)] text-[var(--fly-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[var(--fly-control-active)] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
+                    : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)] lg:hover:bg-[var(--fly-control-solid)]"
                 )}
               >
                 {preset.displayLabel}

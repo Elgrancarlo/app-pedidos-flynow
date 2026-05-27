@@ -956,7 +956,7 @@ export const Calendar = ({
             <Button
               aria-pressed={triggerActive}
               className={clsx(
-                "relative !justify-start focus:!border-transparent focus:!shadow-focus-input",
+                "relative !justify-start fill-[var(--fly-text-muted)] focus:!border-transparent focus:!shadow-focus-input",
                 presets && !stacked && !compact && "rounded-l-none -ml-[1px]",
                 presets && stacked && !compact && "rounded-t-none -mt-[1px]",
                 presets && compact && "rounded-r-none -mr-[1px]",
@@ -967,7 +967,7 @@ export const Calendar = ({
               suffix={
                 <ArrowBottomIcon
                   className={clsx(
-                    "hidden fill-[#858A94] transition-transform duration-200 sm:block",
+                    "hidden fill-[var(--fly-text-muted)] transition-transform duration-200 sm:block",
                     isOpen && "rotate-180"
                   )}
                 />
@@ -1016,7 +1016,7 @@ export const Calendar = ({
             type="menu"
             style={popoverStyle}
             className={twMerge(clsx(
-              "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[#D6A84F]/20 bg-[#08090B]/62 p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+              "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
               isSheetMode && "flynow-calendar-popover--sheet",
               isPopoverClosing && "flynow-calendar-popover--closing",
               !isSheetMode && popoverOriginClass,
@@ -1032,7 +1032,7 @@ export const Calendar = ({
                 <button
                   type="button"
                   aria-label="Fechar calendário"
-                  className="flex size-8 items-center justify-center rounded-full border border-white/[0.07] bg-white/[0.035] fill-[#858A94] transition-colors hover:border-white/[0.12] hover:bg-white/[0.055] hover:fill-[#F5F2EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35"
+                  className="flex size-8 items-center justify-center rounded-full border border-[var(--fly-border)] bg-[var(--fly-control)] fill-[var(--fly-text-muted)] transition-colors hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:fill-[var(--fly-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
                   onClick={closeCalendar}
                 >
                   <ClearIcon />
@@ -1048,7 +1048,7 @@ export const Calendar = ({
                 <div className="flex gap-0.5">
                   <Button
                     variant="unstyled"
-                    className="rounded-md fill-[#858A94] p-1.5 hover:bg-[#15171C] hover:fill-[#F5F2EA]"
+                    className="rounded-md fill-[var(--fly-text-muted)] p-1.5 hover:bg-[var(--fly-control-hover)] hover:fill-[var(--fly-text)]"
                     onClick={prevMonth}
                   >
                     <ArrowLeftIcon />
@@ -1056,7 +1056,7 @@ export const Calendar = ({
                   <Button
                     variant="unstyled"
                     disabled={isNextMonthDisabled}
-                    className="rounded-md fill-[#858A94] p-1.5 hover:bg-[#15171C] hover:fill-[#F5F2EA] disabled:cursor-not-allowed disabled:fill-[#4F535C] disabled:opacity-45 disabled:hover:bg-transparent"
+                    className="rounded-md fill-[var(--fly-text-muted)] p-1.5 hover:bg-[var(--fly-control-hover)] hover:fill-[var(--fly-text)] disabled:cursor-not-allowed disabled:fill-[var(--fly-text-dim)] disabled:opacity-45 disabled:hover:bg-transparent"
                     onClick={nextMonth}
                   >
                     <ArrowRightIcon />
@@ -1091,7 +1091,7 @@ export const Calendar = ({
                       className={clsx(
                         "flex items-center justify-center text-sm text-center rounded transition",
                         isSameMonth(day, currentDate) && isAllowedDate ? "bg-transparent text-[#DADDE2]" : "bg-transparent text-[#4F535C]",
-                        isInRange && !isStart && !isEnd && !currentHover && "!bg-[#D6A84F]/12 rounded-none",
+                        isInRange && !isStart && !isEnd && !currentHover && "!bg-[var(--fly-brand-soft)] rounded-none",
                         isAllowedDate ? "cursor-pointer" : "cursor-not-allowed"
                       )}
                       onMouseEnter={() => isAllowedDate && handleMouseEnter(day)}
@@ -1099,11 +1099,11 @@ export const Calendar = ({
                     >
                       <div className={clsx(
                         "h-8 w-8 flex items-center justify-center rounded-md border border-transparent transition-colors",
-                        (isStart || isEnd || currentHover) && isAllowedDate && " !border-[#E6BF68] !bg-[#D6A84F] !text-[#08090B] shadow-[0_0_0_1px_rgba(214,168,79,0.28),0_8px_20px_rgba(214,168,79,0.18)]",
-                        !isStart && !isEnd && !currentHover && !isToday(day) && isAllowedDate && "hover:border-[#D6A84F]/35 hover:bg-[#D6A84F]/10 hover:text-[#F5F2EA]",
+                        (isStart || isEnd || currentHover) && isAllowedDate && " !border-[var(--fly-brand)] !bg-[var(--fly-brand)] !text-[var(--fly-on-brand)] shadow-[0_0_0_1px_rgba(214,168,79,0.28),0_8px_20px_rgba(214,168,79,0.18)]",
+                        !isStart && !isEnd && !currentHover && !isToday(day) && isAllowedDate && "hover:border-[var(--fly-brand-border)] hover:bg-[var(--fly-brand-soft)] hover:text-[var(--fly-text)]",
                         !isAllowedDate && "opacity-35",
                         currentHover && isAllowedDate && " !shadow-[0_0_0_2px_rgba(214,168,79,0.28)]",
-                        isToday(day) && !isStart && !isEnd && " !border-[#D6A84F]/45 !bg-[#D6A84F]/10 !text-[#F0C76A]"
+                        isToday(day) && !isStart && !isEnd && " !border-[var(--fly-brand-border)] !bg-[var(--fly-brand-soft)] !text-[var(--fly-brand-strong)]"
                       )}>
                         {format(day, "d")}
                       </div>
@@ -1126,8 +1126,8 @@ export const Calendar = ({
                         value={startDate}
                         onChange={(value) => setStartDate(value)}
                         error={startDateError}
-                        wrapperClassName="!border-[#242932] !bg-[#0E1014] hover:!border-[#3A404B] focus-within:!border-[#D6A84F]/70 focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
-                        className="!bg-[#0E1014] !text-[#F5F2EA] placeholder:!text-[#747882]"
+                        wrapperClassName="!border-[var(--fly-border-strong)] !bg-[var(--fly-control-solid)] hover:!border-[var(--fly-border-strong)] focus-within:!border-[var(--fly-brand-border)] focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
+                        className="!bg-[var(--fly-control-solid)] !text-[var(--fly-text)] placeholder:!text-[var(--fly-text-muted)]"
                       />
                     </div>
                     {showTimeInput && (
@@ -1136,8 +1136,8 @@ export const Calendar = ({
                         value={startTime}
                         onChange={(value) => setStartTime(value)}
                         error={startTimeError}
-                        wrapperClassName="!border-[#242932] !bg-[#0E1014] hover:!border-[#3A404B] focus-within:!border-[#D6A84F]/70 focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
-                        className="!bg-[#0E1014] !text-[#F5F2EA] placeholder:!text-[#747882]"
+                        wrapperClassName="!border-[var(--fly-border-strong)] !bg-[var(--fly-control-solid)] hover:!border-[var(--fly-border-strong)] focus-within:!border-[var(--fly-brand-border)] focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
+                        className="!bg-[var(--fly-control-solid)] !text-[var(--fly-text)] placeholder:!text-[var(--fly-text-muted)]"
                       />
                     )}
                   </div>
@@ -1151,8 +1151,8 @@ export const Calendar = ({
                         value={endDate}
                         onChange={(value) => setEndDate(value)}
                         error={endDateError}
-                        wrapperClassName="!border-[#242932] !bg-[#0E1014] hover:!border-[#3A404B] focus-within:!border-[#D6A84F]/70 focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
-                        className="!bg-[#0E1014] !text-[#F5F2EA] placeholder:!text-[#747882]"
+                        wrapperClassName="!border-[var(--fly-border-strong)] !bg-[var(--fly-control-solid)] hover:!border-[var(--fly-border-strong)] focus-within:!border-[var(--fly-brand-border)] focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
+                        className="!bg-[var(--fly-control-solid)] !text-[var(--fly-text)] placeholder:!text-[var(--fly-text-muted)]"
                       />
                     </div>
                     {showTimeInput && (
@@ -1161,8 +1161,8 @@ export const Calendar = ({
                         value={endTime}
                         onChange={(value) => setEndTime(value)}
                         error={endTimeError}
-                        wrapperClassName="!border-[#242932] !bg-[#0E1014] hover:!border-[#3A404B] focus-within:!border-[#D6A84F]/70 focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
-                        className="!bg-[#0E1014] !text-[#F5F2EA] placeholder:!text-[#747882]"
+                        wrapperClassName="!border-[var(--fly-border-strong)] !bg-[var(--fly-control-solid)] hover:!border-[var(--fly-border-strong)] focus-within:!border-[var(--fly-brand-border)] focus-within:!shadow-[0_0_0_3px_rgba(214,168,79,0.12)]"
+                        className="!bg-[var(--fly-control-solid)] !text-[var(--fly-text)] placeholder:!text-[var(--fly-text-muted)]"
                       />
                     )}
                   </div>
@@ -1174,7 +1174,7 @@ export const Calendar = ({
                     type="secondary"
                     size="small"
                     disabled={!value?.start && !value?.end}
-                    className="!border-[#242932] !bg-[#0E1014] !text-[#A3A6AE] hover:!border-[#3A404B] hover:!bg-[#13161B] hover:!text-[#F5F2EA]"
+                    className="!border-[var(--fly-border-strong)] !bg-[var(--fly-control-solid)] !text-[var(--fly-text-soft)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] hover:!text-[var(--fly-text)]"
                     onClick={onClear}
                   >
                     Limpar
@@ -1183,7 +1183,7 @@ export const Calendar = ({
                     type="warning"
                     size="small"
                     suffix={<span className="mt-1 text-xs">↵</span>}
-                    className="!border !border-[#D6A84F]/35 !bg-[#D6A84F] !text-[#08090B] shadow-[0_10px_24px_rgba(214,168,79,0.18)] hover:!bg-[#E5BE67]"
+                    className="!border !border-[var(--fly-brand-border)] !bg-[var(--fly-brand)] !text-[var(--fly-on-brand)] shadow-[0_10px_24px_rgba(214,168,79,0.18)] hover:!bg-[var(--fly-brand-strong)]"
                     onClick={onApply}
                   >
                     Aplicar

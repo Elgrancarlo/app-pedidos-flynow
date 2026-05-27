@@ -331,6 +331,294 @@ body {
   }
 }
 
+:root,
+html[data-flynow-theme="dark"],
+.flynow-dashboard-shell[data-theme="dark"] {
+  --fly-bg: #050505;
+  --fly-bg-soft: #050607;
+  --fly-surface: #0b0d10;
+  --fly-surface-muted: #0d0f12;
+  --fly-surface-elevated: rgba(8, 9, 11, 0.92);
+  --fly-sidebar: #0b0c0e;
+  --fly-control: rgba(255, 255, 255, 0.035);
+  --fly-control-solid: #111318;
+  --fly-control-hover: #151619;
+  --fly-control-active: #17191e;
+  --fly-border: rgba(255, 255, 255, 0.07);
+  --fly-border-subtle: rgba(255, 255, 255, 0.055);
+  --fly-border-strong: #242932;
+  --fly-text: #f5f2ea;
+  --fly-text-soft: #dadde2;
+  --fly-text-muted: #858a94;
+  --fly-text-dim: #6b707a;
+  --fly-brand: #d6a84f;
+  --fly-brand-strong: #d6a84f;
+  --fly-brand-shadow: #9c7430;
+  --fly-brand-surface: #151208;
+  --fly-brand-surface-hover: #1a160c;
+  --fly-brand-soft: rgba(214, 168, 79, 0.12);
+  --fly-brand-border: rgba(214, 168, 79, 0.28);
+  --fly-brand-ring: rgba(214, 168, 79, 0.35);
+  --fly-brand-line: rgba(214, 168, 79, 0.45);
+  --fly-on-brand: #08090b;
+  --fly-chart-revenue: #d6a84f;
+  --fly-chart-revenue-active: #f0c76a;
+  --fly-chart-investment: #60a5fa;
+  --fly-chart-investment-active: #93c5fd;
+  --fly-success: #86efac;
+  --fly-success-bg: rgba(13, 31, 20, 0.8);
+  --fly-danger-bg: #2b1515;
+  --fly-danger-text: #fca5a5;
+  color-scheme: dark;
+}
+
+html[data-flynow-theme="light"],
+.flynow-dashboard-shell[data-theme="light"] {
+  --fly-bg: #fafaf9;
+  --fly-bg-soft: #f4f1ea;
+  --fly-surface: #ffffff;
+  --fly-surface-muted: #f8f5ef;
+  --fly-surface-elevated: rgba(255, 255, 255, 0.88);
+  --fly-sidebar: #fffdfa;
+  --fly-control: #f3efe6;
+  --fly-control-solid: #f3efe6;
+  --fly-control-hover: #ece5d8;
+  --fly-control-active: #e8decd;
+  --fly-border: rgba(28, 25, 23, 0.1);
+  --fly-border-subtle: rgba(28, 25, 23, 0.08);
+  --fly-border-strong: rgba(28, 25, 23, 0.16);
+  --fly-text: #0c0a09;
+  --fly-text-soft: #44403c;
+  --fly-text-muted: #78716c;
+  --fly-text-dim: #a8a29e;
+  --fly-brand: #a16207;
+  --fly-brand-strong: #854d0e;
+  --fly-brand-shadow: #713f12;
+  --fly-brand-surface: #fef3c7;
+  --fly-brand-surface-hover: #fde68a;
+  --fly-brand-soft: rgba(161, 98, 7, 0.12);
+  --fly-brand-border: rgba(161, 98, 7, 0.32);
+  --fly-brand-ring: rgba(161, 98, 7, 0.32);
+  --fly-brand-line: rgba(161, 98, 7, 0.36);
+  --fly-on-brand: #ffffff;
+  --fly-chart-revenue: #a16207;
+  --fly-chart-revenue-active: #854d0e;
+  --fly-chart-investment: #2563eb;
+  --fly-chart-investment-active: #1d4ed8;
+  --fly-success: #15803d;
+  --fly-success-bg: #dcfce7;
+  --fly-danger-bg: #fef2f2;
+  --fly-danger-text: #b91c1c;
+  color-scheme: light;
+}
+
+.flynow-dashboard-shell,
+.flynow-dashboard-shell > main {
+  background: var(--fly-bg);
+  color: var(--fly-text);
+}
+
+html[data-flynow-theme="light"] body {
+  background: var(--fly-bg);
+}
+
+.flynow-dashboard-shell[data-theme="light"] header {
+  background-color: var(--fly-surface-elevated) !important;
+  border-color: var(--fly-border) !important;
+  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.08) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] header[data-elevated="false"] {
+  background-color: var(--fly-bg) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] header[data-elevated="true"] {
+  background-color: var(--fly-surface-elevated) !important;
+  border-color: var(--fly-border) !important;
+  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.08) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] aside {
+  box-shadow: 8px 0 28px rgba(28, 25, 23, 0.08) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] nav[aria-label="Navegação mobile"] {
+  box-shadow:
+    0 -12px 34px rgba(28, 25, 23, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-period-filter {
+  box-shadow:
+    0 10px 26px rgba(28, 25, 23, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+.flynow-dashboard-shell .flynow-date-picker button svg {
+  fill: var(--fly-text-muted) !important;
+}
+
+.flynow-dashboard-shell .flynow-date-picker button:hover svg {
+  fill: var(--fly-text) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-mobile-more-backdrop {
+  background: rgba(12, 10, 9, 0.2) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-mobile-more-sheet,
+html[data-flynow-theme="light"] .flynow-calendar-popover {
+  background-color: var(--fly-surface-elevated) !important;
+  border-color: var(--fly-border) !important;
+  box-shadow:
+    0 -18px 58px rgba(28, 25, 23, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#050505\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#050505\]\/72 {
+  background-color: var(--fly-bg) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0B0D10\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0B0C0E\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#08090B\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#08090B\]\/92,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#08090B\]\/96,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#08090B\]\/62,
+html[data-flynow-theme="light"] .flynow-calendar-popover.bg-\[\#08090B\]\/62 {
+  background-color: var(--fly-surface) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0B0C0E\] {
+  background-color: var(--fly-sidebar) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D0F12\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#050607\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0E1014\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#111318\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#121418\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#151619\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#17181B\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#17191E\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#0E1014\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#15171C\] {
+  background-color: var(--fly-control-solid) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.018\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.025\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.035\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.055\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .bg-white\/\[0\.035\] {
+  background-color: var(--fly-control) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#12100A\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#151208\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#1A1710\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#1A160C\] {
+  background-color: var(--fly-brand-surface) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#D6A84F\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#D6A84F\] {
+  background-color: var(--fly-brand) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#60A5FA\] {
+  background-color: var(--fly-chart-investment) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#4ADE80\] {
+  background-color: var(--fly-success) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D1F14\]\/80 {
+  background-color: var(--fly-success-bg) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#F5F2EA\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#E8E9EC\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#F5F2EA\] {
+  color: var(--fly-text) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#DADDE2\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#A3A6AE\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#A3A8B1\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#DADDE2\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#A3A6AE\] {
+  color: var(--fly-text-soft) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#858A94\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#8B9099\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#747882\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#6B707A\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#666B75\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#5E636D\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#9B968C\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#858A94\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#747882\] {
+  color: var(--fly-text-muted) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#D6A84F\],
+.flynow-dashboard-shell[data-theme="light"] .fill-\[\#D6A84F\],
+.flynow-dashboard-shell[data-theme="light"] .stroke-\[\#D6A84F\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#F0C76A\] {
+  color: var(--fly-brand-strong) !important;
+  fill: var(--fly-brand-strong) !important;
+  stroke: var(--fly-brand-strong) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#08090B\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
+  color: var(--fly-on-brand) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#93C5FD\] {
+  color: var(--fly-chart-investment-active) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#86EFAC\] {
+  color: var(--fly-success) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.055\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.06\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.07\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.08\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.09\],
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#1C2026\],
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#1D2026\],
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#20242B\],
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#242932\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#242932\],
+html[data-flynow-theme="light"] .flynow-calendar-popover .border-white\/\[0\.07\] {
+  border-color: var(--fly-border) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/18,
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/20,
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/22,
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/35,
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/38,
+.flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/45,
+html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/20,
+html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/35,
+html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/45 {
+  border-color: var(--fly-brand-border) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-preset-underline {
+  background: var(--fly-brand-strong);
+}
+
 .flynow-dashboard-shell a[href],
 .flynow-dashboard-shell button:not(:disabled),
 .flynow-dashboard-shell [role="button"]:not([aria-disabled="true"]),

@@ -107,7 +107,7 @@ export function DashboardHeader({
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span
               aria-hidden="true"
-              className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-[#D6A84F]/85 via-[#D6A84F]/28 to-transparent sm:h-10"
+              className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-brand-strong)] via-[var(--fly-brand-line)] to-transparent sm:h-10"
             />
             <div className="min-w-0">
               <h1 className="truncate text-[19px] font-semibold leading-none text-[#F5F2EA] sm:text-[26px]">
