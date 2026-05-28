@@ -3,12 +3,15 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   Bot,
   Check,
   ChevronDown,
   Headset,
+  Inbox,
   Mail,
   MessageSquareText,
+  RefreshCw,
 } from "lucide-react";
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
 import {
@@ -64,6 +67,19 @@ type ConversionItemProps = {
   icon?: React.ReactNode;
   percentage: number;
   accent?: "neutral" | "blue";
+};
+
+type RevenueChartTooltipPayload = {
+  dataKey?: string | number;
+  name?: string | number;
+  value?: string | number;
+};
+
+type RevenueChartTooltipProps = {
+  active?: boolean;
+  isCompact: boolean;
+  label?: string | number;
+  payload?: RevenueChartTooltipPayload[];
 };
 
 const ALL_OFFERS_KEY = "all";
@@ -476,8 +492,29 @@ function ConversionPanel({
 
 function DashboardSkeleton() {
   return (
-    <div className="flynow-dashboard-skeleton space-y-5">
-      <div className="flynow-dashboard-skeleton-panel h-[288px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] md:h-[214px]" />
+    <div
+      role="status"
+      aria-label="Carregando métricas"
+      className="flynow-dashboard-skeleton space-y-5"
+    >
+      <div className="flynow-dashboard-skeleton-panel h-[288px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] md:h-[214px]">
+        <div className="grid h-full md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className={cn(
+                "flex flex-col justify-end gap-3 p-4 sm:p-5",
+                index > 0 &&
+                  "border-t border-white/[0.045] md:border-l md:border-t-0"
+              )}
+            >
+              <span className="h-2.5 w-24 rounded-full bg-white/[0.055]" />
+              <span className="h-8 w-40 rounded-md bg-white/[0.07]" />
+              <span className="h-2.5 w-32 rounded-full bg-white/[0.05]" />
+            </div>
+          ))}
+        </div>
+      </div>
 
       <div className="flynow-dashboard-skeleton-panel h-[420px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] sm:h-[470px] lg:h-[520px]" />
 
@@ -489,23 +526,157 @@ function DashboardSkeleton() {
           />
         ))}
       </div>
+      <span className="sr-only">Carregando métricas do dashboard.</span>
     </div>
   );
 }
 
-function ErrorState({ message }: { message: string }) {
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div
       role="alert"
-      className="rounded-[8px] border border-[#F87171]/30 bg-[#2B1515] p-5 text-sm text-[#FCA5A5]"
+      className="flex flex-col gap-4 rounded-[8px] border border-[#F87171]/26 bg-[#2B1515]/80 p-4 text-sm text-[#FCA5A5] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
-      {message}
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-[#F87171]/20 bg-[#3A1B1B] text-[#FCA5A5]">
+          <AlertTriangle aria-hidden="true" className="size-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold text-[#FECACA]">
+            Métricas indisponíveis
+          </p>
+          <p className="mt-1 leading-5 text-[#FCA5A5]">{message}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#F87171]/22 bg-[#3A1B1B] px-3 text-xs font-semibold text-[#FECACA] outline-none transition-colors duration-150 hover:border-[#F87171]/36 hover:bg-[#431F1F] focus-visible:ring-2 focus-visible:ring-[#F87171]/30"
+      >
+        <RefreshCw aria-hidden="true" className="size-3.5" />
+        Tentar novamente
+      </button>
+    </div>
+  );
+}
+
+function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="status"
+      className="flex flex-col gap-3 rounded-[8px] border border-[#F59E0B]/18 bg-[#1D1609]/70 p-3 text-sm text-[#FCD34D] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex min-w-0 items-center gap-2.5">
+        <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
+        <p className="min-w-0 text-[13px] leading-5 text-[#F8D88A]">
+          Não foi possível atualizar as métricas. Os últimos dados carregados
+          continuam visíveis.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[#F59E0B]/20 bg-[#2A2112] px-3 text-xs font-semibold text-[#F8D88A] outline-none transition-colors duration-150 hover:border-[#F59E0B]/34 hover:bg-[#332815] focus-visible:ring-2 focus-visible:ring-[#F59E0B]/25"
+      >
+        <RefreshCw aria-hidden="true" className="size-3.5" />
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  description,
+  compact = false,
+}: {
+  title: string;
+  description: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      role="status"
+      className={cn(
+        "flex min-h-[220px] items-center justify-center rounded-[8px] border border-dashed border-white/[0.08] bg-white/[0.018] px-4 text-center",
+        compact && "min-h-[164px]"
+      )}
+    >
+      <div className="max-w-[260px]">
+        <span className="mx-auto flex size-9 items-center justify-center rounded-[8px] border border-white/[0.07] bg-[#050607] text-[#858A94] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <Inbox aria-hidden="true" className="size-4" />
+        </span>
+        <p className="mt-3 text-sm font-semibold text-[#F5F2EA]">{title}</p>
+        <p className="mt-1.5 text-[13px] leading-5 text-[#858A94]">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RevenueChartTooltip({
+  active,
+  isCompact,
+  label,
+  payload,
+}: RevenueChartTooltipProps) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl",
+        isCompact && "min-w-[196px]"
+      )}
+    >
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+        {formatDateLabel(String(label))}
+      </p>
+      <div className="space-y-1.5">
+        {payload.map((item) => {
+          const key = String(item.dataKey ?? item.name);
+          const isRevenue = key === "faturamento";
+          const labelText = isRevenue ? "Faturamento" : "Investimento";
+          const color = isRevenue
+            ? "var(--fly-chart-revenue)"
+            : "var(--fly-chart-investment)";
+
+          return (
+            <div
+              key={key}
+              className="flex items-center justify-between gap-4"
+            >
+              <span className="inline-flex items-center gap-2 text-[var(--fly-text-soft)]">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full"
+                  style={{ background: color }}
+                />
+                {labelText}
+              </span>
+              <span className="font-semibold tabular-nums text-[var(--fly-text)]">
+                {formatCurrency(Number(item.value ?? 0))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   const isCompact = useCompactViewport();
+  const hasChartData = data.length > 0;
 
   return (
     <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
@@ -514,107 +685,111 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
           title="Faturamento vs investimento"
           description="Evolução diária no período selecionado"
         />
-        <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-2.5 py-1.5 text-[11px] text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:w-auto sm:justify-start sm:gap-4 sm:px-3 sm:py-2 sm:text-xs">
-          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+        <div className="grid w-full grid-cols-2 items-center gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-2.5 py-1.5 text-[11px] text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex sm:w-auto sm:justify-start sm:gap-4 sm:px-3 sm:py-2 sm:text-xs">
+          <span className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-[6px] bg-white/[0.018] px-2 py-1 sm:bg-transparent sm:p-0">
             <span className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]" />
             Faturamento
           </span>
-          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+          <span className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-[6px] bg-white/[0.018] px-2 py-1 sm:bg-transparent sm:p-0">
             <span className="size-1.5 rounded-full bg-[var(--fly-chart-investment)]" />
             Investimento
           </span>
         </div>
       </div>
 
-      <div className="flynow-chart-stage h-[230px] min-w-0 sm:h-[340px] lg:h-[420px]">
-        <div className="flynow-chart-plot h-full min-w-0">
-          <ResponsiveContainer
-            width="100%"
-            height="100%"
-            minWidth={1}
-            minHeight={isCompact ? 180 : 240}
-            initialDimension={{ width: 640, height: 320 }}
-          >
-            <LineChart
-              data={data}
-              margin={
-                isCompact
-                  ? { top: 8, right: 2, bottom: 0, left: -6 }
-                  : { top: 8, right: 12, bottom: 0, left: 0 }
-              }
+      {hasChartData ? (
+        <div className="flynow-chart-stage h-[250px] min-w-0 sm:h-[340px] lg:h-[420px]">
+          <div className="flynow-chart-plot h-full min-w-0">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={1}
+              minHeight={isCompact ? 180 : 240}
+              initialDimension={{ width: 640, height: 320 }}
             >
-              <CartesianGrid
-                stroke="var(--fly-border-subtle)"
-                strokeDasharray="3 3"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="data"
-                tick={{
-                  fill: "var(--fly-text-muted)",
-                  fontSize: isCompact ? 10 : 11,
-                }}
-                tickFormatter={formatDateLabel}
-                axisLine={false}
-                tickLine={false}
-                minTickGap={isCompact ? 16 : 24}
-              />
-              <YAxis
-                tick={{
-                  fill: "var(--fly-text-muted)",
-                  fontSize: isCompact ? 10 : 11,
-                }}
-                tickFormatter={(value) => compactCurrency(Number(value))}
-                axisLine={false}
-                tickLine={false}
-                width={isCompact ? 52 : 72}
-              />
-              <Tooltip
-                formatter={(value, name) => [
-                  formatCurrency(Number(value)),
-                  name === "faturamento" ? "Faturamento" : "Investimento",
-                ]}
-                labelFormatter={(value) => formatDateLabel(String(value))}
-                contentStyle={{
-                  background: "var(--fly-surface-elevated)",
-                  border: "1px solid var(--fly-border)",
-                  borderRadius: 8,
-                  color: "var(--fly-text)",
-                  fontSize: 12,
-                  boxShadow: "0 18px 44px rgba(0,0,0,0.45)",
-                }}
-                labelStyle={{ color: "var(--fly-text-soft)" }}
-              />
-              <Line
-                isAnimationActive={false}
-                type="monotone"
-                dataKey="faturamento"
-                stroke="var(--fly-chart-revenue)"
-                strokeWidth={2.25}
-                dot={false}
+              <LineChart
+                data={data}
+                margin={
+                  isCompact
+                    ? { top: 10, right: 4, bottom: 0, left: 0 }
+                    : { top: 8, right: 12, bottom: 0, left: 0 }
+                }
+              >
+                <CartesianGrid
+                  stroke="var(--fly-border-subtle)"
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="data"
+                  tick={{
+                    fill: "var(--fly-text-muted)",
+                    fontSize: isCompact ? 10 : 11,
+                  }}
+                  tickFormatter={formatDateLabel}
+                  axisLine={false}
+                  tickLine={false}
+                  minTickGap={isCompact ? 16 : 24}
+                  tickMargin={8}
+                />
+                <YAxis
+                  tick={{
+                    fill: "var(--fly-text-muted)",
+                    fontSize: isCompact ? 10 : 11,
+                  }}
+                  tickFormatter={(value) => compactCurrency(Number(value))}
+                  axisLine={false}
+                  tickLine={false}
+                  width={isCompact ? 56 : 72}
+                  tickMargin={8}
+                />
+                <Tooltip
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  content={<RevenueChartTooltip isCompact={isCompact} />}
+                  cursor={{
+                    stroke: "var(--fly-border-strong)",
+                    strokeDasharray: "4 4",
+                    strokeWidth: 1,
+                  }}
+                  position={isCompact ? { x: 10, y: 10 } : undefined}
+                  wrapperStyle={{ outline: "none", zIndex: 20 }}
+                />
+                <Line
+                  isAnimationActive={false}
+                  type="monotone"
+                  dataKey="faturamento"
+                  stroke="var(--fly-chart-revenue)"
+                  strokeWidth={2.25}
+                  dot={false}
                 activeDot={{
-                  r: 4,
+                  r: isCompact ? 3.5 : 4,
                   fill: "var(--fly-chart-revenue-active)",
                   stroke: "var(--fly-surface)",
                 }}
-              />
-              <Line
-                isAnimationActive={false}
-                type="monotone"
-                dataKey="investimento"
-                stroke="var(--fly-chart-investment)"
-                strokeWidth={2}
-                dot={false}
+                />
+                <Line
+                  isAnimationActive={false}
+                  type="monotone"
+                  dataKey="investimento"
+                  stroke="var(--fly-chart-investment)"
+                  strokeWidth={2}
+                  dot={false}
                 activeDot={{
-                  r: 4,
+                  r: isCompact ? 3.5 : 4,
                   fill: "var(--fly-chart-investment-active)",
                   stroke: "var(--fly-surface)",
                 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      ) : (
+        <EmptyState
+          title="Sem dados no período"
+          description="O gráfico será exibido assim que houver faturamento ou investimento para comparar."
+        />
+      )}
     </section>
   );
 }
@@ -838,19 +1013,26 @@ export function PerformanceDashboard() {
   const offerTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const { data, loading, error } = useMetrics(range.from, range.to);
+  const {
+    data,
+    status,
+    error,
+    isInitialLoading,
+    isRefreshing,
+    isEmpty,
+    retry,
+  } = useMetrics(range.from, range.to);
   const rangeKey = useMemo(
     () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
     [range]
   );
   const [contentVersion, setContentVersion] = useState(initialRangeKey);
-  const isInitialLoading = loading && !data;
 
   useEffect(() => {
-    if (!loading && data) {
+    if ((status === "success" || status === "empty") && data) {
       setContentVersion(rangeKey);
     }
-  }, [data, loading, rangeKey]);
+  }, [data, rangeKey, status]);
 
   useEffect(() => {
     return () => {
@@ -907,6 +1089,16 @@ export function PerformanceDashboard() {
     selectedOfferId === ALL_OFFERS_KEY
       ? "Todas as ofertas no período selecionado"
       : `${selectedOfferLabel} no período selecionado`;
+  const hasStageData = selectedStageConversions
+    ? Object.values(selectedStageConversions).some(
+        (item) => item.quantidade > 0 || item.receita > 0
+      )
+    : false;
+  const hasChannelData = selectedChannelConversions
+    ? Object.values(selectedChannelConversions).some(
+        (item) => item.quantidade > 0 || item.receita > 0
+      )
+    : false;
 
   function selectPreset(preset: RangePreset) {
     const nextRange = preset.getRange();
@@ -983,19 +1175,31 @@ export function PerformanceDashboard() {
       <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
         {isInitialLoading ? <DashboardSkeleton /> : null}
 
-        {!isInitialLoading && error ? (
-          <ErrorState message="Não foi possível carregar as métricas. Tente novamente em alguns instantes." />
+        {!isInitialLoading && error && !data ? (
+          <ErrorState
+            message="Não foi possível carregar as métricas. Tente novamente em alguns instantes."
+            onRetry={retry}
+          />
         ) : null}
 
-        {!error && data ? (
+        {!isInitialLoading && isEmpty ? (
+          <EmptyState
+            title="Sem dados para o período"
+            description="Altere o período ou a oferta para visualizar as métricas disponíveis."
+          />
+        ) : null}
+
+        {data && !isEmpty ? (
           <div
             key={contentVersion}
-            aria-busy={loading}
+            aria-busy={isRefreshing}
             className={cn(
               "flynow-dashboard-content relative flex flex-col gap-4 sm:gap-5",
-              loading && "flynow-dashboard-content--refreshing"
+              isRefreshing && "flynow-dashboard-content--refreshing"
             )}
           >
+            {error ? <RefreshErrorNotice onRetry={retry} /> : null}
+
             <div
               className="flynow-dashboard-enter-item order-1"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
@@ -1004,14 +1208,14 @@ export function PerformanceDashboard() {
             </div>
 
             <div
-              className="flynow-dashboard-enter-item order-3 lg:order-2"
+              className="flynow-dashboard-enter-item order-2"
               style={{ "--flynow-enter-delay": "90ms" } as CSSProperties}
             >
               <RevenueChart data={data.serie_temporal} />
             </div>
 
             <div
-              className="flynow-dashboard-enter-item order-2 lg:order-3"
+              className="flynow-dashboard-enter-item order-3"
               style={{ "--flynow-enter-delay": "180ms" } as CSSProperties}
             >
               <div
@@ -1044,47 +1248,63 @@ export function PerformanceDashboard() {
                     title="Conversão por etapa"
                     description="Frontend, upsell e downsell"
                   >
-                    {STAGE_LABELS.map((item) => {
-                      const conversion =
-                        selectedStageConversions?.[item.key] ??
-                        data.conversoes_etapa[item.key];
+                    {hasStageData ? (
+                      STAGE_LABELS.map((item) => {
+                        const conversion =
+                          selectedStageConversions?.[item.key] ??
+                          data.conversoes_etapa[item.key];
 
-                      return (
-                        <ConversionItem
-                          key={item.key}
-                          label={item.label}
-                          quantidade={conversion.quantidade}
-                          receita={conversion.receita}
-                          taxa={conversion.taxa}
-                          percentage={(conversion.receita / stageMax) * 100}
-                          accent="neutral"
-                        />
-                      );
-                    })}
+                        return (
+                          <ConversionItem
+                            key={item.key}
+                            label={item.label}
+                            quantidade={conversion.quantidade}
+                            receita={conversion.receita}
+                            taxa={conversion.taxa}
+                            percentage={(conversion.receita / stageMax) * 100}
+                            accent="neutral"
+                          />
+                        );
+                      })
+                    ) : (
+                      <EmptyState
+                        compact
+                        title="Sem conversões por etapa"
+                        description="As etapas serão listadas quando houver pedidos no período."
+                      />
+                    )}
                   </ConversionPanel>
 
                   <ConversionPanel
                     title="Conversão por canal de recuperação"
                     description="IA, Email, Call Center e SMS"
                   >
-                    {CHANNEL_LABELS.map((item) => {
-                      const conversion =
-                        selectedChannelConversions?.[item.key] ??
-                        data.conversoes_canal[item.key];
+                    {hasChannelData ? (
+                      CHANNEL_LABELS.map((item) => {
+                        const conversion =
+                          selectedChannelConversions?.[item.key] ??
+                          data.conversoes_canal[item.key];
 
-                      return (
-                        <ConversionItem
-                          key={item.key}
-                          label={item.label}
-                          quantidade={conversion.quantidade}
-                          receita={conversion.receita}
-                          taxa={conversion.taxa}
-                          icon={item.icon}
-                          percentage={(conversion.receita / channelMax) * 100}
-                          accent="blue"
-                        />
-                      );
-                    })}
+                        return (
+                          <ConversionItem
+                            key={item.key}
+                            label={item.label}
+                            quantidade={conversion.quantidade}
+                            receita={conversion.receita}
+                            taxa={conversion.taxa}
+                            icon={item.icon}
+                            percentage={(conversion.receita / channelMax) * 100}
+                            accent="blue"
+                          />
+                        );
+                      })
+                    ) : (
+                      <EmptyState
+                        compact
+                        title="Sem conversões por canal"
+                        description="Os canais serão listados quando houver recuperação no período."
+                      />
+                    )}
                   </ConversionPanel>
                 </section>
               </div>

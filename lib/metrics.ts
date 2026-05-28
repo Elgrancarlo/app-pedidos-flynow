@@ -6,6 +6,13 @@ export type RecoveryChannelKey =
   | "call_center"
   | "ia_recuperacao";
 
+export type MetricsStatus =
+  | "initial-loading"
+  | "refreshing"
+  | "success"
+  | "empty"
+  | "error";
+
 export type Offer = {
   id: string;
   nome: string;
@@ -46,3 +53,32 @@ export type MetricsData = {
   >;
   serie_temporal: TimeSeriesMetric[];
 };
+
+function hasConversionValues(
+  conversions: Record<string, StageConversion | ChannelConversion> | undefined
+) {
+  if (!conversions) {
+    return false;
+  }
+
+  return Object.values(conversions).some(
+    (item) => item.quantidade > 0 || item.receita > 0
+  );
+}
+
+export function hasMetricsContent(data: MetricsData | null) {
+  if (!data) {
+    return false;
+  }
+
+  return (
+    data.faturamento_total > 0 ||
+    data.investimento_total > 0 ||
+    data.roas > 0 ||
+    data.serie_temporal.some(
+      (item) => item.faturamento > 0 || item.investimento > 0
+    ) ||
+    hasConversionValues(data.conversoes_etapa) ||
+    hasConversionValues(data.conversoes_canal)
+  );
+}

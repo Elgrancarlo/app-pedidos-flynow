@@ -67,3 +67,118 @@ export const mockMetrics: MetricsData = {
     };
   }),
 };
+
+const zeroStageConversions = {
+  frontend: { quantidade: 0, receita: 0, taxa: null },
+  upsell: { quantidade: 0, receita: 0, taxa: null },
+  downsell: { quantidade: 0, receita: 0, taxa: null },
+} satisfies MetricsData["conversoes_etapa"];
+
+const zeroChannelConversions = {
+  email: { quantidade: 0, receita: 0, taxa: null },
+  sms: { quantidade: 0, receita: 0, taxa: null },
+  call_center: { quantidade: 0, receita: 0, taxa: null },
+  ia_recuperacao: { quantidade: 0, receita: 0, taxa: null },
+} satisfies MetricsData["conversoes_canal"];
+
+const zeroStageConversionsByOffer = {
+  "gelatina-slim": zeroStageConversions,
+  "glico-reset": zeroStageConversions,
+  "power-66": zeroStageConversions,
+} satisfies NonNullable<MetricsData["conversoes_etapa_por_oferta"]>;
+
+const zeroChannelConversionsByOffer = {
+  "gelatina-slim": zeroChannelConversions,
+  "glico-reset": zeroChannelConversions,
+  "power-66": zeroChannelConversions,
+} satisfies NonNullable<MetricsData["conversoes_canal_por_oferta"]>;
+
+export const mockEmptyMetrics: MetricsData = {
+  faturamento_total: 0,
+  investimento_total: 0,
+  roas: 0,
+  ofertas: mockMetrics.ofertas,
+  conversoes_etapa: zeroStageConversions,
+  conversoes_etapa_por_oferta: zeroStageConversionsByOffer,
+  conversoes_canal: zeroChannelConversions,
+  conversoes_canal_por_oferta: zeroChannelConversionsByOffer,
+  serie_temporal: [],
+};
+
+export const mockLowPerformanceMetrics: MetricsData = {
+  faturamento_total: 9800,
+  investimento_total: 12600,
+  roas: 0.8,
+  ofertas: mockMetrics.ofertas,
+  conversoes_etapa: {
+    frontend: { quantidade: 96, receita: 5400, taxa: 0.014 },
+    upsell: { quantidade: 18, receita: 2500, taxa: 0.188 },
+    downsell: { quantidade: 9, receita: 1900, taxa: 0.094 },
+  },
+  conversoes_etapa_por_oferta: {
+    "gelatina-slim": {
+      frontend: { quantidade: 52, receita: 2920, taxa: 0.017 },
+      upsell: { quantidade: 9, receita: 1260, taxa: 0.173 },
+      downsell: { quantidade: 5, receita: 1060, taxa: 0.096 },
+    },
+    "glico-reset": {
+      frontend: { quantidade: 44, receita: 2480, taxa: 0.012 },
+      upsell: { quantidade: 9, receita: 1240, taxa: 0.205 },
+      downsell: { quantidade: 4, receita: 840, taxa: 0.091 },
+    },
+    "power-66": zeroStageConversions,
+  },
+  conversoes_canal: {
+    email: { quantidade: 18, receita: 1620, taxa: 0.071 },
+    sms: { quantidade: 11, receita: 990, taxa: 0.046 },
+    call_center: { quantidade: 6, receita: 1080, taxa: 0.082 },
+    ia_recuperacao: { quantidade: 4, receita: 360, taxa: 0.037 },
+  },
+  conversoes_canal_por_oferta: {
+    "gelatina-slim": {
+      email: { quantidade: 10, receita: 900, taxa: 0.08 },
+      sms: { quantidade: 6, receita: 540, taxa: 0.052 },
+      call_center: { quantidade: 3, receita: 540, taxa: 0.079 },
+      ia_recuperacao: { quantidade: 2, receita: 180, taxa: 0.034 },
+    },
+    "glico-reset": {
+      email: { quantidade: 8, receita: 720, taxa: 0.064 },
+      sms: { quantidade: 5, receita: 450, taxa: 0.041 },
+      call_center: { quantidade: 3, receita: 540, taxa: 0.086 },
+      ia_recuperacao: { quantidade: 2, receita: 180, taxa: 0.039 },
+    },
+    "power-66": zeroChannelConversions,
+  },
+  serie_temporal: Array.from({ length: 14 }, (_, index) => {
+    const day = index + 15;
+
+    return {
+      data: new Date(2026, 4, day).toISOString().split("T")[0],
+      faturamento: 420 + day * 18 + (day % 3) * 60,
+      investimento: 740 + day * 15 + (day % 4) * 80,
+    };
+  }),
+};
+
+export const mockNoChannelMetrics: MetricsData = {
+  ...mockMetrics,
+  conversoes_canal: zeroChannelConversions,
+  conversoes_canal_por_oferta: zeroChannelConversionsByOffer,
+};
+
+export const mockMetricsScenarios = {
+  default: mockMetrics,
+  empty: mockEmptyMetrics,
+  low: mockLowPerformanceMetrics,
+  noChannels: mockNoChannelMetrics,
+} as const;
+
+export type MockMetricsScenario = keyof typeof mockMetricsScenarios;
+
+export function getMockMetricsScenario(value: string | null) {
+  if (value && value in mockMetricsScenarios) {
+    return mockMetricsScenarios[value as MockMetricsScenario];
+  }
+
+  return mockMetrics;
+}

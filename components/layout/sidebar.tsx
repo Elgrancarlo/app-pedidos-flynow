@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -41,6 +41,8 @@ const MOBILE_NAV = [
   { href: "/dashboard", label: "Dashboard", Icone: Activity, featured: true },
   { href: "/financeiro", label: "Financeiro", Icone: ChartSpline },
 ];
+
+const MOBILE_MORE_SHEET_EXIT_MS = 180;
 
 function FlyNowMark() {
   return (
@@ -214,29 +216,52 @@ export default function Sidebar() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const moreSheetTitleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousPathnameRef = useRef(pathname);
+  const mobileMoreCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const [isMobileMoreMounted, setIsMobileMoreMounted] = useState(false);
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
-  const closeMobileMore = () => setIsMobileMoreOpen(false);
+  const [isMobileMoreClosing, setIsMobileMoreClosing] = useState(false);
+  const openMobileMore = useCallback(() => {
+    if (mobileMoreCloseTimeoutRef.current) {
+      clearTimeout(mobileMoreCloseTimeoutRef.current);
+      mobileMoreCloseTimeoutRef.current = null;
+    }
+
+    setIsMobileMoreMounted(true);
+    setIsMobileMoreClosing(false);
+    setIsMobileMoreOpen(true);
+  }, []);
+  const closeMobileMore = useCallback(() => {
+    setIsMobileMoreOpen(false);
+    setIsMobileMoreClosing(true);
+  }, []);
   const isMoreActive = WORKSPACE_NAV.some(({ href }) => isActive(href));
-  const isMoreButtonActive = isMoreActive || isMobileMoreOpen;
+  const isMoreButtonActive =
+    isMoreActive || isMobileMoreOpen || isMobileMoreMounted;
   const isLightTheme = theme === "light";
   const ThemeIcon = isLightTheme ? Moon : Sun;
   const themeActionLabel = isLightTheme
-    ? "Ativar tema dark"
-    : "Ativar tema white";
-  const themeShortLabel = isLightTheme ? "Tema dark" : "Tema white";
+    ? "Ativar tema escuro"
+    : "Ativar tema claro";
+  const themeShortLabel = isLightTheme ? "Tema escuro" : "Tema claro";
 
   useEffect(() => {
-    setIsMobileMoreOpen(false);
-  }, [pathname]);
+    if (previousPathnameRef.current !== pathname) {
+      previousPathnameRef.current = pathname;
+      closeMobileMore();
+    }
+  }, [closeMobileMore, pathname]);
 
   useEffect(() => {
-    if (!isMobileMoreOpen) {
+    if (!isMobileMoreMounted) {
       return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsMobileMoreOpen(false);
+        closeMobileMore();
       }
     };
     const originalOverflow = document.body.style.overflow;
@@ -249,7 +274,34 @@ export default function Sidebar() {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isMobileMoreOpen]);
+  }, [closeMobileMore, isMobileMoreMounted]);
+
+  useEffect(() => {
+    if (!isMobileMoreClosing) {
+      return;
+    }
+
+    mobileMoreCloseTimeoutRef.current = setTimeout(() => {
+      setIsMobileMoreMounted(false);
+      setIsMobileMoreClosing(false);
+      mobileMoreCloseTimeoutRef.current = null;
+    }, MOBILE_MORE_SHEET_EXIT_MS);
+
+    return () => {
+      if (mobileMoreCloseTimeoutRef.current) {
+        clearTimeout(mobileMoreCloseTimeoutRef.current);
+        mobileMoreCloseTimeoutRef.current = null;
+      }
+    };
+  }, [isMobileMoreClosing]);
+
+  useEffect(() => {
+    return () => {
+      if (mobileMoreCloseTimeoutRef.current) {
+        clearTimeout(mobileMoreCloseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <>
@@ -373,12 +425,17 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {isMobileMoreOpen ? (
+      {isMobileMoreMounted ? (
         <div className="fixed inset-0 z-[60] xl:hidden">
           <button
             type="button"
             aria-label="Fechar navegação"
-            className="flynow-mobile-more-backdrop absolute inset-0 cursor-default bg-black/58 backdrop-blur-[10px]"
+            className={[
+              "flynow-mobile-more-backdrop absolute inset-0 cursor-default bg-black/58 backdrop-blur-[10px]",
+              isMobileMoreClosing
+                ? "flynow-mobile-more-backdrop--closing"
+                : "",
+            ].join(" ")}
             onClick={closeMobileMore}
           />
 
@@ -386,7 +443,10 @@ export default function Sidebar() {
             role="dialog"
             aria-modal="true"
             aria-labelledby={moreSheetTitleId}
-            className="flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-hidden rounded-t-[22px] border-t border-white/[0.09] bg-[#08090B]/96 shadow-[0_-24px_70px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl"
+            className={[
+              "flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-hidden rounded-t-[22px] border-t border-white/[0.09] bg-[#08090B]/96 shadow-[0_-24px_70px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl",
+              isMobileMoreClosing ? "flynow-mobile-more-sheet--closing" : "",
+            ].join(" ")}
           >
             <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/[0.16]" />
 
@@ -515,7 +575,7 @@ export default function Sidebar() {
             aria-label="Abrir menu"
             aria-controls={moreSheetTitleId}
             aria-expanded={isMobileMoreOpen}
-            onClick={() => setIsMobileMoreOpen(true)}
+            onClick={openMobileMore}
             className={[
               "relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
               isMoreButtonActive
