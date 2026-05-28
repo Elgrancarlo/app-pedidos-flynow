@@ -11,6 +11,7 @@ import {
   ChartSpline,
   Inbox,
   LogOut,
+  Menu,
   MoreHorizontal,
   Moon,
   Plus,
@@ -216,6 +217,7 @@ export default function Sidebar() {
   const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const closeMobileMore = () => setIsMobileMoreOpen(false);
   const isMoreActive = WORKSPACE_NAV.some(({ href }) => isActive(href));
+  const isMoreButtonActive = isMoreActive || isMobileMoreOpen;
   const isLightTheme = theme === "light";
   const ThemeIcon = isLightTheme ? Moon : Sun;
   const themeActionLabel = isLightTheme
@@ -510,32 +512,33 @@ export default function Sidebar() {
 
           <button
             type="button"
+            aria-label="Abrir menu"
             aria-controls={moreSheetTitleId}
             aria-expanded={isMobileMoreOpen}
             onClick={() => setIsMobileMoreOpen(true)}
             className={[
-              "relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
-              isMoreActive
-                ? "bg-[#17181B] text-[#F5F2EA]"
+              "relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+              isMoreButtonActive
+                ? "bg-[#17181B]/80 text-[#F5F2EA]"
                 : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",
             ].join(" ")}
           >
-            {isMoreActive ? (
+            {isMoreButtonActive ? (
               <span
                 aria-hidden="true"
                 className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#D6A84F]"
               />
             ) : null}
-            <MoreHorizontal
+            <Menu
               size={19}
               strokeWidth={2.1}
               className={[
                 "shrink-0 transition-colors duration-150",
-                isMoreActive ? "text-[#D6A84F]" : "text-[#747882]",
+                isMoreButtonActive ? "text-[#D6A84F]" : "text-[#747882]",
               ].join(" ")}
             />
             <span className="block w-max max-w-[64px] truncate leading-none">
-              Mais
+              Menu
             </span>
           </button>
         </div>

@@ -78,7 +78,7 @@ export function DashboardHeader({
     "--flynow-header-progress": scrollProgress.toFixed(3),
     "--flynow-mobile-header-min-height": `${104 - 40 * scrollProgress}px`,
     "--flynow-mobile-header-row-gap": `${8 * visibleProgress}px`,
-    "--flynow-presets-max-height": `${44 * visibleProgress}px`,
+    "--flynow-presets-max-height": `${48 * visibleProgress}px`,
     "--flynow-presets-padding-top": `${2 * visibleProgress}px`,
     "--flynow-presets-padding-bottom": `${4 * visibleProgress}px`,
     "--flynow-presets-opacity": visibleProgress.toFixed(3),
@@ -110,7 +110,7 @@ export function DashboardHeader({
               className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-brand-strong)] via-[var(--fly-brand-line)] to-transparent sm:h-10"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-[19px] font-semibold leading-none text-[#F5F2EA] sm:text-[26px]">
+              <h1 className="truncate text-[17px] font-semibold leading-none text-[#F5F2EA] min-[390px]:text-[18px] sm:text-[26px]">
                 {title}
               </h1>
 

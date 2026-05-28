@@ -229,7 +229,7 @@ function OfferSelectControl({
     >
       <RadixDropdownMenu.Trigger
         aria-label="Selecionar oferta"
-        className="group flex h-8 w-full min-w-[190px] max-w-full items-center justify-between gap-2 rounded-full border border-[var(--fly-border)] bg-[var(--fly-control)] px-2.5 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] data-[state=open]:border-[var(--fly-brand-border)] data-[state=open]:bg-[var(--fly-control-hover)] sm:w-[236px] sm:min-w-[236px] lg:rounded-xl lg:border-[var(--fly-border-strong)] lg:bg-[var(--fly-control-solid)] lg:text-xs lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+        className="group flex h-10 w-full min-w-[190px] max-w-full items-center justify-between gap-2 rounded-xl border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] data-[state=open]:border-[var(--fly-brand-border)] data-[state=open]:bg-[var(--fly-control-hover)] sm:h-8 sm:w-[236px] sm:min-w-[236px] sm:rounded-full sm:px-2.5 lg:rounded-xl lg:border-[var(--fly-border-strong)] lg:bg-[var(--fly-control-solid)] lg:text-xs lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
       >
         <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
           Oferta
@@ -303,19 +303,21 @@ function KpiMetric({
 
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden="true"
-          className={cn("size-1.5 rounded-full", dotClass)}
-        />
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#858A94]">
-          {label}
+      <div className="flex items-start justify-between gap-3 sm:block">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={cn("size-1.5 shrink-0 rounded-full", dotClass)}
+          />
+          <p className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-[#858A94]">
+            {label}
+          </p>
+        </div>
+        <p className="min-w-0 shrink-0 text-right text-[22px] font-semibold leading-none tracking-normal tabular-nums text-[#F5F2EA] sm:mt-3 sm:text-left sm:text-[30px] md:text-[32px]">
+          {value}
         </p>
       </div>
-      <p className="mt-3 text-[24px] font-semibold leading-none tracking-normal tabular-nums text-[#F5F2EA] sm:text-[30px] md:text-[32px]">
-        {value}
-      </p>
-      <p className="mt-3 max-w-[28ch] text-xs leading-5 text-[#8B9099] sm:text-[13px]">
+      <p className="mt-1.5 max-w-[32ch] text-[11px] leading-4 text-[#8B9099] sm:mt-3 sm:max-w-[28ch] sm:text-[13px] sm:leading-5">
         {supportingText}
       </p>
     </div>
@@ -353,7 +355,7 @@ function OverviewPanel({ data }: { data: MetricsData }) {
         aria-hidden="true"
         className="block h-px bg-gradient-to-r from-transparent via-[#D6A84F]/45 to-transparent"
       />
-      <div className="flex flex-col gap-1 border-b border-white/[0.06] px-4 py-3.5 sm:px-5 sm:py-4">
+      <div className="flex flex-col gap-1 border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
         <h2 className="text-[15px] font-semibold leading-none text-[#F5F2EA]">
           Visão geral
         </h2>
@@ -367,7 +369,7 @@ function OverviewPanel({ data }: { data: MetricsData }) {
           <div
             key={metric.label}
             className={cn(
-              "px-4 py-4 sm:px-5 sm:py-5",
+              "px-4 py-3 sm:px-5 sm:py-5",
               index > 0 &&
                 "border-t border-white/[0.06] md:border-l md:border-t-0"
             )}
@@ -399,7 +401,7 @@ function ConversionItem({
       : "border-white/[0.08] text-[#A3A8B1]";
 
   return (
-    <div className="min-w-0 rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3 py-3 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035] sm:px-3.5">
+    <div className="min-w-0 rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3 py-2.5 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035] sm:px-3.5 sm:py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           {icon ? (
@@ -428,9 +430,9 @@ function ConversionItem({
         ) : null}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2.5 sm:mt-3">
         <div className="flex items-end justify-between gap-3">
-          <p className="min-w-0 truncate text-[15px] font-semibold leading-none tabular-nums text-[#F5F2EA] sm:text-[16px]">
+          <p className="min-w-0 truncate text-[14px] font-semibold leading-none tabular-nums text-[#F5F2EA] sm:text-[16px]">
             {formatCurrency(receita)}
           </p>
           <p className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-[#858A94] sm:text-xs">
@@ -460,14 +462,14 @@ function ConversionPanel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
+    <section className="rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
       <div className="flex min-w-0 flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <SectionHeader title={title} description={description} />
         {action ? (
           <div className="min-w-0 2xl:max-w-[260px] 2xl:shrink-0">{action}</div>
         ) : null}
       </div>
-      <div className="mt-4 space-y-2.5">{children}</div>
+      <div className="mt-3 space-y-2.5 sm:mt-4">{children}</div>
     </section>
   );
 }
@@ -475,7 +477,7 @@ function ConversionPanel({
 function DashboardSkeleton() {
   return (
     <div className="flynow-dashboard-skeleton space-y-5">
-      <div className="flynow-dashboard-skeleton-panel h-[350px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] md:h-[214px]" />
+      <div className="flynow-dashboard-skeleton-panel h-[288px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] md:h-[214px]" />
 
       <div className="flynow-dashboard-skeleton-panel h-[420px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] sm:h-[470px] lg:h-[520px]" />
 
@@ -506,13 +508,13 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   const isCompact = useCompactViewport();
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between lg:mb-6">
+    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between lg:mb-6">
         <SectionHeader
           title="Faturamento vs investimento"
           description="Evolução diária no período selecionado"
         />
-        <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-3 py-2 text-xs text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:w-auto sm:justify-start sm:gap-4">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-2.5 py-1.5 text-[11px] text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:w-auto sm:justify-start sm:gap-4 sm:px-3 sm:py-2 sm:text-xs">
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
             <span className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]" />
             Faturamento
@@ -524,13 +526,13 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
         </div>
       </div>
 
-      <div className="flynow-chart-stage h-[300px] min-w-0 sm:h-[340px] lg:h-[420px]">
+      <div className="flynow-chart-stage h-[230px] min-w-0 sm:h-[340px] lg:h-[420px]">
         <div className="flynow-chart-plot h-full min-w-0">
           <ResponsiveContainer
             width="100%"
             height="100%"
             minWidth={1}
-            minHeight={240}
+            minHeight={isCompact ? 180 : 240}
             initialDimension={{ width: 640, height: 320 }}
           >
             <LineChart
@@ -750,7 +752,7 @@ function PeriodActions({
             compactMobileLabel
             className="w-auto lg:w-auto"
             triggerClassName={cn(
-              "!h-8 !w-[132px] !rounded-full !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-2.5 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] min-[390px]:!w-[146px] sm:!w-[236px] lg:!rounded-xl lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[var(--fly-control-hover)]",
+              "!h-10 !w-[140px] !rounded-xl !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-3 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] sm:!h-8 sm:!w-[236px] sm:!rounded-full sm:!px-2.5 lg:!rounded-xl lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[var(--fly-control-hover)]",
               isCustomRange
                 ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
                 : "lg:!text-[var(--fly-text-soft)]"
@@ -791,7 +793,7 @@ function PeriodActions({
                 aria-pressed={isActive}
                 onClick={() => onSelect(preset)}
                 className={cn(
-                  "relative h-8 shrink-0 whitespace-nowrap rounded-[10px] px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 md:shrink lg:min-w-10",
+                  "relative h-10 shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 sm:h-8 sm:rounded-[10px] sm:px-3 md:shrink lg:min-w-10",
                   isActive
                     ? "bg-[var(--fly-control)] text-[var(--fly-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[var(--fly-control-active)] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
                     : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)] lg:hover:bg-[var(--fly-control-solid)]"
@@ -990,26 +992,26 @@ export function PerformanceDashboard() {
             key={contentVersion}
             aria-busy={loading}
             className={cn(
-              "flynow-dashboard-content relative space-y-5",
+              "flynow-dashboard-content relative flex flex-col gap-4 sm:gap-5",
               loading && "flynow-dashboard-content--refreshing"
             )}
           >
             <div
-              className="flynow-dashboard-enter-item"
+              className="flynow-dashboard-enter-item order-1"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
             >
               <OverviewPanel data={data} />
             </div>
 
             <div
-              className="flynow-dashboard-enter-item"
+              className="flynow-dashboard-enter-item order-3 lg:order-2"
               style={{ "--flynow-enter-delay": "90ms" } as CSSProperties}
             >
               <RevenueChart data={data.serie_temporal} />
             </div>
 
             <div
-              className="flynow-dashboard-enter-item"
+              className="flynow-dashboard-enter-item order-2 lg:order-3"
               style={{ "--flynow-enter-delay": "180ms" } as CSSProperties}
             >
               <div
