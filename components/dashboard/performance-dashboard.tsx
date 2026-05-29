@@ -4,13 +4,9 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
-  Bot,
   Check,
   ChevronDown,
-  Headset,
   Inbox,
-  Mail,
-  MessageSquareText,
   RefreshCw,
 } from "lucide-react";
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
@@ -64,7 +60,7 @@ type ConversionItemProps = {
   quantidade: number;
   receita: number;
   taxa?: number | null;
-  icon?: React.ReactNode;
+  marker?: string;
   percentage: number;
   accent?: "neutral" | "blue";
 };
@@ -147,12 +143,12 @@ const STAGE_LABELS: Array<{
 const CHANNEL_LABELS: Array<{
   key: RecoveryChannelKey;
   label: string;
-  icon: React.ReactNode;
+  marker: string;
 }> = [
-  { key: "ia_recuperacao", label: "IA", icon: <Bot /> },
-  { key: "email", label: "Email", icon: <Mail /> },
-  { key: "call_center", label: "Call Center", icon: <Headset /> },
-  { key: "sms", label: "SMS", icon: <MessageSquareText /> },
+  { key: "ia_recuperacao", label: "IA", marker: "IA" },
+  { key: "email", label: "Email", marker: "EM" },
+  { key: "call_center", label: "Call Center", marker: "CC" },
+  { key: "sms", label: "SMS", marker: "SMS" },
 ];
 
 function compactCurrency(value: number) {
@@ -164,11 +160,48 @@ function compactCurrency(value: number) {
   }).format(value);
 }
 
+function compactChartValue(value: number) {
+  if (Math.abs(value) >= 1_000_000) {
+    return `${new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 1,
+    }).format(value / 1_000_000)} mi`;
+  }
+
+  if (Math.abs(value) >= 1_000) {
+    return `${new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 1,
+    }).format(value / 1_000)}k`;
+  }
+
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function formatDateLabel(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
   });
+}
+
+function getCompactChartTicks(data: MetricsData["serie_temporal"]) {
+  if (data.length <= 5) {
+    return data.map((item) => item.data);
+  }
+
+  const lastIndex = data.length - 1;
+  const indexes = [
+    0,
+    Math.round(lastIndex * 0.25),
+    Math.round(lastIndex * 0.5),
+    Math.round(lastIndex * 0.75),
+    lastIndex,
+  ];
+
+  return Array.from(new Set(indexes))
+    .map((index) => data[index]?.data)
+    .filter((tick): tick is string => Boolean(tick));
 }
 
 function getOfferLabel(offers: Offer[], value: string) {
@@ -403,7 +436,7 @@ function ConversionItem({
   quantidade,
   receita,
   taxa,
-  icon,
+  marker,
   percentage,
   accent = "neutral",
 }: ConversionItemProps) {
@@ -411,23 +444,24 @@ function ConversionItem({
     accent === "blue"
       ? "bg-gradient-to-r from-[#2563EB] to-[#93C5FD]"
       : "bg-gradient-to-r from-white/30 to-white/55";
-  const iconClass =
+  const markerClass =
     accent === "blue"
-      ? "border-[#60A5FA]/18 text-[#93C5FD]"
-      : "border-white/[0.08] text-[#A3A8B1]";
+      ? "text-[#93C5FD]"
+      : "text-[#A3A8B1]";
 
   return (
     <div className="min-w-0 rounded-[7px] border border-white/[0.055] bg-white/[0.018] px-3 py-2.5 transition-colors duration-200 hover:border-white/[0.1] hover:bg-white/[0.035] sm:px-3.5 sm:py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          {icon ? (
+          {marker ? (
             <span
+              aria-hidden="true"
               className={cn(
-                "flex size-7 shrink-0 items-center justify-center rounded-[6px] border bg-[#050607] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] [&_svg]:size-3.5",
-                iconClass
+                "flynow-channel-marker flex w-8 shrink-0 items-center text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors duration-200",
+                markerClass
               )}
             >
-              {icon}
+              {marker}
             </span>
           ) : null}
           <div className="min-w-0">
@@ -541,23 +575,25 @@ function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col gap-4 rounded-[8px] border border-[#F87171]/26 bg-[#2B1515]/80 p-4 text-sm text-[#FCA5A5] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
+      className="flynow-dashboard-error-state flex flex-col gap-4 rounded-[8px] border border-[#F87171]/26 bg-[#2B1515]/80 p-4 text-sm text-[#FCA5A5] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-[#F87171]/20 bg-[#3A1B1B] text-[#FCA5A5]">
+        <span className="flynow-dashboard-error-icon flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-[#F87171]/20 bg-[#3A1B1B] text-[#FCA5A5]">
           <AlertTriangle aria-hidden="true" className="size-4" />
         </span>
         <div className="min-w-0">
-          <p className="font-semibold text-[#FECACA]">
+          <p className="flynow-dashboard-error-title font-semibold text-[#FECACA]">
             Métricas indisponíveis
           </p>
-          <p className="mt-1 leading-5 text-[#FCA5A5]">{message}</p>
+          <p className="flynow-dashboard-error-message mt-1 leading-5 text-[#FCA5A5]">
+            {message}
+          </p>
         </div>
       </div>
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#F87171]/22 bg-[#3A1B1B] px-3 text-xs font-semibold text-[#FECACA] outline-none transition-colors duration-150 hover:border-[#F87171]/36 hover:bg-[#431F1F] focus-visible:ring-2 focus-visible:ring-[#F87171]/30"
+        className="flynow-dashboard-error-action inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#F87171]/22 bg-[#3A1B1B] px-3 text-xs font-semibold text-[#FECACA] outline-none transition-colors duration-150 hover:border-[#F87171]/36 hover:bg-[#431F1F] focus-visible:ring-2 focus-visible:ring-[#F87171]/30"
       >
         <RefreshCw aria-hidden="true" className="size-3.5" />
         Tentar novamente
@@ -570,11 +606,11 @@ function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       role="status"
-      className="flex flex-col gap-3 rounded-[8px] border border-[#F59E0B]/18 bg-[#1D1609]/70 p-3 text-sm text-[#FCD34D] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between"
+      className="flynow-dashboard-warning-state flex flex-col gap-3 rounded-[8px] border border-[#F59E0B]/18 bg-[#1D1609]/70 p-3 text-sm text-[#FCD34D] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex min-w-0 items-center gap-2.5">
         <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-        <p className="min-w-0 text-[13px] leading-5 text-[#F8D88A]">
+        <p className="flynow-dashboard-warning-message min-w-0 text-[13px] leading-5 text-[#F8D88A]">
           Não foi possível atualizar as métricas. Os últimos dados carregados
           continuam visíveis.
         </p>
@@ -582,7 +618,7 @@ function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
       <button
         type="button"
         onClick={onRetry}
-        className="inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[#F59E0B]/20 bg-[#2A2112] px-3 text-xs font-semibold text-[#F8D88A] outline-none transition-colors duration-150 hover:border-[#F59E0B]/34 hover:bg-[#332815] focus-visible:ring-2 focus-visible:ring-[#F59E0B]/25"
+        className="flynow-dashboard-warning-action inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[#F59E0B]/20 bg-[#2A2112] px-3 text-xs font-semibold text-[#F8D88A] outline-none transition-colors duration-150 hover:border-[#F59E0B]/34 hover:bg-[#332815] focus-visible:ring-2 focus-visible:ring-[#F59E0B]/25"
       >
         <RefreshCw aria-hidden="true" className="size-3.5" />
         Recarregar
@@ -604,16 +640,18 @@ function EmptyState({
     <div
       role="status"
       className={cn(
-        "flex min-h-[220px] items-center justify-center rounded-[8px] border border-dashed border-white/[0.08] bg-white/[0.018] px-4 text-center",
+        "flynow-dashboard-empty-state flex min-h-[220px] items-center justify-center rounded-[8px] border border-dashed border-white/[0.08] bg-white/[0.018] px-4 text-center",
         compact && "min-h-[164px]"
       )}
     >
       <div className="max-w-[260px]">
-        <span className="mx-auto flex size-9 items-center justify-center rounded-[8px] border border-white/[0.07] bg-[#050607] text-[#858A94] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+        <span className="flynow-dashboard-empty-icon mx-auto flex size-9 items-center justify-center rounded-[8px] border border-white/[0.07] bg-[#050607] text-[#858A94] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
           <Inbox aria-hidden="true" className="size-4" />
         </span>
-        <p className="mt-3 text-sm font-semibold text-[#F5F2EA]">{title}</p>
-        <p className="mt-1.5 text-[13px] leading-5 text-[#858A94]">
+        <p className="flynow-dashboard-empty-title mt-3 text-sm font-semibold text-[#F5F2EA]">
+          {title}
+        </p>
+        <p className="flynow-dashboard-empty-description mt-1.5 text-[13px] leading-5 text-[#858A94]">
           {description}
         </p>
       </div>
@@ -634,18 +672,24 @@ function RevenueChartTooltip({
   return (
     <div
       className={cn(
-        "min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl",
-        isCompact && "min-w-[196px]"
+        "flynow-chart-tooltip min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl",
+        isCompact && "w-[min(216px,calc(100vw-56px))] min-w-0 p-2"
       )}
     >
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)] sm:text-[11px]">
         {formatDateLabel(String(label))}
       </p>
       <div className="space-y-1.5">
         {payload.map((item) => {
           const key = String(item.dataKey ?? item.name);
           const isRevenue = key === "faturamento";
-          const labelText = isRevenue ? "Faturamento" : "Investimento";
+          const labelText = isCompact
+            ? isRevenue
+              ? "Receita"
+              : "Mídia"
+            : isRevenue
+              ? "Faturamento"
+              : "Investimento";
           const color = isRevenue
             ? "var(--fly-chart-revenue)"
             : "var(--fly-chart-investment)";
@@ -677,41 +721,52 @@ function RevenueChartTooltip({
 function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
   const isCompact = useCompactViewport();
   const hasChartData = data.length > 0;
+  const compactChartTicks = useMemo(() => getCompactChartTicks(data), [data]);
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
-      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between lg:mb-6">
+    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5">
+      <div className="mb-3 flex flex-col gap-2.5 md:flex-row md:items-start md:justify-between lg:mb-6">
         <SectionHeader
           title="Faturamento vs investimento"
           description="Evolução diária no período selecionado"
         />
-        <div className="grid w-full grid-cols-2 items-center gap-2 rounded-md border border-white/[0.06] bg-[#050607] px-2.5 py-1.5 text-[11px] text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:flex sm:w-auto sm:justify-start sm:gap-4 sm:px-3 sm:py-2 sm:text-xs">
-          <span className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-[6px] bg-white/[0.018] px-2 py-1 sm:bg-transparent sm:p-0">
-            <span className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]" />
+        <div className="flynow-chart-legend flex w-full items-center gap-1 rounded-[9px] border border-white/[0.06] bg-white/[0.018] p-1 text-[10px] font-medium text-[#A3A8B1] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] sm:w-auto sm:justify-start sm:gap-4 sm:bg-[#050607] sm:px-3 sm:py-2 sm:text-xs">
+          <span className="inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[7px] bg-white/[0.025] px-2 sm:h-auto sm:flex-none sm:bg-transparent sm:p-0">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]"
+            />
             Faturamento
           </span>
-          <span className="inline-flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-[6px] bg-white/[0.018] px-2 py-1 sm:bg-transparent sm:p-0">
-            <span className="size-1.5 rounded-full bg-[var(--fly-chart-investment)]" />
+          <span className="inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[7px] bg-white/[0.025] px-2 sm:h-auto sm:flex-none sm:bg-transparent sm:p-0">
+            <span
+              aria-hidden="true"
+              className="size-1.5 rounded-full bg-[var(--fly-chart-investment)]"
+            />
             Investimento
           </span>
         </div>
       </div>
 
       {hasChartData ? (
-        <div className="flynow-chart-stage h-[250px] min-w-0 sm:h-[340px] lg:h-[420px]">
+        <div
+          role="img"
+          aria-label="Gráfico diário comparando faturamento e investimento"
+          className="flynow-chart-stage h-[292px] min-w-0 sm:h-[340px] lg:h-[420px]"
+        >
           <div className="flynow-chart-plot h-full min-w-0">
             <ResponsiveContainer
               width="100%"
               height="100%"
               minWidth={1}
-              minHeight={isCompact ? 180 : 240}
+              minHeight={240}
               initialDimension={{ width: 640, height: 320 }}
             >
               <LineChart
                 data={data}
                 margin={
                   isCompact
-                    ? { top: 10, right: 4, bottom: 0, left: 0 }
+                    ? { top: 18, right: 18, bottom: 2, left: -4 }
                     : { top: 8, right: 12, bottom: 0, left: 0 }
                 }
               >
@@ -729,19 +784,29 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                   tickFormatter={formatDateLabel}
                   axisLine={false}
                   tickLine={false}
-                  minTickGap={isCompact ? 16 : 24}
-                  tickMargin={8}
+                  ticks={isCompact ? compactChartTicks : undefined}
+                  interval={isCompact ? 0 : "preserveEnd"}
+                  minTickGap={isCompact ? 8 : 24}
+                  tickMargin={isCompact ? 10 : 8}
+                  padding={
+                    isCompact ? { left: 2, right: 12 } : { left: 0, right: 0 }
+                  }
                 />
                 <YAxis
                   tick={{
                     fill: "var(--fly-text-muted)",
                     fontSize: isCompact ? 10 : 11,
                   }}
-                  tickFormatter={(value) => compactCurrency(Number(value))}
+                  tickFormatter={(value) =>
+                    isCompact
+                      ? compactChartValue(Number(value))
+                      : compactCurrency(Number(value))
+                  }
                   axisLine={false}
                   tickLine={false}
-                  width={isCompact ? 56 : 72}
-                  tickMargin={8}
+                  width={isCompact ? 42 : 72}
+                  tickCount={isCompact ? 4 : 5}
+                  tickMargin={isCompact ? 5 : 8}
                 />
                 <Tooltip
                   allowEscapeViewBox={{ x: true, y: true }}
@@ -751,7 +816,7 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                     strokeDasharray: "4 4",
                     strokeWidth: 1,
                   }}
-                  position={isCompact ? { x: 10, y: 10 } : undefined}
+                  position={isCompact ? { x: 50, y: 8 } : undefined}
                   wrapperStyle={{ outline: "none", zIndex: 20 }}
                 />
                 <Line
@@ -759,26 +824,26 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                   type="monotone"
                   dataKey="faturamento"
                   stroke="var(--fly-chart-revenue)"
-                  strokeWidth={2.25}
+                  strokeWidth={isCompact ? 2.4 : 2.25}
                   dot={false}
-                activeDot={{
-                  r: isCompact ? 3.5 : 4,
-                  fill: "var(--fly-chart-revenue-active)",
-                  stroke: "var(--fly-surface)",
-                }}
+                  activeDot={{
+                    r: isCompact ? 3.75 : 4,
+                    fill: "var(--fly-chart-revenue-active)",
+                    stroke: "var(--fly-surface)",
+                  }}
                 />
                 <Line
                   isAnimationActive={false}
                   type="monotone"
                   dataKey="investimento"
                   stroke="var(--fly-chart-investment)"
-                  strokeWidth={2}
+                  strokeWidth={isCompact ? 2.15 : 2}
                   dot={false}
-                activeDot={{
-                  r: isCompact ? 3.5 : 4,
-                  fill: "var(--fly-chart-investment-active)",
-                  stroke: "var(--fly-surface)",
-                }}
+                  activeDot={{
+                    r: isCompact ? 3.75 : 4,
+                    fill: "var(--fly-chart-investment-active)",
+                    stroke: "var(--fly-surface)",
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -1292,7 +1357,7 @@ export function PerformanceDashboard() {
                             quantidade={conversion.quantidade}
                             receita={conversion.receita}
                             taxa={conversion.taxa}
-                            icon={item.icon}
+                            marker={item.marker}
                             percentage={(conversion.receita / channelMax) * 100}
                             accent="blue"
                           />

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -42,7 +43,7 @@ const MOBILE_NAV = [
   { href: "/financeiro", label: "Financeiro", Icone: ChartSpline },
 ];
 
-const MOBILE_MORE_SHEET_EXIT_MS = 180;
+const MOBILE_MORE_SHEET_EXIT_MS = 240;
 
 function FlyNowMark() {
   return (
@@ -191,20 +192,22 @@ function MobileSheetLink({
       aria-current={ativo ? "page" : undefined}
       onClick={onClick}
       className={[
-        "group flex h-12 items-center gap-3 rounded-[10px] px-3 text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        "group flex h-11 items-center gap-3 rounded-[10px] px-2.5 text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
         ativo
-          ? "bg-[#17181B] text-[#F5F2EA]"
+          ? "bg-[#17181B] text-[#F5F2EA] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
           : "text-[#A3A6AE] hover:bg-[#151619] hover:text-[#E8E9EC]",
       ].join(" ")}
     >
-      <Icone
-        size={18}
-        strokeWidth={2}
+      <span
         className={[
-          "shrink-0 transition-colors duration-150",
-          ativo ? "text-[#D6A84F]" : "text-[#747882] group-hover:text-[#AEB2BB]",
+          "flex size-8 shrink-0 items-center justify-center rounded-[8px] border transition-colors duration-150",
+          ativo
+            ? "border-[#D6A84F]/22 bg-[#151208] text-[#D6A84F]"
+            : "border-white/[0.06] bg-white/[0.025] text-[#747882] group-hover:border-white/[0.1] group-hover:text-[#AEB2BB]",
         ].join(" ")}
-      />
+      >
+        <Icone size={17} strokeWidth={2.1} />
+      </span>
       <span className="truncate">{label}</span>
     </Link>
   );
@@ -214,6 +217,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useDashboardTheme();
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const moreSheetDialogId = useId();
   const moreSheetTitleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousPathnameRef = useRef(pathname);
@@ -237,6 +241,10 @@ export default function Sidebar() {
     setIsMobileMoreOpen(false);
     setIsMobileMoreClosing(true);
   }, []);
+  const toggleThemeFromMobileMore = useCallback(() => {
+    toggleTheme();
+    closeMobileMore();
+  }, [closeMobileMore, toggleTheme]);
   const isMoreActive = WORKSPACE_NAV.some(({ href }) => isActive(href));
   const isMoreButtonActive =
     isMoreActive || isMobileMoreOpen || isMobileMoreMounted;
@@ -245,7 +253,6 @@ export default function Sidebar() {
   const themeActionLabel = isLightTheme
     ? "Ativar tema escuro"
     : "Ativar tema claro";
-  const themeShortLabel = isLightTheme ? "Tema escuro" : "Tema claro";
 
   useEffect(() => {
     if (previousPathnameRef.current !== pathname) {
@@ -441,31 +448,35 @@ export default function Sidebar() {
 
           <div
             role="dialog"
+            id={moreSheetDialogId}
             aria-modal="true"
             aria-labelledby={moreSheetTitleId}
             className={[
-              "flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[78dvh] overflow-hidden rounded-t-[22px] border-t border-white/[0.09] bg-[#08090B]/96 shadow-[0_-24px_70px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl",
+              "flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-hidden rounded-t-[24px] border border-b-0 border-white/[0.09] bg-[#08090B]/96 shadow-[0_-28px_80px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl",
               isMobileMoreClosing ? "flynow-mobile-more-sheet--closing" : "",
             ].join(" ")}
           >
-            <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-white/[0.16]" />
+            <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-white/[0.16]" />
 
-            <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-[12px] border border-[#D6A84F]/18 bg-[#12100A] text-[#D6A84F]">
-                  <FlyNowMark />
-                </span>
-                <div className="min-w-0">
-                  <h2
-                    id={moreSheetTitleId}
-                    className="truncate text-[15px] font-semibold leading-none text-[#F5F2EA]"
-                  >
-                    Navegação Flynow
-                  </h2>
-                  <p className="mt-1.5 truncate text-xs font-medium text-[#858A94]">
-                    Acesso completo do workspace
-                  </p>
-                </div>
+            <div
+              className="flynow-mobile-more-reveal flex items-start justify-between gap-3 px-4 pb-3 pt-4"
+              style={
+                { "--flynow-mobile-more-delay": "20ms" } as CSSProperties
+              }
+            >
+              <div className="min-w-0">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#D6A84F]">
+                  Workspace
+                </p>
+                <h2
+                  id={moreSheetTitleId}
+                  className="truncate text-[17px] font-semibold leading-none text-[#F5F2EA]"
+                >
+                  Menu Flynow
+                </h2>
+                <p className="mt-2 max-w-[28ch] text-[13px] leading-5 text-[#858A94]">
+                  Atalhos da operação, preferências e sessão.
+                </p>
               </div>
 
               <button
@@ -479,9 +490,52 @@ export default function Sidebar() {
               </button>
             </div>
 
-            <div className="max-h-[calc(78dvh-88px)] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-              <div className="border-t border-white/[0.06] pt-3">
-                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
+            <div className="max-h-[calc(82dvh-116px)] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+              <div
+                className="flynow-mobile-more-reveal rounded-[16px] border border-white/[0.065] bg-white/[0.025] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+                style={
+                  { "--flynow-mobile-more-delay": "70ms" } as CSSProperties
+                }
+              >
+                <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
+                  Ações rápidas
+                </p>
+                <Link
+                  href="/pedidos"
+                  onClick={closeMobileMore}
+                  className="flex h-12 items-center justify-center gap-2 rounded-[12px] border border-[#D6A84F]/24 bg-[#151208] px-3 text-sm font-semibold text-[#F5F2EA] outline-none transition-colors duration-150 hover:border-[#D6A84F]/38 hover:bg-[#1A160C] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                >
+                  <Plus size={16} strokeWidth={2.3} />
+                  <span>Criar pedido</span>
+                </Link>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-white/[0.07] bg-[#0D0F12] px-3 text-sm font-semibold text-[#DADDE2] outline-none transition-colors duration-150 hover:border-white/[0.12] hover:bg-[#151619] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                  >
+                    <Search size={16} strokeWidth={2.2} />
+                    <span>Buscar</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={themeActionLabel}
+                    title={themeActionLabel}
+                    onClick={toggleThemeFromMobileMore}
+                    className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                  >
+                    <ThemeIcon size={16} strokeWidth={2.2} />
+                    <span>Tema</span>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                className="flynow-mobile-more-reveal mt-3 rounded-[16px] border border-white/[0.065] bg-white/[0.018] p-2.5"
+                style={
+                  { "--flynow-mobile-more-delay": "120ms" } as CSSProperties
+                }
+              >
+                <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
                   Workspace
                 </p>
                 <div className="space-y-1">
@@ -498,39 +552,16 @@ export default function Sidebar() {
                 </div>
               </div>
 
-              <div className="mt-4 border-t border-white/[0.06] pt-3">
-                <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
-                  Ações
+              <div
+                className="flynow-mobile-more-reveal mt-3 rounded-[16px] border border-white/[0.065] bg-white/[0.018] p-2.5"
+                style={
+                  { "--flynow-mobile-more-delay": "170ms" } as CSSProperties
+                }
+              >
+                <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
+                  Sessão
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-white/[0.07] bg-white/[0.035] px-3 text-sm font-semibold text-[#DADDE2] outline-none transition-colors duration-150 hover:border-white/[0.12] hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-                  >
-                    <Search size={16} strokeWidth={2.2} />
-                    <span>Buscar</span>
-                  </button>
-                  <Link
-                    href="/pedidos"
-                    onClick={closeMobileMore}
-                    className="flex h-12 items-center justify-center gap-2 rounded-[10px] border border-[#D6A84F]/22 bg-[#151208] px-3 text-sm font-semibold text-[#F5F2EA] outline-none transition-colors duration-150 hover:border-[#D6A84F]/36 hover:bg-[#1A160C] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-                  >
-                    <Plus size={16} strokeWidth={2.3} />
-                    <span>Criar pedido</span>
-                  </Link>
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="mt-2 flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                >
-                  <ThemeIcon size={16} strokeWidth={2.2} />
-                  <span>{themeShortLabel}</span>
-                </button>
-              </div>
-
-              <div className="mt-4 border-t border-white/[0.06] pt-3">
-                <div className="flex h-14 items-center gap-3 rounded-[12px] bg-white/[0.025] px-3 ring-1 ring-white/[0.055]">
+                <div className="flex h-14 items-center gap-3 rounded-[12px] bg-[#0D0F12] px-3 ring-1 ring-white/[0.055]">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#151619] text-xs font-semibold text-[#D6A84F] ring-1 ring-[#242932]">
                     AF
                   </div>
@@ -573,11 +604,12 @@ export default function Sidebar() {
           <button
             type="button"
             aria-label="Abrir menu"
-            aria-controls={moreSheetTitleId}
+            aria-controls={moreSheetDialogId}
             aria-expanded={isMobileMoreOpen}
+            data-active={isMoreButtonActive ? "true" : "false"}
             onClick={openMobileMore}
             className={[
-              "relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+              "flynow-mobile-more-trigger relative flex h-14 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
               isMoreButtonActive
                 ? "bg-[#17181B]/80 text-[#F5F2EA]"
                 : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",

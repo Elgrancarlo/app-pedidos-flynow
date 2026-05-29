@@ -19,31 +19,30 @@ export function DashboardHeader({
   actions,
 }: DashboardHeaderProps) {
   const animationFrameRef = useRef<number | null>(null);
-  const [isElevated, setIsElevated] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 639px)");
 
-    const updateElevation = () => {
+    const updateProgress = () => {
       const scrollY = Math.max(window.scrollY, 0);
       const nextProgress = mobileQuery.matches
         ? Math.min(scrollY / MOBILE_HEADER_SCROLL_RANGE, 1)
         : scrollY > 0
           ? 1
           : 0;
-      const nextElevation = mobileQuery.matches
-        ? nextProgress > MOBILE_ELEVATION_PROGRESS
-        : nextProgress > 0;
 
-      setScrollProgress((currentProgress) =>
-        Math.abs(currentProgress - nextProgress) < 0.005
-          ? currentProgress
-          : nextProgress
-      );
-      setIsElevated((currentElevation) =>
-        currentElevation === nextElevation ? currentElevation : nextElevation
-      );
+      setScrollProgress((currentProgress) => {
+        if (
+          Math.abs(currentProgress - nextProgress) < 0.018 &&
+          nextProgress !== 0 &&
+          nextProgress !== 1
+        ) {
+          return currentProgress;
+        }
+
+        return nextProgress;
+      });
     };
 
     const scheduleUpdate = () => {
@@ -53,11 +52,11 @@ export function DashboardHeader({
 
       animationFrameRef.current = window.requestAnimationFrame(() => {
         animationFrameRef.current = null;
-        updateElevation();
+        updateProgress();
       });
     };
 
-    updateElevation();
+    updateProgress();
     window.addEventListener("scroll", scheduleUpdate, { passive: true });
     window.addEventListener("resize", scheduleUpdate);
     mobileQuery.addEventListener("change", scheduleUpdate);
@@ -73,6 +72,7 @@ export function DashboardHeader({
     };
   }, []);
 
+  const isElevated = scrollProgress > MOBILE_ELEVATION_PROGRESS;
   const visibleProgress = 1 - scrollProgress;
   const headerStyle = {
     "--flynow-header-progress": scrollProgress.toFixed(3),
@@ -99,7 +99,7 @@ export function DashboardHeader({
         className={cn(
           "sticky top-0 z-40 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b px-4 pb-3 pt-4 transition-[background-color,border-color,box-shadow,backdrop-filter,min-height,row-gap] duration-200 sm:px-5 sm:pb-4 sm:pt-5 lg:flex lg:min-h-[92px] lg:items-end lg:justify-between lg:gap-4 lg:px-6",
           isElevated
-            ? "min-h-[86px] border-white/[0.06] bg-[#050505]/72 shadow-[0_16px_50px_rgba(0,0,0,0.36)] backdrop-blur-2xl sm:min-h-[112px] lg:min-h-[92px]"
+            ? "min-h-[86px] border-white/[0.06] bg-[#050505]/82 shadow-[0_10px_28px_rgba(0,0,0,0.28)] backdrop-blur-md sm:min-h-[112px] lg:min-h-[92px]"
             : "min-h-[104px] border-transparent bg-[#050505] shadow-none backdrop-blur-0 sm:min-h-[116px] lg:min-h-[92px]"
         )}
       >

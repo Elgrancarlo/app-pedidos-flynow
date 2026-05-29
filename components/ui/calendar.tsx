@@ -1118,7 +1118,7 @@ export const Calendar = ({
                       className={clsx(
                         "flex items-center justify-center text-sm text-center rounded transition",
                         isSameMonth(day, currentDate) && isAllowedDate ? "bg-transparent text-[#DADDE2]" : "bg-transparent text-[#4F535C]",
-                        isInRange && !isStart && !isEnd && !currentHover && "!bg-[var(--fly-brand-soft)] rounded-none",
+                        isInRange && !isStart && !isEnd && !currentHover && "!bg-[var(--fly-range-surface)] rounded-none",
                         isAllowedDate ? "cursor-pointer" : "cursor-not-allowed"
                       )}
                       onMouseEnter={() => isAllowedDate && handleMouseEnter(day)}
