@@ -22,6 +22,8 @@ import {
 } from "@/components/workspace/operational-ui";
 import { getFlynowDataMode } from "@/lib/data-mode";
 
+export const dynamic = "force-dynamic";
+
 function hasEnv(name: string) {
   return Boolean(process.env[name]);
 }
