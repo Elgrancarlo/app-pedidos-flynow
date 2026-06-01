@@ -9,17 +9,21 @@ import {
   Activity,
   Box,
   ChevronDown,
+  ChartNoAxesColumnIncreasing,
   ChartSpline,
+  Funnel,
   Inbox,
   LogOut,
   Menu,
   MoreHorizontal,
   Moon,
   Plus,
+  Radio,
   Search,
   ShoppingCart,
   SlidersHorizontal,
   Sun,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { useDashboardTheme } from "./theme-provider";
@@ -33,6 +37,10 @@ const PRIMARY_NAV = [
 
 const WORKSPACE_NAV = [
   { href: "/estoque", label: "Estoque", Icone: Box },
+  { href: "/analytics", label: "Analytics", Icone: ChartNoAxesColumnIncreasing },
+  { href: "/funil", label: "Funil", Icone: Funnel },
+  { href: "/upsells", label: "Upsells", Icone: TrendingUp },
+  { href: "/canais", label: "Canais", Icone: Radio },
   { href: "/configuracoes", label: "Configurações", Icone: SlidersHorizontal },
 ];
 
