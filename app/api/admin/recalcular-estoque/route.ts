@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { inferirGrupo } from "@/lib/produtos";
+import { isTrustedAppRequest } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,9 @@ const PAGE = 1000;
 
 
 export async function POST(req: NextRequest) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   const dry_run = req.nextUrl.searchParams.get("dry_run") === "true";
   const supabase = createServiceClient();
 
@@ -26,7 +30,9 @@ export async function POST(req: NextRequest) {
       .eq("status_pagamento", "paid")
       .eq("chargeback", false)
       .range(offset, offset + PAGE - 1);
-    if (error) break;
+    if (error) {
+      return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
+    }
     if (!data || data.length === 0) break;
     todosPedidosNome.push(...(data as typeof todosPedidosNome));
     if (data.length < PAGE) break;
@@ -105,7 +111,9 @@ export async function POST(req: NextRequest) {
       .eq("tipo", "venda")
       .not("referencia_pedido_id", "is", null)
       .range(offset, offset + PAGE - 1);
-    if (error) break;
+    if (error) {
+      return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
+    }
     if (!data || data.length === 0) break;
     movRefs.push(...data.map((m: { referencia_pedido_id: string }) => m.referencia_pedido_id));
     if (data.length < PAGE) break;
@@ -165,7 +173,9 @@ export async function POST(req: NextRequest) {
       .from("estoque_movimentacao")
       .select("produto_grupo, tipo, qtd_potes")
       .range(offset, offset + PAGE - 1);
-    if (error) break;
+    if (error) {
+      return NextResponse.json({ ok: false, erro: error.message }, { status: 500 });
+    }
     if (!data || data.length === 0) break;
     todasMov.push(...(data as typeof todasMov));
     if (data.length < PAGE) break;

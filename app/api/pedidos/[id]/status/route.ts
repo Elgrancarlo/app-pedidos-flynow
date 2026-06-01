@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import type { StatusPedido } from "@/lib/supabase";
+import { isTrustedAppRequest } from "@/lib/request-origin";
 
 const STATUS_VALIDOS: StatusPedido[] = [
   "pago", "nota_fiscal", "separacao", "aguardando_postagem",
@@ -11,6 +12,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   const { id } = await params;
   let body: { status?: string };
   try {

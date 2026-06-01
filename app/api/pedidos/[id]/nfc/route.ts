@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { isTrustedAppRequest } from "@/lib/request-origin";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   const { id } = await params;
   let body: { nfc_numero?: string; nfc_valor?: number };
   try {

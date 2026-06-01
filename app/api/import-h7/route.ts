@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { inferirGrupo } from "@/lib/produtos";
+import { isTrustedAppRequest } from "@/lib/request-origin";
 
 const H7_API_URL = process.env.H7_API_URL ?? "https://api.haga7digital.com.br/api/orders/fly";
 const H7_TOKEN = process.env.H7_TOKEN ?? "";
@@ -19,6 +20,12 @@ function mapearStatusH7(h7Status: string, temRastreio: boolean): string {
     case "chargeback":     return "aguardando_postagem";
     default:               return "aguardando_postagem";
   }
+}
+
+function mapearStatusPagamentoH7(h7Status: string) {
+  if (h7Status === "chargeback") return "chargeback";
+  if (h7Status === "cancelled" || h7Status === "returning") return "cancelled";
+  return null;
 }
 
 interface H7Customer {
@@ -56,6 +63,9 @@ interface H7Response {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   if (!H7_TOKEN) {
     return NextResponse.json({ ok: false, erro: "H7_TOKEN não configurado" }, { status: 500 });
   }
@@ -134,13 +144,13 @@ export async function POST(req: NextRequest) {
           produto_grupo: inferirGrupo(order.plan?.name, order.product?.name) ?? order.product?.name ?? null,
           qtd_potes: order.plan?.qty ?? null,
           valor_total: order.total_value ?? order.value ?? null,
-          data_pagamento: order.transaction_created_at ?? null,
+          data_pagamento: null,
           endereco_entrega: endereco,
           codigo_rastreio: order.tracking_code ?? null,
           status: mapearStatusH7(order.status, !!order.tracking_code),
-          status_pagamento: order.status === "chargeback" ? "chargeback" : "paid",
+          status_pagamento: mapearStatusPagamentoH7(order.status),
           chargeback: order.status === "chargeback",
-          data_entrega: order.status === "delivered" ? order.transaction_created_at ?? null : null,
+          data_entrega: null,
         };
       });
 
