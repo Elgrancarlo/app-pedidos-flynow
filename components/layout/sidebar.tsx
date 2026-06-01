@@ -14,7 +14,6 @@ import {
   Inbox,
   LogOut,
   Menu,
-  MoreHorizontal,
   Moon,
   Plus,
   Radio,
@@ -413,11 +412,11 @@ export default function Sidebar() {
             ))}
           </div>
 
-          <div className="mt-4">
-            <div className="space-y-0.5">
+          <div className="mt-5">
+            <div className="space-y-3">
               {WORKSPACE_NAV_SECTIONS.map((section) => (
                 <section key={section.label}>
-                  <p className="px-3 pb-0.5 text-[9px] font-semibold uppercase leading-3 tracking-[0.14em] text-[#565B65]">
+                  <p className="px-3 pb-1 text-[9px] font-semibold uppercase leading-3 tracking-[0.14em] text-[#565B65]">
                     {section.label}
                   </p>
                   <div className="space-y-1">
@@ -433,18 +432,6 @@ export default function Sidebar() {
                   </div>
                 </section>
               ))}
-
-              <button
-                type="button"
-                className="group flex h-10 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold text-[#A3A6AE] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#E8E9EC] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-              >
-                <MoreHorizontal
-                  size={18}
-                  strokeWidth={2}
-                  className="shrink-0 text-[#747882] transition-colors duration-150 group-hover:text-[#AEB2BB]"
-                />
-                <span className="truncate">Mais</span>
-              </button>
             </div>
           </div>
         </nav>
