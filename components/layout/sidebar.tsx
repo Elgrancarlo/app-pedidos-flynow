@@ -342,11 +342,7 @@ export default function Sidebar() {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden rounded-r-2xl border-r border-[#1C2026] bg-[#0B0C0E] shadow-[10px_0_30px_rgba(0,0,0,0.18)] xl:flex">
         <div className="px-3 pb-3 pt-4">
           <div className="flex h-11 items-center justify-between gap-2">
-            <button
-              type="button"
-              title="Workspace Flynow"
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl px-1.5 py-1.5 text-left outline-none transition-colors duration-150 hover:bg-[#151619] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-            >
+            <div className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1.5 text-left">
               <span className="flex size-8 items-center justify-center">
                 <FlyNowMark />
               </span>
@@ -362,7 +358,7 @@ export default function Sidebar() {
               >
                 Flynow
               </span>
-            </button>
+            </div>
 
             <div className="flex shrink-0 items-center gap-1">
               <button
