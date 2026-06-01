@@ -15,9 +15,7 @@ import {
   LogOut,
   Menu,
   Moon,
-  Plus,
   Radio,
-  Search,
   ShoppingCart,
   SlidersHorizontal,
   Sun,
@@ -369,14 +367,6 @@ export default function Sidebar() {
             <div className="flex shrink-0 items-center gap-1">
               <button
                 type="button"
-                aria-label="Buscar"
-                title="Buscar"
-                className="flex size-7 cursor-pointer items-center justify-center rounded-md text-[#858A94] outline-none transition-colors duration-150 hover:bg-[#151619] hover:text-[#DADDE2] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-              >
-                <Search size={15} strokeWidth={2.2} />
-              </button>
-              <button
-                type="button"
                 aria-label={themeActionLabel}
                 title={themeActionLabel}
                 onClick={toggleTheme}
@@ -384,14 +374,6 @@ export default function Sidebar() {
               >
                 <ThemeIcon size={15} strokeWidth={2.2} />
               </button>
-              <Link
-                href="/pedidos"
-                aria-label="Criar pedido"
-                title="Criar pedido"
-                className="flex size-7 items-center justify-center rounded-md border border-[#242932] bg-[#121418] text-[#DADDE2] outline-none transition-colors duration-150 hover:border-[#343A44] hover:bg-[#171A20] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-              >
-                <Plus size={16} strokeWidth={2.3} />
-              </Link>
             </div>
           </div>
         </div>
@@ -516,35 +498,18 @@ export default function Sidebar() {
                 }
               >
                 <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
-                  Ações rápidas
+                  Preferências
                 </p>
-                <Link
-                  href="/pedidos"
-                  onClick={closeMobileMore}
-                  className="flex h-12 items-center justify-center gap-2 rounded-[12px] border border-[#D6A84F]/24 bg-[#151208] px-3 text-sm font-semibold text-[#F5F2EA] outline-none transition-colors duration-150 hover:border-[#D6A84F]/38 hover:bg-[#1A160C] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
+                <button
+                  type="button"
+                  aria-label={themeActionLabel}
+                  title={themeActionLabel}
+                  onClick={toggleThemeFromMobileMore}
+                  className="flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
                 >
-                  <Plus size={16} strokeWidth={2.3} />
-                  <span>Criar pedido</span>
-                </Link>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-white/[0.07] bg-[#0D0F12] px-3 text-sm font-semibold text-[#DADDE2] outline-none transition-colors duration-150 hover:border-white/[0.12] hover:bg-[#151619] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-                  >
-                    <Search size={16} strokeWidth={2.2} />
-                    <span>Buscar</span>
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={themeActionLabel}
-                    title={themeActionLabel}
-                    onClick={toggleThemeFromMobileMore}
-                    className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-[11px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                  >
-                    <ThemeIcon size={16} strokeWidth={2.2} />
-                    <span>Tema</span>
-                  </button>
-                </div>
+                  <ThemeIcon size={16} strokeWidth={2.2} />
+                  <span>Tema</span>
+                </button>
               </div>
 
               <div
