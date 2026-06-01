@@ -18,9 +18,14 @@ export const GRUPO_MAP: Array<[RegExp, string]> = [
   [/duratril/i,         "Duratril"],
   [/coco\s*slim/i,      "Coco Slim"],
   [/alpen\s*slim/i,     "Alpen Slim"],
+  [/derma\s*bloom/i,    "Derma Bloom"],
   [/insutril/i,         "Insutril"],
   [/sonuszen/i,         "Sonuszen"],
   [/glicorin/i,         "Glicorin"],
+  [/vision\s*pure/i,    "Vision Pure"],
+  [/vitalafil\s*caps/i, "Vitalafil Caps"],
+  [/lipo\s*guumy/i,     "Lipo Guumy"],
+  [/lipo\s*gummy/i,     "Lipo Guumy"],
 ];
 
 /**
