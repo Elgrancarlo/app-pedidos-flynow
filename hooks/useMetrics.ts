@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 
+import { shouldUseMockData } from "@/lib/data-mode";
 import { getMockMetricsScenario } from "@/lib/mock-data";
 import {
   adaptAnalyticsOverviewToMetrics,
@@ -68,6 +69,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
     const mockScenario = new URLSearchParams(window.location.search).get(
       "mockMetrics"
     );
+    const useMockData = shouldUseMockData() || Boolean(mockScenario);
 
     async function loadMetrics() {
       try {
@@ -75,7 +77,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
           throw new Error("Mock de erro ativado.");
         }
 
-        const nextData = mockScenario
+        const nextData = useMockData
           ? getMockMetricsScenario(mockScenario)
           : adaptAnalyticsOverviewToMetrics(
               await fetchAnalyticsOverview(fromParam, toParam, controller.signal)

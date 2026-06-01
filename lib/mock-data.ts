@@ -1,72 +1,219 @@
-import type { MetricsData } from "@/lib/metrics";
+import type { MetricsData, RecoveryChannelKey } from "@/lib/metrics";
 
-export const mockMetrics: MetricsData = {
-  faturamento_total: 48320,
-  investimento_total: 12400,
-  roas: 3.9,
-  ofertas: [
-    { id: "gelatina-slim", nome: "Gelatina Slim" },
-    { id: "glico-reset", nome: "Glico Reset" },
-    { id: "power-66", nome: "Power 66" },
-  ],
-  conversoes_etapa: {
-    frontend: { quantidade: 320, receita: 28800, taxa: 0.032 },
-    upsell: { quantidade: 140, receita: 12600, taxa: 0.437 },
-    downsell: { quantidade: 60, receita: 6920, taxa: 0.187 },
-  },
-  conversoes_etapa_por_oferta: {
-    "gelatina-slim": {
-      frontend: { quantidade: 128, receita: 11520, taxa: 0.036 },
-      upsell: { quantidade: 54, receita: 4860, taxa: 0.422 },
-      downsell: { quantidade: 22, receita: 2540, taxa: 0.172 },
-    },
-    "glico-reset": {
-      frontend: { quantidade: 104, receita: 9360, taxa: 0.029 },
-      upsell: { quantidade: 49, receita: 4410, taxa: 0.471 },
-      downsell: { quantidade: 21, receita: 2420, taxa: 0.202 },
-    },
-    "power-66": {
-      frontend: { quantidade: 88, receita: 7920, taxa: 0.031 },
-      upsell: { quantidade: 37, receita: 3330, taxa: 0.421 },
-      downsell: { quantidade: 17, receita: 1960, taxa: 0.193 },
-    },
-  },
-  conversoes_canal: {
-    email: { quantidade: 45, receita: 4050, taxa: 0.126 },
-    sms: { quantidade: 30, receita: 2700, taxa: 0.094 },
-    call_center: { quantidade: 22, receita: 3960, taxa: 0.183 },
-    ia_recuperacao: { quantidade: 18, receita: 1620, taxa: 0.112 },
-  },
-  conversoes_canal_por_oferta: {
-    "gelatina-slim": {
-      email: { quantidade: 18, receita: 1620, taxa: 0.132 },
-      sms: { quantidade: 11, receita: 990, taxa: 0.091 },
-      call_center: { quantidade: 9, receita: 1620, taxa: 0.18 },
-      ia_recuperacao: { quantidade: 8, receita: 720, taxa: 0.118 },
-    },
-    "glico-reset": {
-      email: { quantidade: 15, receita: 1350, taxa: 0.119 },
-      sms: { quantidade: 10, receita: 900, taxa: 0.097 },
-      call_center: { quantidade: 7, receita: 1260, taxa: 0.175 },
-      ia_recuperacao: { quantidade: 6, receita: 540, taxa: 0.111 },
-    },
-    "power-66": {
-      email: { quantidade: 12, receita: 1080, taxa: 0.127 },
-      sms: { quantidade: 9, receita: 810, taxa: 0.094 },
-      call_center: { quantidade: 6, receita: 1080, taxa: 0.197 },
-      ia_recuperacao: { quantidade: 4, receita: 360, taxa: 0.103 },
-    },
-  },
-  serie_temporal: Array.from({ length: 30 }, (_, index) => {
-    const day = index + 1;
+type MockBuildOptions = {
+  days?: number;
+  revenueMultiplier?: number;
+  spendMultiplier?: number;
+  recoveryMultiplier?: number;
+  includeChannels?: boolean;
+};
+
+const OFFERS = [
+  { id: "power-66", nome: "Power 66", share: 0.34, ticket: 218 },
+  { id: "derma-bloom", nome: "Derma Bloom", share: 0.24, ticket: 196 },
+  { id: "glico-reset", nome: "Glico Reset", share: 0.18, ticket: 172 },
+  { id: "gelatina-slim", nome: "Gelatina Slim", share: 0.14, ticket: 149 },
+  { id: "coco-slim", nome: "Coco Slim", share: 0.1, ticket: 167 },
+] as const;
+
+const CHANNELS: Array<{
+  key: RecoveryChannelKey;
+  share: number;
+  conversionRate: number;
+}> = [
+  { key: "ia_recuperacao", share: 0.38, conversionRate: 0.148 },
+  { key: "email", share: 0.27, conversionRate: 0.091 },
+  { key: "call_center", share: 0.22, conversionRate: 0.174 },
+  { key: "sms", share: 0.13, conversionRate: 0.064 },
+];
+
+function roundCurrency(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function toDateKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(date.getDate() + days);
+  return next;
+}
+
+function getSeries({
+  days = 30,
+  revenueMultiplier = 1,
+  spendMultiplier = 1,
+}: Required<Pick<MockBuildOptions, "days" | "revenueMultiplier" | "spendMultiplier">>) {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const start = addDays(today, -(days - 1));
+
+  return Array.from({ length: days }, (_, index) => {
+    const day = addDays(start, index);
+    const weekday = day.getDay();
+    const weekendFactor = weekday === 0 ? 0.78 : weekday === 6 ? 0.86 : 1;
+    const campaignPulse = index % 9 === 5 ? 1.18 : index % 11 === 2 ? 0.9 : 1;
+    const monthRamp = 1 + index * 0.012;
+    const revenue = roundCurrency(
+      (7200 + index * 180 + (index % 5) * 620) *
+        weekendFactor *
+        campaignPulse *
+        monthRamp *
+        revenueMultiplier
+    );
+    const investment = roundCurrency(
+      (2050 + index * 42 + (index % 4) * 210) *
+        (campaignPulse > 1 ? 1.1 : 1) *
+        spendMultiplier
+    );
 
     return {
-      data: new Date(2026, 4, day).toISOString().split("T")[0],
-      faturamento: 1200 + day * 85 + (day % 5) * 180,
-      investimento: 280 + day * 12 + (day % 4) * 45,
+      data: toDateKey(day),
+      faturamento: revenue,
+      investimento: investment,
     };
-  }),
-};
+  });
+}
+
+function buildMetrics({
+  days = 30,
+  revenueMultiplier = 1,
+  spendMultiplier = 1,
+  recoveryMultiplier = 1,
+  includeChannels = true,
+}: MockBuildOptions = {}): MetricsData {
+  const serie_temporal = getSeries({
+    days,
+    revenueMultiplier,
+    spendMultiplier,
+  });
+  const faturamento_total = roundCurrency(
+    serie_temporal.reduce((total, item) => total + item.faturamento, 0)
+  );
+  const investimento_total = roundCurrency(
+    serie_temporal.reduce((total, item) => total + item.investimento, 0)
+  );
+  const receitaFrontend = roundCurrency(faturamento_total * 0.67);
+  const receitaUpsell = roundCurrency(faturamento_total * 0.24);
+  const receitaDownsell = roundCurrency(faturamento_total - receitaFrontend - receitaUpsell);
+  const frontendQuantidade = Math.round(receitaFrontend / 192);
+  const upsellQuantidade = Math.round(frontendQuantidade * 0.36 * recoveryMultiplier);
+  const downsellQuantidade = Math.round(frontendQuantidade * 0.14 * recoveryMultiplier);
+
+  const conversoes_etapa = {
+    frontend: {
+      quantidade: frontendQuantidade,
+      receita: receitaFrontend,
+      taxa: 0.031,
+    },
+    upsell: {
+      quantidade: upsellQuantidade,
+      receita: receitaUpsell,
+      taxa: frontendQuantidade > 0 ? upsellQuantidade / frontendQuantidade : null,
+    },
+    downsell: {
+      quantidade: downsellQuantidade,
+      receita: receitaDownsell,
+      taxa: frontendQuantidade > 0 ? downsellQuantidade / frontendQuantidade : null,
+    },
+  } satisfies MetricsData["conversoes_etapa"];
+
+  const conversoes_etapa_por_oferta = OFFERS.reduce<
+    NonNullable<MetricsData["conversoes_etapa_por_oferta"]>
+  >((acc, offer, index) => {
+    const offerFrontendQuantity = Math.round(frontendQuantidade * offer.share);
+    const offerUpsellQuantity = Math.round(upsellQuantidade * offer.share * (1 + index * 0.018));
+    const offerDownsellQuantity = Math.round(downsellQuantidade * offer.share * (1 - index * 0.012));
+
+    acc[offer.id] = {
+      frontend: {
+        quantidade: offerFrontendQuantity,
+        receita: roundCurrency(receitaFrontend * offer.share),
+        taxa: 0.027 + index * 0.003,
+      },
+      upsell: {
+        quantidade: offerUpsellQuantity,
+        receita: roundCurrency(receitaUpsell * offer.share),
+        taxa:
+          offerFrontendQuantity > 0
+            ? offerUpsellQuantity / offerFrontendQuantity
+            : null,
+      },
+      downsell: {
+        quantidade: offerDownsellQuantity,
+        receita: roundCurrency(receitaDownsell * offer.share),
+        taxa:
+          offerFrontendQuantity > 0
+            ? offerDownsellQuantity / offerFrontendQuantity
+            : null,
+      },
+    };
+
+    return acc;
+  }, {});
+
+  const recoveryRevenue = roundCurrency(faturamento_total * 0.18 * recoveryMultiplier);
+  const recoveryQuantity = Math.round(frontendQuantidade * 0.22 * recoveryMultiplier);
+  const conversoes_canal = CHANNELS.reduce<MetricsData["conversoes_canal"]>(
+    (acc, channel) => {
+      acc[channel.key] = includeChannels
+        ? {
+            quantidade: Math.round(recoveryQuantity * channel.share),
+            receita: roundCurrency(recoveryRevenue * channel.share),
+            taxa: channel.conversionRate,
+          }
+        : { quantidade: 0, receita: 0, taxa: null };
+
+      return acc;
+    },
+    {
+      email: { quantidade: 0, receita: 0, taxa: null },
+      sms: { quantidade: 0, receita: 0, taxa: null },
+      call_center: { quantidade: 0, receita: 0, taxa: null },
+      ia_recuperacao: { quantidade: 0, receita: 0, taxa: null },
+    }
+  );
+
+  const conversoes_canal_por_oferta = OFFERS.reduce<
+    NonNullable<MetricsData["conversoes_canal_por_oferta"]>
+  >((acc, offer) => {
+    acc[offer.id] = CHANNELS.reduce<MetricsData["conversoes_canal"]>(
+      (channelAcc, channel) => {
+        channelAcc[channel.key] = includeChannels
+          ? {
+              quantidade: Math.round(recoveryQuantity * offer.share * channel.share),
+              receita: roundCurrency(recoveryRevenue * offer.share * channel.share),
+              taxa: channel.conversionRate,
+            }
+          : { quantidade: 0, receita: 0, taxa: null };
+
+        return channelAcc;
+      },
+      {
+        email: { quantidade: 0, receita: 0, taxa: null },
+        sms: { quantidade: 0, receita: 0, taxa: null },
+        call_center: { quantidade: 0, receita: 0, taxa: null },
+        ia_recuperacao: { quantidade: 0, receita: 0, taxa: null },
+      }
+    );
+
+    return acc;
+  }, {});
+
+  return {
+    faturamento_total,
+    investimento_total,
+    roas: investimento_total > 0 ? faturamento_total / investimento_total : 0,
+    ofertas: OFFERS.map(({ id, nome }) => ({ id, nome })),
+    conversoes_etapa,
+    conversoes_etapa_por_oferta,
+    conversoes_canal,
+    conversoes_canal_por_oferta,
+    serie_temporal,
+  };
+}
 
 const zeroStageConversions = {
   frontend: { quantidade: 0, receita: 0, taxa: null },
@@ -81,23 +228,21 @@ const zeroChannelConversions = {
   ia_recuperacao: { quantidade: 0, receita: 0, taxa: null },
 } satisfies MetricsData["conversoes_canal"];
 
-const zeroStageConversionsByOffer = {
-  "gelatina-slim": zeroStageConversions,
-  "glico-reset": zeroStageConversions,
-  "power-66": zeroStageConversions,
-} satisfies NonNullable<MetricsData["conversoes_etapa_por_oferta"]>;
+const zeroStageConversionsByOffer = Object.fromEntries(
+  OFFERS.map((offer) => [offer.id, zeroStageConversions])
+) as NonNullable<MetricsData["conversoes_etapa_por_oferta"]>;
 
-const zeroChannelConversionsByOffer = {
-  "gelatina-slim": zeroChannelConversions,
-  "glico-reset": zeroChannelConversions,
-  "power-66": zeroChannelConversions,
-} satisfies NonNullable<MetricsData["conversoes_canal_por_oferta"]>;
+const zeroChannelConversionsByOffer = Object.fromEntries(
+  OFFERS.map((offer) => [offer.id, zeroChannelConversions])
+) as NonNullable<MetricsData["conversoes_canal_por_oferta"]>;
+
+export const mockMetrics: MetricsData = buildMetrics();
 
 export const mockEmptyMetrics: MetricsData = {
   faturamento_total: 0,
   investimento_total: 0,
   roas: 0,
-  ofertas: mockMetrics.ofertas,
+  ofertas: OFFERS.map(({ id, nome }) => ({ id, nome })),
   conversoes_etapa: zeroStageConversions,
   conversoes_etapa_por_oferta: zeroStageConversionsByOffer,
   conversoes_canal: zeroChannelConversions,
@@ -105,66 +250,16 @@ export const mockEmptyMetrics: MetricsData = {
   serie_temporal: [],
 };
 
-export const mockLowPerformanceMetrics: MetricsData = {
-  faturamento_total: 9800,
-  investimento_total: 12600,
-  roas: 0.8,
-  ofertas: mockMetrics.ofertas,
-  conversoes_etapa: {
-    frontend: { quantidade: 96, receita: 5400, taxa: 0.014 },
-    upsell: { quantidade: 18, receita: 2500, taxa: 0.188 },
-    downsell: { quantidade: 9, receita: 1900, taxa: 0.094 },
-  },
-  conversoes_etapa_por_oferta: {
-    "gelatina-slim": {
-      frontend: { quantidade: 52, receita: 2920, taxa: 0.017 },
-      upsell: { quantidade: 9, receita: 1260, taxa: 0.173 },
-      downsell: { quantidade: 5, receita: 1060, taxa: 0.096 },
-    },
-    "glico-reset": {
-      frontend: { quantidade: 44, receita: 2480, taxa: 0.012 },
-      upsell: { quantidade: 9, receita: 1240, taxa: 0.205 },
-      downsell: { quantidade: 4, receita: 840, taxa: 0.091 },
-    },
-    "power-66": zeroStageConversions,
-  },
-  conversoes_canal: {
-    email: { quantidade: 18, receita: 1620, taxa: 0.071 },
-    sms: { quantidade: 11, receita: 990, taxa: 0.046 },
-    call_center: { quantidade: 6, receita: 1080, taxa: 0.082 },
-    ia_recuperacao: { quantidade: 4, receita: 360, taxa: 0.037 },
-  },
-  conversoes_canal_por_oferta: {
-    "gelatina-slim": {
-      email: { quantidade: 10, receita: 900, taxa: 0.08 },
-      sms: { quantidade: 6, receita: 540, taxa: 0.052 },
-      call_center: { quantidade: 3, receita: 540, taxa: 0.079 },
-      ia_recuperacao: { quantidade: 2, receita: 180, taxa: 0.034 },
-    },
-    "glico-reset": {
-      email: { quantidade: 8, receita: 720, taxa: 0.064 },
-      sms: { quantidade: 5, receita: 450, taxa: 0.041 },
-      call_center: { quantidade: 3, receita: 540, taxa: 0.086 },
-      ia_recuperacao: { quantidade: 2, receita: 180, taxa: 0.039 },
-    },
-    "power-66": zeroChannelConversions,
-  },
-  serie_temporal: Array.from({ length: 14 }, (_, index) => {
-    const day = index + 15;
+export const mockLowPerformanceMetrics: MetricsData = buildMetrics({
+  days: 14,
+  revenueMultiplier: 0.42,
+  spendMultiplier: 1.18,
+  recoveryMultiplier: 0.52,
+});
 
-    return {
-      data: new Date(2026, 4, day).toISOString().split("T")[0],
-      faturamento: 420 + day * 18 + (day % 3) * 60,
-      investimento: 740 + day * 15 + (day % 4) * 80,
-    };
-  }),
-};
-
-export const mockNoChannelMetrics: MetricsData = {
-  ...mockMetrics,
-  conversoes_canal: zeroChannelConversions,
-  conversoes_canal_por_oferta: zeroChannelConversionsByOffer,
-};
+export const mockNoChannelMetrics: MetricsData = buildMetrics({
+  includeChannels: false,
+});
 
 export const mockMetricsScenarios = {
   default: mockMetrics,

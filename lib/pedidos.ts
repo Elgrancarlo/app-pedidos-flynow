@@ -318,7 +318,8 @@ export function formatPedidosRange(startDate: string, endDate: string) {
 }
 
 export function createMockPedidos(total = PEDIDOS_TOTAL_MOCK): Pedido[] {
-  const baseDate = new Date("2026-05-28T12:00:00");
+  const baseDate = new Date();
+  baseDate.setHours(12, 0, 0, 0);
 
   return Array.from({ length: total }, (_, rawIndex) => {
     const index = rawIndex + 1;
