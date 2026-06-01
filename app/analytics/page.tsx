@@ -1,10 +1,4 @@
-import {
-  BarChart3,
-  Megaphone,
-  MousePointerClick,
-  Target,
-  Wallet,
-} from "lucide-react";
+import { Megaphone, MousePointerClick, Target, Wallet } from "lucide-react";
 
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -144,7 +138,6 @@ export default async function AnalyticsPage() {
           <Panel
             title="Produtos por receita"
             description={`${formatDate(data.range.startDate)} - ${formatDate(data.range.endDate)}`}
-            action={<BarChart3 aria-hidden="true" className="size-4 text-[var(--fly-text-muted)]" />}
           >
             <DataList
               valueLabel="receita"

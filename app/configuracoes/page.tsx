@@ -1,9 +1,6 @@
 import {
-  Bot,
-  Database,
   KeyRound,
   RefreshCw,
-  ShieldCheck,
   SlidersHorizontal,
   Webhook,
 } from "lucide-react";
@@ -110,7 +107,6 @@ export default function ConfiguracoesPage() {
           <Panel
             title="Ambiente"
             description="Status das chaves necessárias para trocar mock por dados reais"
-            action={<Database aria-hidden="true" className="size-4 text-[var(--fly-text-muted)]" />}
           >
             <DataList
               valueLabel="env"
@@ -223,9 +219,9 @@ export default function ConfiguracoesPage() {
             <div className="space-y-3">
               <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] p-3">
                 <div className="flex items-start gap-3">
-                  <ShieldCheck
+                  <span
                     aria-hidden="true"
-                    className="mt-0.5 size-4 shrink-0 text-[var(--fly-brand-strong)]"
+                    className="mt-1.5 size-1.5 shrink-0 rounded-full bg-white/35"
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-[var(--fly-text)]">
@@ -245,7 +241,6 @@ export default function ConfiguracoesPage() {
                   disabled
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70"
                 >
-                  <Bot aria-hidden="true" className="size-3.5" />
                   Recálculo bloqueado em mock
                 </button>
               )}

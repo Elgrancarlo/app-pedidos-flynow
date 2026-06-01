@@ -1,7 +1,6 @@
 import {
   Activity,
   Funnel,
-  ListChecks,
   ReceiptText,
   TrendingUp,
 } from "lucide-react";
@@ -150,7 +149,6 @@ export default async function FunilPage() {
         <Panel
           title="Dias do funil"
           description="Visão diária por produto e canal"
-          action={<ListChecks aria-hidden="true" className="size-4 text-[var(--fly-text-muted)]" />}
         >
           <SimpleTable
             columns={["Data", "Produto", "Canal", "Vendas", "Receita"]}

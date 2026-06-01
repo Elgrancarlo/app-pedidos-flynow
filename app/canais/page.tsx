@@ -1,7 +1,6 @@
 import {
   BadgeDollarSign,
   MousePointerClick,
-  Radio,
   ReceiptText,
   Target,
 } from "lucide-react";
@@ -104,7 +103,6 @@ export default async function CanaisPage() {
           <Panel
             title="Ranking de canais"
             description="Receita, vendas e eficiência por origem"
-            action={<Radio aria-hidden="true" className="size-4 text-[var(--fly-text-muted)]" />}
           >
             <DataList
               valueLabel="receita"

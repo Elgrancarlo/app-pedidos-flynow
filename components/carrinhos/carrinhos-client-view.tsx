@@ -139,27 +139,27 @@ const FUNNEL_TONES: Record<
 > = {
   iniciado: {
     dot: "bg-[#D6A84F]",
-    bar: "bg-[#D6A84F]",
+    bar: "bg-white/45",
     badge: "flynow-status-badge--neutral",
   },
   checkout: {
-    dot: "bg-[#60A5FA]",
-    bar: "bg-[#60A5FA]",
+    dot: "bg-white/35",
+    bar: "bg-white/35",
     badge: "flynow-status-badge--neutral",
   },
   abandonado: {
-    dot: "bg-[#FBBF24]",
-    bar: "bg-[#FBBF24]",
+    dot: "bg-[#D6A84F]",
+    bar: "bg-white/40",
     badge: "flynow-status-badge--warning",
   },
   recuperado: {
     dot: "bg-[#4ADE80]",
-    bar: "bg-[#4ADE80]",
+    bar: "bg-white/50",
     badge: "flynow-status-badge--success",
   },
   perdido: {
     dot: "bg-[#F87171]",
-    bar: "bg-[#F87171]",
+    bar: "bg-white/45",
     badge: "flynow-status-badge--danger",
   },
 };
@@ -594,8 +594,8 @@ function MetricPanel({
 }) {
   const dotClass = {
     gold: "bg-[#D6A84F]",
-    blue: "bg-[#60A5FA]",
-    green: "bg-[#4ADE80]",
+    blue: "bg-white/35",
+    green: "bg-white/35",
     red: "bg-[#F87171]",
   }[tone];
 
@@ -605,7 +605,7 @@ function MetricPanel({
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <span aria-hidden="true" className={cn("size-1.5 rounded-full", dotClass)} />
-            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+            <p className="truncate text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
               {label}
             </p>
           </div>
@@ -636,7 +636,7 @@ function MetricPanel({
                   {row.displayValue ?? row.value.toLocaleString("pt-BR")}
                 </span>
               </div>
-              <div className="h-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <div className="h-px overflow-hidden rounded-full bg-white/[0.08]">
                 <span
                   aria-hidden="true"
                   className={cn("block h-full rounded-full", dotClass)}

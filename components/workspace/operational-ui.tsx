@@ -8,7 +8,6 @@ const toneStyles: Record<
   Tone,
   {
     dot: string;
-    icon: string;
     bar: string;
     text: string;
     surface: string;
@@ -16,35 +15,30 @@ const toneStyles: Record<
 > = {
   gold: {
     dot: "bg-[#D6A84F]",
-    icon: "text-[var(--fly-brand-strong)]",
-    bar: "bg-[#D6A84F]",
-    text: "text-[var(--fly-brand-strong)]",
-    surface: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
+    bar: "bg-white/55",
+    text: "text-[var(--fly-text-soft)]",
+    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
   },
   blue: {
-    dot: "bg-[#60A5FA]",
-    icon: "text-[#93C5FD]",
-    bar: "bg-[#60A5FA]",
-    text: "text-[#93C5FD]",
-    surface: "border-[#60A5FA]/20 bg-[#0A1424]",
+    dot: "bg-white/35",
+    bar: "bg-white/40",
+    text: "text-[var(--fly-text-soft)]",
+    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
   },
   green: {
     dot: "bg-[#4ADE80]",
-    icon: "text-[#86EFAC]",
-    bar: "bg-[#4ADE80]",
+    bar: "bg-white/50",
     text: "text-[#86EFAC]",
-    surface: "border-[#4ADE80]/18 bg-[#0D1F14]/80",
+    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
   },
   red: {
     dot: "bg-[#F87171]",
-    icon: "text-[var(--fly-danger-strong)]",
-    bar: "bg-[#F87171]",
+    bar: "bg-white/45",
     text: "text-[var(--fly-danger-strong)]",
-    surface: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
+    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
   },
   neutral: {
     dot: "bg-white/35",
-    icon: "text-[var(--fly-text-muted)]",
     bar: "bg-white/35",
     text: "text-[var(--fly-text-soft)]",
     surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
@@ -54,7 +48,9 @@ const toneStyles: Record<
 export function PageBody({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
-      <div className="flex flex-col gap-4 sm:gap-5">{children}</div>
+      <div className="flynow-dashboard-content flex flex-col gap-4 sm:gap-5">
+        {children}
+      </div>
     </div>
   );
 }
@@ -73,7 +69,7 @@ export function StatCard({
   label,
   value,
   detail,
-  Icon,
+  Icon: _Icon,
   tone = "neutral",
   rows,
 }: {
@@ -91,7 +87,7 @@ export function StatCard({
   const styles = toneStyles[tone];
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -105,15 +101,6 @@ export function StatCard({
           </p>
           <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">{detail}</p>
         </div>
-        <span
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-[8px] border",
-            styles.surface,
-            styles.icon
-          )}
-        >
-          <Icon aria-hidden="true" className="size-4" />
-        </span>
       </div>
 
       {rows?.length ? (
@@ -129,7 +116,7 @@ export function StatCard({
                 </span>
               </div>
               {typeof row.meter === "number" ? (
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+                <div className="mt-1.5 h-px overflow-hidden rounded-full bg-white/[0.08]">
                   <span
                     aria-hidden="true"
                     className={cn("block h-full rounded-full", styles.bar)}
@@ -159,7 +146,7 @@ export function Panel({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
+    <section className="flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
       <div className="flex min-w-0 flex-col gap-3 border-b border-white/[0.06] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-start gap-3">
           <span
@@ -205,7 +192,7 @@ export function DataList({
         return (
           <div
             key={row.label}
-            className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] px-3 py-2.5 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.035]"
+            className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-2.5 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.028]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -231,7 +218,7 @@ export function DataList({
               </div>
             </div>
             {typeof row.meter === "number" ? (
-              <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
+              <div className="mt-2.5 h-px overflow-hidden rounded-full bg-white/[0.08]">
                 <span
                   aria-hidden="true"
                   className={cn("block h-full rounded-full", styles.bar)}

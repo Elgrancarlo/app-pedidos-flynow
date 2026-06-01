@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Archive,
   Boxes,
   PackageMinus,
   PackagePlus,
@@ -209,7 +208,7 @@ export default async function EstoquePage({
                         <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
                           Entrada
                         </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-[#93C5FD]">
+                        <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
                           +{formatNumber(grupo.entradasPeriodo)}
                         </p>
                       </div>
@@ -217,7 +216,7 @@ export default async function EstoquePage({
                         <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
                           Venda
                         </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-[#86EFAC]">
+                        <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
                           -{formatNumber(grupo.vendasPeriodo)}
                         </p>
                       </div>
@@ -234,7 +233,7 @@ export default async function EstoquePage({
                   <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.07]">
                     <span
                       aria-hidden="true"
-                      className="block h-full rounded-full bg-[#D6A84F]"
+                      className="block h-full rounded-full bg-white/45"
                       style={{
                         width: `${Math.max((grupo.estoque_atual / maxSaldo) * 100, 4)}%`,
                       }}
@@ -264,7 +263,6 @@ export default async function EstoquePage({
         <Panel
           title="Extrato de movimentações"
           description={`${data.periodo.label} · ultimos ${Math.min(data.movimentacoes.length, 120)} registros`}
-          action={<Archive aria-hidden="true" className="size-4 text-[var(--fly-text-muted)]" />}
         >
           <SimpleTable
             columns={["Data", "Produto", "Tipo", "Observacao", "Potes"]}
