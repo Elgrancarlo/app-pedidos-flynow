@@ -96,7 +96,7 @@ export function StatCard({
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
-            <p className="truncate text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+            <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
               {label}
             </p>
           </div>
@@ -225,7 +225,7 @@ export function DataList({
                 <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
                   {row.value}
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-dim)]">
+                <p className="mt-0.5 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
                   {valueLabel}
                 </p>
               </div>
@@ -259,7 +259,7 @@ export function SimpleTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] table-fixed text-left text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             {columns.map((column, index) => (
               <th
                 key={column}

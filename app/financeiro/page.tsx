@@ -1,68 +1,52 @@
+import {
+  BadgePercent,
+  ReceiptText,
+  ShieldAlert,
+  Wallet,
+} from "lucide-react";
+
 import Shell from "@/components/layout/shell";
-import PageHeader from "@/components/page-header";
-import FiltroPeriodo from "@/components/pedidos/filtro-periodo";
-import { createServiceClient } from "@/lib/supabase";
-import { TrendingUp, TrendingDown, ShoppingBag, Wallet } from "lucide-react";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
+import {
+  DataList,
+  PageBody,
+  Panel,
+  SimpleTable,
+  StatCard,
+  StatGrid,
+  StatusPill,
+} from "@/components/workspace/operational-ui";
+import {
+  getDefaultFinanceiroRange,
+  getFinanceiroPageData,
+  type FinanceiroRange,
+} from "@/lib/financeiro";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function defaultDates() {
-  const hoje = new Date();
-  const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+function resolveRange(params: { startDate?: string; endDate?: string }) {
+  const defaults = getDefaultFinanceiroRange();
+
   return {
-    startDate: inicio.toISOString().slice(0, 10),
-    endDate: hoje.toISOString().slice(0, 10),
-  };
+    startDate: params.startDate ?? defaults.startDate,
+    endDate: params.endDate ?? defaults.endDate,
+  } satisfies FinanceiroRange;
 }
 
-const fmt = (v: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-
-interface MetricasFinanceiras {
-  chargebacks: number;
-  valorChargebacks: number;
-  reembolsos: number;
-  valorReembolsos: number;
+function formatDate(value: string) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
 }
 
-async function getFinanceiro(startDate: string, endDate: string) {
-  const supabase = createServiceClient();
-  const p_start = startDate + "T00:00:00Z";
-  const p_end   = endDate   + "T23:59:59Z";
-
-  // Buscar receita bruta e total de pedidos pagos no período
-  const { data: pedidosPagos } = await supabase
-    .from("pedidos")
-    .select("valor_total")
-    .eq("status_pagamento", "paid")
-    .eq("chargeback", false)
-    .gte("data_pagamento", p_start)
-    .lte("data_pagamento", p_end);
-
-  const receitaBruta = (pedidosPagos ?? []).reduce((s, p) => s + (p.valor_total ?? 0), 0);
-  const totalPedidos = pedidosPagos?.length ?? 0;
-  const ticketMedio  = totalPedidos > 0 ? receitaBruta / totalPedidos : 0;
-
-  // Chargebacks + reembolsos via RPC
-  const { data: metricasRaw } = await supabase
-    .rpc("metricas_financeiras", { p_start, p_end });
-
-  const metricas: MetricasFinanceiras = metricasRaw
-    ? {
-        chargebacks:       Number((metricasRaw as MetricasFinanceiras).chargebacks      ?? 0),
-        valorChargebacks:  Number((metricasRaw as MetricasFinanceiras).valorChargebacks ?? 0),
-        reembolsos:        Number((metricasRaw as MetricasFinanceiras).reembolsos       ?? 0),
-        valorReembolsos:   Number((metricasRaw as MetricasFinanceiras).valorReembolsos  ?? 0),
-      }
-    : { chargebacks: 0, valorChargebacks: 0, reembolsos: 0, valorReembolsos: 0 };
-
-  const totalRevertido = metricas.valorChargebacks + metricas.valorReembolsos;
-  const receitaLiquida = receitaBruta - totalRevertido;
-  const taxaCB = totalPedidos > 0
-    ? ((metricas.chargebacks / totalPedidos) * 100).toFixed(1)
-    : "0";
-
-  return { receitaBruta, receitaLiquida, totalPedidos, ticketMedio, totalRevertido, taxaCB, metricas };
+function ModeBadge({ source }: { source: "mock" | "real" }) {
+  return (
+    <StatusPill tone={source === "real" ? "green" : "gold"}>
+      {source === "real" ? "Dados reais" : "Mock ativo"}
+    </StatusPill>
+  );
 }
 
 export default async function FinanceiroPage({
@@ -70,90 +54,175 @@ export default async function FinanceiroPage({
 }: {
   searchParams: Promise<{ startDate?: string; endDate?: string }>;
 }) {
-  const params   = await searchParams;
-  const defaults = defaultDates();
-  const startDate = params.startDate ?? defaults.startDate;
-  const endDate   = params.endDate   ?? defaults.endDate;
-
-  const { receitaBruta, receitaLiquida, totalPedidos, ticketMedio, totalRevertido, taxaCB, metricas } =
-    await getFinanceiro(startDate, endDate);
+  const params = await searchParams;
+  const data = await getFinanceiroPageData(resolveRange(params));
+  const maxDailyRevenue = Math.max(
+    ...data.dailySeries.map((item) => item.receitaBruta),
+    1
+  );
+  const maxPaymentRevenue = Math.max(
+    ...data.paymentMix.map((item) => item.revenue),
+    1
+  );
 
   return (
     <Shell>
-      <PageHeader titulo="Financeiro" subtitulo="Receita, reembolsos e chargebacks" />
-      <div className="px-6 py-6 space-y-6 pb-12">
+      <DashboardHeader
+        title="Financeiro"
+        description="Receita, recebíveis, chargebacks e reembolsos"
+        actions={<ModeBadge source={data.source} />}
+      />
 
-        {/* Filtro de período */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <FiltroPeriodo startDate={startDate} endDate={endDate} basePath="/financeiro" />
+      <PageBody>
+        <StatGrid>
+          <StatCard
+            label="Receita bruta"
+            value={formatCurrency(data.receitaBruta)}
+            detail={`${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
+            Icon={ReceiptText}
+            tone="gold"
+            rows={[
+              {
+                label: "Ticket medio",
+                value: formatCurrency(data.ticketMedio),
+                meter: data.receitaBruta > 0 ? data.ticketMedio / data.receitaBruta : 0,
+              },
+            ]}
+          />
+          <StatCard
+            label="Receita liquida"
+            value={formatCurrency(data.receitaLiquida)}
+            detail="Bruta menos chargebacks e reembolsos"
+            Icon={Wallet}
+            tone="green"
+            rows={[
+              {
+                label: "Recebivel estimado",
+                value: formatCurrency(data.receitaRecebivel),
+                meter:
+                  data.receitaBruta > 0
+                    ? data.receitaRecebivel / data.receitaBruta
+                    : 0,
+              },
+            ]}
+          />
+          <StatCard
+            label="Taxas"
+            value={formatCurrency(data.taxaGateway)}
+            detail="Estimativa operacional de gateway"
+            Icon={BadgePercent}
+            tone="blue"
+            rows={[
+              {
+                label: "Peso na receita",
+                value: formatPercent(
+                  data.receitaBruta > 0 ? data.taxaGateway / data.receitaBruta : 0
+                ),
+                meter:
+                  data.receitaBruta > 0 ? data.taxaGateway / data.receitaBruta : 0,
+              },
+            ]}
+          />
+          <StatCard
+            label="Revertido"
+            value={formatCurrency(data.totalRevertido)}
+            detail={`Taxa CB ${formatPercent(data.taxaChargeback)}`}
+            Icon={ShieldAlert}
+            tone="red"
+            rows={[
+              {
+                label: "Chargebacks",
+                value: data.chargebacks.toLocaleString("pt-BR"),
+                meter:
+                  data.totalPedidos > 0 ? data.chargebacks / data.totalPedidos : 0,
+              },
+              {
+                label: "Reembolsos",
+                value: data.reembolsos.toLocaleString("pt-BR"),
+                meter:
+                  data.totalPedidos > 0 ? data.reembolsos / data.totalPedidos : 0,
+              },
+            ]}
+          />
+        </StatGrid>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.6fr)]">
+          <Panel
+            title="Evolução financeira"
+            description={`${formatDate(data.range.startDate)} - ${formatDate(data.range.endDate)}`}
+          >
+            <DataList
+              valueLabel="receita"
+              rows={data.dailySeries.slice(-10).map((item) => ({
+                label: formatDate(item.day),
+                value: formatCurrency(item.receitaBruta),
+                detail: `${formatCurrency(item.receitaLiquida)} liquido · ${formatCurrency(item.revertido)} revertido`,
+                meter: item.receitaBruta / maxDailyRevenue,
+                tone: item.revertido > 0 ? "gold" : "green",
+              }))}
+            />
+          </Panel>
+
+          <Panel title="Mix de pagamento" description="Métodos com receita paga">
+            <DataList
+              rows={data.paymentMix.map((item) => ({
+                label: item.label,
+                value: formatCurrency(item.revenue),
+                detail: `${item.orders.toLocaleString("pt-BR")} pedidos`,
+                meter: item.revenue / maxPaymentRevenue,
+                tone: item.method === "pix" ? "green" : item.method === "boleto" ? "gold" : "blue",
+              }))}
+            />
+          </Panel>
         </div>
 
-        {/* Cards principais */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp size={14} className="text-green-500" />
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Receita Bruta</p>
-            </div>
-            <p className="text-2xl font-bold text-green-600 mt-1">{fmt(receitaBruta)}</p>
-            <p className="text-xs text-gray-400 mt-1">{totalPedidos} pedidos pagos</p>
-          </div>
+        <Panel
+          title="Pontos financeiros de atenção"
+          description="Eventos que reduzem receita ou pedem acompanhamento"
+          action={
+            <span className="text-xs font-semibold text-[var(--fly-text-muted)]">
+              {data.riskRows
+                .reduce((total, item) => total + item.quantity, 0)
+                .toLocaleString("pt-BR")}{" "}
+              eventos
+            </span>
+          }
+        >
+          <SimpleTable
+            columns={["Tipo", "Quantidade", "Impacto"]}
+            rows={data.riskRows.map((item) => [
+              item.label,
+              item.quantity.toLocaleString("pt-BR"),
+              formatCurrency(item.amount),
+            ])}
+          />
+        </Panel>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <Wallet size={14} className="text-indigo-500" />
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Receita Líquida</p>
-            </div>
-            <p className={`text-2xl font-bold mt-1 ${receitaLiquida >= 0 ? "text-indigo-600" : "text-red-600"}`}>
-              {fmt(receitaLiquida)}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">bruta − chargebacks − reembolsos</p>
+        <Panel
+          title="Próxima conexão real"
+          description="A página já usa o mesmo contrato para mock e backend real"
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              ["Modo", data.source === "real" ? "Real" : "Mock"],
+              ["Range", `${data.range.startDate} ate ${data.range.endDate}`],
+              ["Adapter", "getFinanceiroPageData"],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] p-3"
+              >
+                <p className="text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  {label}
+                </p>
+                <p className="mt-2 truncate text-sm font-semibold text-[var(--fly-text-soft)]">
+                  {value}
+                </p>
+              </div>
+            ))}
           </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingBag size={14} className="text-blue-500" />
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Ticket Médio</p>
-            </div>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{fmt(ticketMedio)}</p>
-            <p className="text-xs text-gray-400 mt-1">por pedido pago</p>
-          </div>
-
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown size={14} className="text-red-400" />
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Revertido</p>
-            </div>
-            <p className="text-2xl font-bold text-red-500 mt-1">{fmt(totalRevertido)}</p>
-            <p className="text-xs text-gray-400 mt-1">taxa CB: {taxaCB}%</p>
-          </div>
-        </div>
-
-        {/* Detalhamento de chargebacks e reembolsos */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-lg border border-gray-200 border-l-4 border-l-red-500 p-4">
-            <p className="text-2xl font-bold text-red-600">
-              {metricas.chargebacks.toLocaleString("pt-BR")}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">Chargebacks</p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 border-l-4 border-l-red-400 p-4">
-            <p className="text-xl font-bold text-red-500 tabular-nums">{fmt(metricas.valorChargebacks)}</p>
-            <p className="text-xs text-gray-600 mt-1">Valor em chargeback</p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 border-l-4 border-l-amber-500 p-4">
-            <p className="text-2xl font-bold text-amber-600">
-              {metricas.reembolsos.toLocaleString("pt-BR")}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">Reembolsos</p>
-          </div>
-          <div className="bg-white rounded-lg border border-gray-200 border-l-4 border-l-gray-400 p-4">
-            <p className="text-xl font-bold text-gray-700 tabular-nums">{fmt(metricas.valorReembolsos)}</p>
-            <p className="text-xs text-gray-600 mt-1">Valor reembolsado</p>
-          </div>
-        </div>
-
-      </div>
+        </Panel>
+      </PageBody>
     </Shell>
   );
 }
