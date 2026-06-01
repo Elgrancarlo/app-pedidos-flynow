@@ -5,6 +5,7 @@ import { format } from "date-fns";
 
 import { getMockMetricsScenario } from "@/lib/mock-data";
 import {
+  adaptAnalyticsOverviewToMetrics,
   hasMetricsContent,
   type MetricsData,
   type MetricsStatus,
@@ -63,17 +64,22 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
       updatedAt: currentState.updatedAt,
     }));
 
-    const timer = window.setTimeout(() => {
-      try {
-        const scenario = new URLSearchParams(window.location.search).get(
-          "mockMetrics"
-        );
+    const controller = new AbortController();
+    const mockScenario = new URLSearchParams(window.location.search).get(
+      "mockMetrics"
+    );
 
-        if (scenario === "error") {
+    async function loadMetrics() {
+      try {
+        if (mockScenario === "error") {
           throw new Error("Mock de erro ativado.");
         }
 
-        const nextData = getMockMetricsScenario(scenario);
+        const nextData = mockScenario
+          ? getMockMetricsScenario(mockScenario)
+          : adaptAnalyticsOverviewToMetrics(
+              await fetchAnalyticsOverview(fromParam, toParam, controller.signal)
+            );
 
         if (didCancel) {
           return;
@@ -87,7 +93,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
           updatedAt: new Date(),
         });
       } catch (error) {
-        if (didCancel) {
+        if (didCancel || controller.signal.aborted) {
           return;
         }
 
@@ -99,11 +105,13 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
           updatedAt: currentState.updatedAt,
         }));
       }
-    }, 360);
+    }
+
+    void loadMetrics();
 
     return () => {
       didCancel = true;
-      window.clearTimeout(timer);
+      controller.abort();
     };
   }, [from, retryCount, to]);
 
@@ -119,4 +127,26 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
     }),
     [retry, state]
   );
+}
+
+async function fetchAnalyticsOverview(
+  fromParam: string,
+  toParam: string,
+  signal: AbortSignal
+) {
+  const searchParams = new URLSearchParams({
+    section: "overview",
+    startDate: fromParam,
+    endDate: toParam,
+  });
+  const response = await fetch(`/api/analytics/metrics?${searchParams}`, {
+    cache: "no-store",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error("Não foi possível carregar as métricas.");
+  }
+
+  return response.json();
 }

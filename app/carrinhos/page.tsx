@@ -1,15 +1,21 @@
 import Shell from "@/components/layout/shell";
 import CarrinhosClientView from "@/components/carrinhos/carrinhos-client-view";
 import {
-  createMockCarrinhos,
   getCarrinhosFunil,
   getCarrinhosResumo,
   getDefaultCarrinhosRange,
 } from "@/lib/carrinhos";
+import {
+  getCarrinhosDatasetRange,
+  getCarrinhosForFrontend,
+} from "@/lib/carrinhos-data";
 
-export default function CarrinhosPage() {
-  const carrinhos = createMockCarrinhos();
+export const dynamic = "force-dynamic";
+
+export default async function CarrinhosPage() {
   const periodo = getDefaultCarrinhosRange();
+  const datasetRange = getCarrinhosDatasetRange(30);
+  const carrinhos = await getCarrinhosForFrontend(datasetRange);
 
   return (
     <Shell>

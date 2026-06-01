@@ -1,16 +1,22 @@
 import PedidosClientView from "@/components/pedidos/pedidos-client-view";
 import Shell from "@/components/layout/shell";
 import {
-  createMockPedidos,
   getDefaultPedidosRange,
   getPedidosContagemPorStatus,
   getPedidosFinanceiroResumo,
   getPedidosValorPago,
 } from "@/lib/pedidos";
+import {
+  getPedidosDatasetRange,
+  getPedidosForFrontend,
+} from "@/lib/pedidos-data";
 
-export default function PedidosPage() {
-  const pedidos = createMockPedidos();
+export const dynamic = "force-dynamic";
+
+export default async function PedidosPage() {
   const periodo = getDefaultPedidosRange();
+  const datasetRange = getPedidosDatasetRange(30);
+  const pedidos = await getPedidosForFrontend(datasetRange);
 
   return (
     <Shell>

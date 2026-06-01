@@ -491,6 +491,7 @@ export async function getAnalyticsOverview(startDate: string, endDate: string) {
   const revenueTotal = funilRows.reduce((sum, row) => sum + numberValue(row.receita_total), 0);
   const directRevenueTotal = funilRows.reduce((sum, row) => sum + numberValue(row.receita_vendas_diretas), 0);
   const upsellRevenue = funilRows.reduce((sum, row) => sum + numberValue(row.receita_upsells), 0);
+  const upsellApproved = funilRows.reduce((sum, row) => sum + numberValue(row.qtd_upsells_aprovados), 0);
   const directSales = funilRows.reduce((sum, row) => sum + numberValue(row.qtd_vendas_diretas), 0);
   const spendTotal = redtrackRows.reduce((sum, row) => sum + numberValue(row.cost), 0);
   const clicksTotal = redtrackRows.reduce((sum, row) => sum + numberValue(row.clicks), 0);
@@ -544,7 +545,9 @@ export async function getAnalyticsOverview(startDate: string, endDate: string) {
     configured: funilRows.length > 0 || redtrackRows.length > 0,
     summary: {
       revenueTotal,
+      directRevenueTotal,
       upsellRevenue,
+      upsellApproved,
       spendTotal,
       directSales,
       clicksTotal,
