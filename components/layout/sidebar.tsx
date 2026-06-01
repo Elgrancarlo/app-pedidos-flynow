@@ -8,7 +8,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   Box,
-  ChevronDown,
   ChartNoAxesColumnIncreasing,
   ChartSpline,
   Funnel,
@@ -415,14 +414,6 @@ export default function Sidebar() {
           </div>
 
           <div className="mt-4">
-            <button
-              type="button"
-              className="mb-1 flex h-7 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-semibold text-[#666B75] outline-none transition-colors duration-150 hover:text-[#A3A6AE] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
-            >
-              <span>Workspace</span>
-              <ChevronDown size={14} strokeWidth={2.2} />
-            </button>
-
             <div className="space-y-0.5">
               {WORKSPACE_NAV_SECTIONS.map((section) => (
                 <section key={section.label}>
