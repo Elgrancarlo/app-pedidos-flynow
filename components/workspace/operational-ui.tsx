@@ -100,7 +100,7 @@ export function StatCard({
               {label}
             </p>
           </div>
-          <p className="mt-3 truncate text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[30px]">
+          <p className="mt-3 whitespace-nowrap text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[24px] 2xl:text-[30px]">
             {value}
           </p>
           <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">{detail}</p>
