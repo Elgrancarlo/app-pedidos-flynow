@@ -35,14 +35,37 @@ const PRIMARY_NAV = [
   { href: "/financeiro", label: "Financeiro", Icone: ChartSpline },
 ];
 
-const WORKSPACE_NAV = [
-  { href: "/estoque", label: "Estoque", Icone: Box },
-  { href: "/analytics", label: "Analytics", Icone: ChartNoAxesColumnIncreasing },
-  { href: "/funil", label: "Funil", Icone: Funnel },
-  { href: "/upsells", label: "Upsells", Icone: TrendingUp },
-  { href: "/canais", label: "Canais", Icone: Radio },
-  { href: "/configuracoes", label: "Configurações", Icone: SlidersHorizontal },
+const WORKSPACE_NAV_SECTIONS = [
+  {
+    label: "Operação",
+    items: [{ href: "/estoque", label: "Estoque", Icone: Box }],
+  },
+  {
+    label: "Performance",
+    items: [
+      {
+        href: "/analytics",
+        label: "Analytics",
+        Icone: ChartNoAxesColumnIncreasing,
+      },
+      { href: "/funil", label: "Funil", Icone: Funnel },
+      { href: "/upsells", label: "Upsells", Icone: TrendingUp },
+      { href: "/canais", label: "Canais", Icone: Radio },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      {
+        href: "/configuracoes",
+        label: "Configurações",
+        Icone: SlidersHorizontal,
+      },
+    ],
+  },
 ];
+
+const WORKSPACE_NAV = WORKSPACE_NAV_SECTIONS.flatMap(({ items }) => items);
 
 const MOBILE_NAV = [
   { href: "/pedidos", label: "Pedidos", Icone: Inbox },
@@ -377,7 +400,7 @@ export default function Sidebar() {
 
         <nav
           aria-label="Navegação principal"
-          className="min-h-0 flex-1 overflow-y-auto px-2.5 py-2"
+          className="min-h-0 flex-1 overflow-y-auto px-2.5 py-1.5"
         >
           <div className="space-y-1">
             {PRIMARY_NAV.map(({ href, label, Icone }) => (
@@ -391,7 +414,7 @@ export default function Sidebar() {
             ))}
           </div>
 
-          <div className="mt-7">
+          <div className="mt-4">
             <button
               type="button"
               className="mb-1 flex h-7 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-sm font-semibold text-[#666B75] outline-none transition-colors duration-150 hover:text-[#A3A6AE] focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25"
@@ -400,15 +423,24 @@ export default function Sidebar() {
               <ChevronDown size={14} strokeWidth={2.2} />
             </button>
 
-            <div className="space-y-1">
-              {WORKSPACE_NAV.map(({ href, label, Icone }) => (
-                <SidebarLink
-                  key={href}
-                  href={href}
-                  label={label}
-                  Icone={Icone}
-                  ativo={isActive(href)}
-                />
+            <div className="space-y-0.5">
+              {WORKSPACE_NAV_SECTIONS.map((section) => (
+                <section key={section.label}>
+                  <p className="px-3 pb-0.5 text-[9px] font-semibold uppercase leading-3 tracking-[0.14em] text-[#565B65]">
+                    {section.label}
+                  </p>
+                  <div className="space-y-1">
+                    {section.items.map(({ href, label, Icone }) => (
+                      <SidebarLink
+                        key={href}
+                        href={href}
+                        label={label}
+                        Icone={Icone}
+                        ativo={isActive(href)}
+                      />
+                    ))}
+                  </div>
+                </section>
               ))}
 
               <button
@@ -546,16 +578,25 @@ export default function Sidebar() {
                 <p className="px-1 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#666B75]">
                   Workspace
                 </p>
-                <div className="space-y-1">
-                  {WORKSPACE_NAV.map(({ href, label, Icone }) => (
-                    <MobileSheetLink
-                      key={href}
-                      href={href}
-                      label={label}
-                      Icone={Icone}
-                      ativo={isActive(href)}
-                      onClick={closeMobileMore}
-                    />
+                <div className="space-y-2">
+                  {WORKSPACE_NAV_SECTIONS.map((section) => (
+                    <section key={section.label}>
+                      <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#666B75]">
+                        {section.label}
+                      </p>
+                      <div className="space-y-1">
+                        {section.items.map(({ href, label, Icone }) => (
+                          <MobileSheetLink
+                            key={href}
+                            href={href}
+                            label={label}
+                            Icone={Icone}
+                            ativo={isActive(href)}
+                            onClick={closeMobileMore}
+                          />
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </div>
