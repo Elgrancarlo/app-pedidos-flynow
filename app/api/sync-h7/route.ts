@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { enviarWhatsappAguardandoRetirada } from "@/lib/whatsapp";
+import { isTrustedAppRequest } from "@/lib/request-origin";
+import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 
 const H7_API_URL = process.env.H7_API_URL ?? "https://api.haga7digital.com.br/api/orders/fly";
 const H7_TOKEN = process.env.H7_TOKEN ?? "";
 const H7_PER_PAGE = 100;
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 
 const STATUS_PRIORIDADE: Record<string, number> = {
   aguardando_postagem: 0,
@@ -34,6 +37,9 @@ interface H7Order {
   tracking_code?: string | null;
   shipping_company?: string | null;
   plan?: { qty?: number; name?: string };
+  promised_date?: string | null;        // "YYYY-MM-DD" — prazo prometido pela H7
+  delivered_at?: string | null;         // ISO — data de entrega confirmada
+  last_hub_arrival?: string | null;     // ISO — última vez que chegou em uma base
 }
 
 interface H7Response {
@@ -125,14 +131,27 @@ async function runSync(startDate: string, endDate: string) {
       }
       if (isChargeback && !pedido.chargeback) {
         updates.chargeback = true;
+        updates.status_pagamento = "chargeback";
       }
       if (novoStatus) {
         const prioAtual = STATUS_PRIORIDADE[pedido.status] ?? 0;
         const prioNova = STATUS_PRIORIDADE[novoStatus] ?? 0;
         if (prioNova > prioAtual) {
           updates.status = novoStatus;
-          if (novoStatus === "entregue") updates.data_entrega = new Date().toISOString();
+          if (novoStatus === "entregue") {
+            updates.data_entrega = order.delivered_at ?? new Date().toISOString();
+          }
         }
+      }
+
+      // Capturar data prometida pela H7 (campo promised_date: "YYYY-MM-DD")
+      if (order.promised_date) {
+        updates.data_prometida_entrega = order.promised_date;
+      }
+
+      // Capturar data de chegada na base logística (campo last_hub_arrival)
+      if (order.last_hub_arrival) {
+        updates.data_chegou_logistica = order.last_hub_arrival;
       }
 
       if (Object.keys(updates).length === 0) continue;
@@ -191,17 +210,24 @@ async function runSync(startDate: string, endDate: string) {
 }
 
 function defaultDates(dias = 7) {
-  const hoje = new Date();
-  const start = new Date(hoje);
-  start.setDate(start.getDate() - dias);
+  const endDate = getTodayInAppTimezone();
   return {
-    startDate: start.toISOString().slice(0, 10),
-    endDate: hoje.toISOString().slice(0, 10),
+    startDate: shiftDateString(endDate, -dias),
+    endDate,
   };
 }
 
+function isAuthorized(req: NextRequest) {
+  if (!INTERNAL_API_SECRET) return true;
+  const header = req.headers.get("x-internal-secret") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  return header === INTERNAL_API_SECRET;
+}
+
 // GET — chamado pelo cron da Vercel (últimos 7 dias)
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ ok: false, erro: "unauthorized" }, { status: 401 });
+  }
   const { startDate, endDate } = defaultDates(7);
   console.log(`[sync-h7] cron trigger: ${startDate} → ${endDate}`);
   const result = await runSync(startDate, endDate);
@@ -210,6 +236,9 @@ export async function GET() {
 
 // POST — chamado manualmente pelo dashboard com datas opcionais
 export async function POST(req: NextRequest) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   let startDate: string;
   let endDate: string;
   try {

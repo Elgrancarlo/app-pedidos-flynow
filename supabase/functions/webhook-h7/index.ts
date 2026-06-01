@@ -8,20 +8,22 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// Mapeamento de código H7 → status interno
-// ATENÇÃO: códigos de aguardando_retirada e entregue ainda não confirmados —
-// usar h7_eventos_raw para descobrir empiricamente
+// Mapeamento completo de códigos H7 → status interno
 const STATUS_MAP: Record<string, string> = {
-  "1": "postado",
-  "11": "em_transporte",
-  "13": "em_transporte",
-  "15": "em_transporte",
-  "16": "em_transporte",
-  "17": "em_transporte",
-  // Adicionar quando descobertos:
-  // "XX": "aguardando_retirada",
-  // "YY": "entregue",
-  // "ZZ": "devolvido",
+  "1":  "postado",
+  "2":  "devolvido",           // Cancelado
+  "5":  "entregue",            // Entregue
+  "6":  "devolvido",           // Recusado pelo destinatário
+  "7":  "devolvido",           // Devolução iniciada
+  "8":  "devolvido",           // Devolvido
+  "11": "em_transporte",       // Em rota
+  "13": "em_transporte",       // Conferido
+  "15": "em_transporte",       // Medido e pesado
+  "16": "em_transporte",       // Saiu de uma base
+  "17": "em_transporte",       // Chegou em uma base
+  "18": "aguardando_retirada", // Destinatário ausente
+  "21": "em_transporte",       // Endereço errado
+  "22": "em_transporte",       // Aguardando ação do remetente
 };
 
 const WHATSAPP_TRIGGER_STATUS = "aguardando_retirada";
@@ -108,6 +110,13 @@ Deno.serve(async (req) => {
   if (novoStatus === "entregue") {
     updateData.data_entrega = updatedTime ?? new Date().toISOString();
   }
+  if (statusCode === "17" && updatedTime) {
+    updateData.data_chegou_logistica = updatedTime;
+  }
+  const promisedDate = body.promisedDate as string | undefined;
+  if (promisedDate) {
+    updateData.data_prometida_entrega = promisedDate;
+  }
 
   await supabase
     .from("pedidos")
@@ -122,7 +131,7 @@ Deno.serve(async (req) => {
       .select("id")
       .eq("pedido_id", pedido.id)
       .eq("tipo_mensagem", "aguardando_retirada")
-      .not("status", "eq", "falhou")
+      .neq("status", "falhou")
       .single();
 
     if (!disparoExistente && pedido.cliente_telefone) {

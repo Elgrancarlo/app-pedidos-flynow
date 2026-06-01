@@ -1,43 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase";
+import { inferirGrupo } from "@/lib/produtos";
+import { isTrustedAppRequest } from "@/lib/request-origin";
+import { applyStockMovement } from "@/lib/estoque";
 
 export async function POST(req: NextRequest) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   const body = await req.json();
   const { produto_grupo, qtd_potes, observacao } = body;
+  const grupoCanon = inferirGrupo(produto_grupo) ?? String(produto_grupo ?? "").trim();
 
-  if (!produto_grupo || !qtd_potes || qtd_potes <= 0) {
+  if (!grupoCanon || !qtd_potes || qtd_potes <= 0) {
     return NextResponse.json({ ok: false, erro: "produto_grupo e qtd_potes são obrigatórios" }, { status: 400 });
   }
-
-  const supabase = createServiceClient();
-
-  // Garantir que o grupo existe
-  await supabase
-    .from("estoque_grupos")
-    .upsert({ nome_grupo: produto_grupo }, { onConflict: "nome_grupo", ignoreDuplicates: true });
-
-  // Incrementar saldo
-  const { error: rpcError } = await supabase.rpc("incrementar_estoque", {
-    p_grupo: produto_grupo,
-    p_qtd: qtd_potes,
-  });
-
-  if (rpcError) {
-    console.error("Erro ao incrementar estoque:", rpcError);
-    return NextResponse.json({ ok: false, erro: rpcError.message }, { status: 500 });
-  }
-
-  // Registrar movimentação
-  const { error: movError } = await supabase.from("estoque_movimentacao").insert({
-    produto_grupo,
-    tipo: "entrada",
-    qtd_potes,
-    observacao: observacao ?? null,
-  });
-
-  if (movError) {
-    console.error("Erro ao registrar movimentação:", movError);
-    return NextResponse.json({ ok: false, erro: movError.message }, { status: 500 });
+  try {
+    await applyStockMovement({
+      produtoGrupo: grupoCanon,
+      tipo: "entrada",
+      qtdPotes: qtd_potes,
+      observacao: observacao ?? null,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao registrar entrada de estoque";
+    console.error("Erro ao registrar entrada de estoque:", error);
+    return NextResponse.json({ ok: false, erro: message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

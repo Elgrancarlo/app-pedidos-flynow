@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { inferirGrupo } from "@/lib/produtos";
+import { isTrustedAppRequest } from "@/lib/request-origin";
 
 const H7_API_URL = process.env.H7_API_URL ?? "https://api.haga7digital.com.br/api/orders/fly";
 const H7_TOKEN = process.env.H7_TOKEN ?? "";
@@ -18,6 +20,12 @@ function mapearStatusH7(h7Status: string, temRastreio: boolean): string {
     case "chargeback":     return "aguardando_postagem";
     default:               return "aguardando_postagem";
   }
+}
+
+function mapearStatusPagamentoH7(h7Status: string) {
+  if (h7Status === "chargeback") return "chargeback";
+  if (h7Status === "cancelled" || h7Status === "returning") return "cancelled";
+  return null;
 }
 
 interface H7Customer {
@@ -55,6 +63,9 @@ interface H7Response {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isTrustedAppRequest(req)) {
+    return NextResponse.json({ ok: false, erro: "forbidden" }, { status: 403 });
+  }
   if (!H7_TOKEN) {
     return NextResponse.json({ ok: false, erro: "H7_TOKEN não configurado" }, { status: 500 });
   }
@@ -130,23 +141,23 @@ export async function POST(req: NextRequest) {
           cliente_telefone: c.phone ?? null,
           cliente_cpf: c.document ?? null,
           produto_nome: order.plan?.name ?? order.product?.name ?? null,
-          produto_grupo: order.product?.name ?? null,
+          produto_grupo: inferirGrupo(order.plan?.name, order.product?.name) ?? order.product?.name ?? null,
           qtd_potes: order.plan?.qty ?? null,
           valor_total: order.total_value ?? order.value ?? null,
-          data_pagamento: order.transaction_created_at ?? null,
+          data_pagamento: null,
           endereco_entrega: endereco,
           codigo_rastreio: order.tracking_code ?? null,
           status: mapearStatusH7(order.status, !!order.tracking_code),
-          status_pagamento: order.status === "chargeback" ? "chargeback" : "paid",
+          status_pagamento: mapearStatusPagamentoH7(order.status),
           chargeback: order.status === "chargeback",
-          data_entrega: order.status === "delivered" ? order.transaction_created_at ?? null : null,
+          data_entrega: null,
         };
       });
 
     totalIgnorados += orders.length - novos.length;
 
     if (novos.length > 0) {
-      // Inserir em lote
+      // Inserir em lote (sem mexer no estoque — estoque é gerenciado exclusivamente pelo webhook Payt)
       const { data: inseridos, error } = await supabase
         .from("pedidos")
         .insert(novos)
@@ -156,31 +167,6 @@ export async function POST(req: NextRequest) {
         erros.push(`Erro insert pág ${page}: ${error.message}`);
       } else {
         totalInseridos += inseridos?.length ?? 0;
-
-        // Registrar movimentação de estoque para cada pedido inserido
-        const movimentacoes = novos
-          .filter((p) => p.produto_grupo && p.qtd_potes && p.qtd_potes > 0)
-          .map((p, i) => ({
-            produto_grupo: p.produto_grupo!,
-            tipo: "venda",
-            qtd_potes: p.qtd_potes!,
-            referencia_pedido_id: inseridos?.[i]?.id ?? null,
-            observacao: "Importado via H7",
-          }));
-
-        if (movimentacoes.length > 0) {
-          await supabase.from("estoque_movimentacao").insert(movimentacoes);
-
-          // Decrementar estoque por grupo
-          const porGrupo = movimentacoes.reduce((acc, m) => {
-            acc[m.produto_grupo] = (acc[m.produto_grupo] ?? 0) + m.qtd_potes;
-            return acc;
-          }, {} as Record<string, number>);
-
-          for (const [grupo, qty] of Object.entries(porGrupo)) {
-            await supabase.rpc("decrementar_estoque", { p_grupo: grupo, p_qtd: qty });
-          }
-        }
       }
     }
 

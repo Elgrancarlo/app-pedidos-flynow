@@ -6,6 +6,7 @@ import { useState } from "react";
 interface FiltroPeriodoProps {
   startDate: string;
   endDate: string;
+  basePath?: string;
 }
 
 const ATALHOS: Array<{ label: string; dias: number; mesAtual?: boolean }> = [
@@ -20,7 +21,7 @@ function toISO(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-export default function FiltroPeriodo({ startDate, endDate }: FiltroPeriodoProps) {
+export default function FiltroPeriodo({ startDate, endDate, basePath = "/pedidos" }: FiltroPeriodoProps) {
   const router = useRouter();
   const [start, setStart] = useState(startDate);
   const [end, setEnd] = useState(endDate);
@@ -28,7 +29,7 @@ export default function FiltroPeriodo({ startDate, endDate }: FiltroPeriodoProps
   function aplicar(s: string, e: string) {
     setStart(s);
     setEnd(e);
-    router.push(`/pedidos?startDate=${s}&endDate=${e}`);
+    window.location.href = `${basePath}?startDate=${s}&endDate=${e}`;
   }
 
   function aplicarAtalho(dias: number, mesAtual?: boolean) {

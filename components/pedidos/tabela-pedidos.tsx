@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { ExternalLink } from "lucide-react";
 import type { Pedido, StatusPedido } from "@/lib/supabase";
-import { STATUS_LABELS, STATUS_COLORS } from "@/lib/supabase";
+import { PAYMENT_STATUS_COLORS, PAYMENT_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS } from "@/lib/supabase";
 
 interface TabelaPedidosProps {
   pedidos: Pedido[];
+  onDetalhe?: (pedido: Pedido) => void;
 }
 
 const FILTRO_STATUS: Array<{ value: string; label: string }> = [
@@ -19,7 +21,7 @@ const FILTRO_STATUS: Array<{ value: string; label: string }> = [
   { value: "entregue+chargeback", label: "Entregue + Chargeback" },
 ];
 
-export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
+export default function TabelaPedidos({ pedidos, onDetalhe }: TabelaPedidosProps) {
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroProduto, setFiltroProduto] = useState("");
   const [filtroChargeback, setFiltroChargeback] = useState(false);
@@ -96,6 +98,11 @@ export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
     return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
+  function formatarStatusPagamento(status: string | null) {
+    if (!status) return "—";
+    return PAYMENT_STATUS_LABELS[status] ?? status;
+  }
+
   return (
     <div className="bg-white rounded-lg border border-gray-200">
       {/* Filtros */}
@@ -144,19 +151,21 @@ export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Cliente</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Cód. Payt</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Produto</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Potes</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Valor</th>
-              <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Pagamento</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Status pagto</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Rastreio</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Status</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600 whitespace-nowrap">Ações</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {pedidosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-400">
                   Nenhum pedido encontrado
                 </td>
               </tr>
@@ -181,6 +190,18 @@ export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <a
+                      href={`https://app.payt.com.br/admin/vendas/${pedido.payt_transaction_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-mono text-xs text-indigo-600 hover:text-indigo-800"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {pedido.payt_transaction_id}
+                      <ExternalLink size={10} />
+                    </a>
+                  </td>
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                     {pedido.produto_grupo ?? pedido.produto_nome ?? "—"}
                   </td>
@@ -190,8 +211,17 @@ export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
                   <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
                     {formatarValor(pedido.valor_total)}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                    {formatarData(pedido.data_pagamento)}
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${PAYMENT_STATUS_COLORS[pedido.status_pagamento ?? ""] ?? "bg-gray-100 text-gray-700"}`}
+                      >
+                        {formatarStatusPagamento(pedido.status_pagamento)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      {pedido.data_pagamento ? formatarData(pedido.data_pagamento) : formatarData(pedido.created_at)}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {pedido.codigo_rastreio ? (
@@ -213,6 +243,16 @@ export default function TabelaPedidos({ pedidos }: TabelaPedidosProps) {
                     >
                       {enviandoId === pedido.id ? "Enviando..." : "WhatsApp"}
                     </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    {onDetalhe && (
+                      <button
+                        onClick={() => onDetalhe(pedido)}
+                        className="text-xs text-gray-500 hover:text-indigo-600 px-2 py-1.5 rounded-md hover:bg-indigo-50 transition-colors whitespace-nowrap"
+                      >
+                        Detalhe
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
