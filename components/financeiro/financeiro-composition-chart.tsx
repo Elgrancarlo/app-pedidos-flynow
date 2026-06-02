@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,9 +20,10 @@ type TooltipPayload = {
   dataKey?: string | number;
   name?: string | number;
   payload?: {
+    color?: string;
     detail?: string;
+    displayValue?: number;
     label?: string;
-    tone?: string;
   };
   value?: string | number;
 };
@@ -45,45 +47,41 @@ function compactCurrency(value: number) {
   }).format(value);
 }
 
+function signedCompactCurrency(value: number) {
+  if (value < 0) return `-${compactCurrency(Math.abs(value))}`;
+  return compactCurrency(value);
+}
+
 function ChartTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload?.length) return null;
+  const amountPayload = payload.find((item) => item.dataKey === "amount");
+  const point = amountPayload?.payload;
+
+  if (!amountPayload || !point) return null;
+
+  const value = Number(point.displayValue ?? amountPayload.value ?? 0);
 
   return (
     <div className="min-w-[190px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
-      <div className="space-y-1.5">
-        {payload
-          .filter((item) => Number(item.value ?? 0) > 0)
-          .map((item) => {
-            const value = Number(item.value ?? 0);
-            const label = String(
-              item.name === "Valor"
-                ? item.payload?.label ?? "Valor"
-                : item.name ?? item.dataKey ?? "Valor"
-            );
-
-            return (
-              <div key={`${label}-${item.dataKey}`} className="space-y-1">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--fly-text-muted)]">
-                    <span
-                      aria-hidden="true"
-                      className="size-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="truncate">{label}</span>
-                  </span>
-                  <span className="font-semibold tabular-nums text-[var(--fly-text)]">
-                    {formatCurrency(value)}
-                  </span>
-                </div>
-                {item.payload?.detail ? (
-                  <p className="text-[11px] leading-4 text-[var(--fly-text-muted)]">
-                    {item.payload.detail}
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-4">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--fly-text-muted)]">
+            <span
+              aria-hidden="true"
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: point.color ?? amountPayload.color }}
+            />
+            <span className="truncate">{point.label}</span>
+          </span>
+          <span className="font-semibold tabular-nums text-[var(--fly-text)]">
+            {value < 0 ? `-${formatCurrency(Math.abs(value))}` : formatCurrency(value)}
+          </span>
+        </div>
+        {point.detail ? (
+          <p className="text-[11px] leading-4 text-[var(--fly-text-muted)]">
+            {point.detail}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -95,90 +93,41 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
   const refundRatio = clampRatio(data.valorReembolsos / grossBase);
   const revertedRatio = clampRatio(data.totalRevertido / grossBase);
   const retainedRatio = clampRatio(data.receitaLiquida / grossBase);
+  const afterChargebacks = Math.max(data.receitaBruta - data.valorChargebacks, 0);
+  const afterRefunds = Math.max(afterChargebacks - data.valorReembolsos, 0);
 
-  const compositionData = [
+  const waterfallData = [
     {
-      chargebacks: data.valorChargebacks,
-      label: "Composição",
-      liquida: data.receitaLiquida,
-      reembolsos: data.valorReembolsos,
-    },
-  ];
-
-  const segments = [
-    {
-      color: "#4ADE80",
-      key: "liquida",
-      label: "Receita líquida",
-      ratio: retainedRatio,
-      value: data.receitaLiquida,
-    },
-    {
-      color: "#F87171",
-      key: "chargebacks",
-      label: "Chargebacks",
-      ratio: chargebackRatio,
-      value: data.valorChargebacks,
-    },
-    {
-      color: "#F0C76A",
-      key: "reembolsos",
-      label: "Reembolsos",
-      ratio: refundRatio,
-      value: data.valorReembolsos,
-    },
-  ] as const;
-  const visibleSegmentKeys = segments
-    .filter((segment) => segment.value > 0)
-    .map((segment) => segment.key);
-
-  function stackRadius(
-    segmentKey: (typeof segments)[number]["key"]
-  ): number | [number, number, number, number] {
-    const firstKey = visibleSegmentKeys[0];
-    const lastKey = visibleSegmentKeys.at(-1);
-
-    if (firstKey === segmentKey && lastKey === segmentKey) return [6, 6, 6, 6];
-    if (firstKey === segmentKey) return [6, 0, 0, 6];
-    if (lastKey === segmentKey) return [0, 6, 6, 0];
-    return 0;
-  }
-
-  const comparisonData = [
-    {
+      amount: data.receitaBruta,
       color: "#D6A84F",
       detail: `${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`,
+      displayValue: data.receitaBruta,
       label: "Receita bruta",
-      ratio: 1,
-      value: data.receitaBruta,
+      offset: 0,
     },
     {
+      amount: Math.min(data.valorChargebacks, data.receitaBruta),
       color: "#F87171",
       detail: `${data.chargebacks.toLocaleString("pt-BR")} eventos · taxa CB ${formatPercent(data.taxaChargeback)}`,
+      displayValue: -data.valorChargebacks,
       label: "Chargebacks",
-      ratio: chargebackRatio,
-      value: data.valorChargebacks,
+      offset: afterChargebacks,
     },
     {
+      amount: Math.min(data.valorReembolsos, afterChargebacks),
       color: "#F0C76A",
       detail: `${data.reembolsos.toLocaleString("pt-BR")} eventos`,
+      displayValue: -data.valorReembolsos,
       label: "Reembolsos",
-      ratio: refundRatio,
-      value: data.valorReembolsos,
+      offset: afterRefunds,
     },
     {
-      color: "rgba(255,255,255,0.35)",
-      detail: `${formatPercent(revertedRatio)} da receita bruta do período`,
-      label: "Total revertido",
-      ratio: revertedRatio,
-      value: data.totalRevertido,
-    },
-    {
+      amount: data.receitaLiquida,
       color: "#4ADE80",
       detail: `${formatPercent(retainedRatio)} da receita bruta preservada`,
+      displayValue: data.receitaLiquida,
       label: "Receita líquida",
-      ratio: retainedRatio,
-      value: data.receitaLiquida,
+      offset: 0,
     },
   ];
 
@@ -207,136 +156,72 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
         </div>
       </div>
 
-      <div className="h-[70px] min-w-0 overflow-hidden rounded-[8px] border border-white/[0.045] bg-white/[0.01]">
+      <div className="h-[330px] min-w-0 sm:h-[360px]">
         <ResponsiveContainer height="100%" width="100%">
           <BarChart
-            data={compositionData}
-            layout="vertical"
-            margin={{ bottom: 12, left: 0, right: 0, top: 12 }}
-          >
-            <XAxis domain={[0, grossBase]} hide type="number" />
-            <YAxis dataKey="label" hide type="category" />
-            <Tooltip content={<ChartTooltip />} cursor={false} />
-            {segments.map((segment, index) => (
-              <Bar
-                animationBegin={140 + index * 110}
-                animationDuration={760}
-                animationEasing="ease-out"
-                dataKey={segment.key}
-                fill={segment.color}
-                key={segment.key}
-                name={segment.label}
-                radius={stackRadius(segment.key)}
-                stackId="financeiro"
-              />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="grid gap-2 text-[11px] text-[var(--fly-text-muted)] sm:grid-cols-3">
-        {segments.map((segment) => (
-          <div
-            key={segment.key}
-            className="flex min-w-0 items-center justify-between gap-2 rounded-[6px] border border-white/[0.045] bg-white/[0.012] px-2.5 py-2"
-          >
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className="size-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: segment.color }}
-              />
-              <span className="truncate">{segment.label}</span>
-            </span>
-            <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
-              {compactCurrency(segment.value)}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="h-[285px] min-w-0">
-        <ResponsiveContainer height="100%" width="100%">
-          <BarChart
-            barCategoryGap={14}
-            data={comparisonData}
-            layout="vertical"
-            margin={{ bottom: 4, left: 0, right: 18, top: 4 }}
+            barCategoryGap={28}
+            data={waterfallData}
+            margin={{ bottom: 4, left: 2, right: 18, top: 24 }}
           >
             <CartesianGrid
-              horizontal={false}
               stroke="rgba(255,255,255,0.06)"
               strokeDasharray="3 3"
+              vertical={false}
             />
             <XAxis
+              axisLine={false}
+              dataKey="label"
+              interval={0}
+              tick={{ fill: "rgba(245,242,234,0.58)", fontSize: 11 }}
+              tickLine={false}
+            />
+            <YAxis
               axisLine={false}
               domain={[0, grossBase]}
               tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
               tickFormatter={(value) => compactCurrency(Number(value))}
               tickLine={false}
-              type="number"
-            />
-            <YAxis
-              axisLine={false}
-              dataKey="label"
-              tick={{ fill: "rgba(245,242,234,0.62)", fontSize: 11 }}
-              tickLine={false}
-              type="category"
-              width={106}
+              width={72}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
             <Bar
-              animationBegin={260}
-              animationDuration={880}
+              dataKey="offset"
+              fill="transparent"
+              isAnimationActive={false}
+              stackId="waterfall"
+            />
+            <Bar
+              animationBegin={160}
+              animationDuration={820}
               animationEasing="ease-out"
-              dataKey="value"
-              maxBarSize={16}
+              dataKey="amount"
+              maxBarSize={74}
               name="Valor"
-              radius={[0, 6, 6, 0]}
+              radius={[6, 6, 0, 0]}
+              stackId="waterfall"
             >
-              {comparisonData.map((item) => (
+              {waterfallData.map((item) => (
                 <Cell fill={item.color} key={item.label} />
               ))}
+              <LabelList
+                dataKey="displayValue"
+                fill="rgba(245,242,234,0.82)"
+                fontSize={11}
+                formatter={(value) => signedCompactCurrency(Number(value ?? 0))}
+                position="top"
+              />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="grid gap-2 border-t border-white/[0.055] pt-3 sm:grid-cols-2 xl:grid-cols-5">
-        {comparisonData.map((item) => (
-          <div key={item.label} className="min-w-0">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span
-                aria-hidden="true"
-                className="size-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: item.color }}
-              />
-              <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-                {item.label}
-              </p>
-            </div>
-            <p className="mt-1.5 whitespace-nowrap text-sm font-semibold leading-none tabular-nums text-[var(--fly-text)]">
-              {formatCurrency(item.value)}
-            </p>
-            <p className="mt-1 text-[11px] leading-4 text-[var(--fly-text-muted)]">
-              {item.detail}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-t border-white/[0.055] pt-3">
-        <p className="text-xs leading-5 text-[var(--fly-text-muted)]">
-          <span className="font-medium text-[var(--fly-text-soft)]">
-            Leitura:
-          </span>{" "}
-          {formatCurrency(data.receitaBruta)} brutos menos{" "}
-          {formatCurrency(data.valorChargebacks)} em chargebacks e{" "}
-          {formatCurrency(data.valorReembolsos)} em reembolsos resultam em{" "}
+      <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3">
+        <p className="text-xs leading-5 text-[var(--fly-text-muted)] sm:text-sm">
+          <span className="font-medium text-[var(--fly-text-soft)]">Perda financeira:</span>{" "}
           <span className="font-semibold text-[var(--fly-text)]">
-            {formatCurrency(data.receitaLiquida)}
-          </span>
-          {" "}líquidos.
+            {formatCurrency(data.totalRevertido)}
+          </span>{" "}
+          · {formatPercent(revertedRatio)} da receita bruta no período.
         </p>
       </div>
     </div>

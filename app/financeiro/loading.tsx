@@ -70,33 +70,6 @@ function EventCardsSkeleton() {
   );
 }
 
-function FinanceChartRowSkeleton({
-  width,
-  valueWidth,
-}: {
-  width: string;
-  valueWidth: string;
-}) {
-  return (
-    <div className="grid gap-2 border-t border-white/[0.055] py-3 sm:grid-cols-[minmax(150px,0.45fr)_minmax(0,1fr)_74px] sm:items-center sm:gap-4">
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-2">
-          <SkeletonLine className="size-1.5" />
-          <SkeletonLine className="h-2.5 w-24" />
-        </div>
-        <SkeletonLine className="mt-2 h-5 w-32 rounded-md" />
-        <SkeletonLine className="mt-2 h-2.5 w-40" />
-      </div>
-
-      <div className="min-w-0 overflow-hidden rounded-full bg-white/[0.055]">
-        <SkeletonLine className={`h-1.5 ${width}`} />
-      </div>
-
-      <SkeletonLine className={`h-2.5 ${valueWidth} sm:ml-auto`} />
-    </div>
-  );
-}
-
 function FinanceChartSkeleton() {
   return (
     <section className="flynow-dashboard-skeleton-panel min-w-0 overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#0D0F12]">
@@ -127,48 +100,22 @@ function FinanceChartSkeleton() {
             </div>
           </div>
 
-          <div className="flynow-chart-plot">
-            <div className="flex h-8 overflow-hidden rounded-[6px] bg-white/[0.045]">
-              <span className="h-full basis-[72%] bg-[#4ADE80]/20" />
-              <span className="h-full basis-[17%] bg-[#F87171]/18" />
-              <span className="h-full basis-[11%] bg-[#F0C76A]/18" />
-            </div>
-
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="flex min-w-0 items-center justify-between gap-2"
-                >
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    <SkeletonLine className="size-1.5 shrink-0" />
-                    <SkeletonLine className="h-2.5 w-24" />
-                  </span>
-                  <SkeletonLine className="h-2.5 w-10" />
+          <div className="flynow-chart-plot h-[330px] min-w-0 rounded-[8px] border border-white/[0.045] bg-white/[0.01] px-4 pb-8 pt-6">
+            <div className="grid h-full grid-cols-4 items-end gap-4 border-b border-white/[0.055]">
+              {["h-[92%]", "h-[8%]", "h-[5%]", "h-[90%]"].map((height, index) => (
+                <div key={index} className="flex h-full min-w-0 flex-col justify-end gap-3">
+                  <SkeletonLine className="mx-auto h-2.5 w-14 rounded-md" />
+                  <span
+                    aria-hidden="true"
+                    className={`block w-full rounded-t-[6px] bg-white/[0.055] ${height}`}
+                  />
                 </div>
               ))}
             </div>
           </div>
 
-          <div>
-            {[
-              ["w-full", "w-10"],
-              ["w-[18%]", "w-8"],
-              ["w-[12%]", "w-8"],
-              ["w-[24%]", "w-8"],
-              ["w-[82%]", "w-10"],
-            ].map(([width, valueWidth], index) => (
-              <FinanceChartRowSkeleton
-                key={index}
-                width={width}
-                valueWidth={valueWidth}
-              />
-            ))}
-          </div>
-
-          <div className="border-t border-white/[0.055] pt-3">
-            <SkeletonLine className="h-2.5 w-full max-w-[680px]" />
-            <SkeletonLine className="mt-2 h-2.5 w-2/3 max-w-[460px]" />
+          <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3">
+            <SkeletonLine className="h-2.5 w-full max-w-[520px]" />
           </div>
         </div>
       </div>
