@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AnalyticsPeriodFilter } from "@/components/analytics/analytics-period-filter";
 import {
   ProductRevenueChart,
@@ -110,11 +112,21 @@ function AnalyticsMetricCard({
   );
 }
 
-function ActionText({ children }: { children: React.ReactNode }) {
+function ActionText({
+  children,
+  href,
+}: {
+  children: React.ReactNode;
+  href: string;
+}) {
   return (
-    <span className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4">
+    <Link
+      aria-label="Ver detalhes na página de canais"
+      className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+      href={href}
+    >
       {children}
-    </span>
+    </Link>
   );
 }
 
@@ -258,7 +270,7 @@ export default async function AnalyticsPage({
         <Panel
           title="Canais com mais receita"
           description="Receita, vendas diretas e retorno por canal"
-          action={<ActionText>Ver detalhes</ActionText>}
+          action={<ActionText href="/canais">Ver detalhes</ActionText>}
         >
           <ChannelsTable channels={data.channels} />
         </Panel>
