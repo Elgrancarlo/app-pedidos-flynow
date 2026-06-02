@@ -312,7 +312,7 @@ export default async function FinanceiroPage({
       <DashboardHeader
         title="Financeiro"
         description={`Receita, reembolsos e chargebacks · ${formatDateLong(data.range.endDate)}`}
-        actions={<FinanceiroPeriodFilter range={data.range} source={data.source} />}
+        actions={<FinanceiroPeriodFilter range={data.range} />}
       />
 
       <PageBody>

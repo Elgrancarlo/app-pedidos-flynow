@@ -8,7 +8,6 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
-import { StatusPill } from "@/components/workspace/operational-ui";
 import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import type { FinanceiroRange } from "@/lib/financeiro";
 
@@ -20,7 +19,6 @@ type FinanceiroPreset = SystemDateRangePreset<FinanceiroPresetKey> & {
 
 type FinanceiroPeriodFilterProps = {
   range: FinanceiroRange;
-  source: "mock" | "real";
 };
 
 function toCalendarDate(value: string) {
@@ -55,12 +53,8 @@ function rangeHref(range: FinanceiroRange) {
 
 function getPresets(): FinanceiroPreset[] {
   const today = getTodayInAppTimezone();
-  const presets: Array<{
-    key: FinanceiroPresetKey;
-    label: string;
-    displayLabel: string;
-    range: FinanceiroRange;
-  }> = [
+
+  return [
     {
       key: "today",
       label: "Hoje",
@@ -69,34 +63,29 @@ function getPresets(): FinanceiroPreset[] {
     },
     {
       key: "7d",
-      label: "7 dias",
+      label: "Ultimos 7 dias",
       displayLabel: "7D",
       range: { startDate: shiftDateString(today, -6), endDate: today },
     },
     {
       key: "15d",
-      label: "15 dias",
+      label: "Ultimos 15 dias",
       displayLabel: "15D",
       range: { startDate: shiftDateString(today, -14), endDate: today },
     },
     {
       key: "30d",
-      label: "30 dias",
+      label: "Ultimos 30 dias",
       displayLabel: "30D",
       range: { startDate: shiftDateString(today, -29), endDate: today },
     },
     {
       key: "month",
-      label: "Este mês",
-      displayLabel: "Mês",
+      label: "Este mes",
+      displayLabel: "Mes",
       range: { startDate: `${today.slice(0, 8)}01`, endDate: today },
     },
   ];
-
-  return presets.map((preset) => ({
-    ...preset,
-    href: rangeHref(preset.range),
-  }));
 }
 
 function getActivePreset(range: FinanceiroRange, presets: FinanceiroPreset[]) {
@@ -109,10 +98,7 @@ function getActivePreset(range: FinanceiroRange, presets: FinanceiroPreset[]) {
   );
 }
 
-export function FinanceiroPeriodFilter({
-  range,
-  source,
-}: FinanceiroPeriodFilterProps) {
+export function FinanceiroPeriodFilter({ range }: FinanceiroPeriodFilterProps) {
   const router = useRouter();
   const presets = useMemo(() => getPresets(), []);
   const activeRange = getActivePreset(range, presets);
@@ -123,6 +109,10 @@ export function FinanceiroPeriodFilter({
     }),
     [range.endDate, range.startDate]
   );
+
+  function selectPresetRange(preset: FinanceiroPreset) {
+    router.push(rangeHref(preset.range));
+  }
 
   function selectCalendarRange(value: RangeValue | null) {
     if (!value?.start || !value.end) return;
@@ -138,16 +128,12 @@ export function FinanceiroPeriodFilter({
   return (
     <SystemDateRangeFilter
       activeRange={activeRange}
-      appliedLabel={`Período aplicado: ${range.startDate} - ${range.endDate}`}
-      ariaLabel="Dados e período financeiro"
+      appliedLabel={`Periodo aplicado: ${range.startDate} - ${range.endDate}`}
+      ariaLabel="Periodo financeiro"
       calendarValue={calendarValue}
-      leadingActions={
-        <StatusPill tone={source === "real" ? "green" : "gold"}>
-          {source === "real" ? "Dados reais" : "Mock ativo"}
-        </StatusPill>
-      }
       maxDate={toCalendarDate(getTodayInAppTimezone())}
       onCalendarChange={selectCalendarRange}
+      onPresetSelect={selectPresetRange}
       presets={presets}
     />
   );
