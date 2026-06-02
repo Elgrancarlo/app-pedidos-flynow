@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Panel, StatusPill } from "@/components/workspace/operational-ui";
 import type { EstoqueProdutoResumo, EstoqueProdutoStatus } from "@/lib/estoque";
@@ -121,12 +121,7 @@ export default function TabelaEstoque({
   periodoLabel,
 }: TabelaEstoqueProps) {
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null);
-  const [productPageSize, setProductPageSize] = useState<number>(25);
-
-  const visibleGrupos = useMemo(
-    () => grupos.slice(0, productPageSize),
-    [grupos, productPageSize]
-  );
+  const [movementsPageSize, setMovementsPageSize] = useState<number>(25);
 
   const movimentacoesFiltradas = useMemo(() => {
     if (!grupoSelecionado) return movimentacoes;
@@ -135,20 +130,16 @@ export default function TabelaEstoque({
     );
   }, [grupoSelecionado, movimentacoes]);
 
-  useEffect(() => {
-    if (!grupoSelecionado) return;
+  const visibleMovimentacoes = useMemo(
+    () => movimentacoesFiltradas.slice(0, movementsPageSize),
+    [movimentacoesFiltradas, movementsPageSize]
+  );
 
-    const selectedIsVisible = visibleGrupos.some(
-      (grupo) => grupo.nome_grupo === grupoSelecionado
-    );
-
-    if (!selectedIsVisible) {
-      setGrupoSelecionado(null);
-    }
-  }, [grupoSelecionado, visibleGrupos]);
-
-  const displayStart = grupos.length === 0 ? 0 : 1;
-  const displayEnd = Math.min(productPageSize, grupos.length);
+  const movementsDisplayStart = movimentacoesFiltradas.length === 0 ? 0 : 1;
+  const movementsDisplayEnd = Math.min(
+    movementsPageSize,
+    movimentacoesFiltradas.length
+  );
 
   function toggleGrupo(nomeGrupo: string) {
     const nextGrupo = grupoSelecionado === nomeGrupo ? null : nomeGrupo;
@@ -169,47 +160,17 @@ export default function TabelaEstoque({
         title="Saldo por produto"
         description={`${periodoLabel} · ${grupos.length.toLocaleString("pt-BR")} produtos monitorados`}
         action={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {grupoSelecionado ? (
-              <button
-                type="button"
-                onClick={() => setGrupoSelecionado(null)}
-                className="inline-flex h-8 items-center justify-center rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-muted)] transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-              >
-                Ver todos
-              </button>
-            ) : (
-              <StatusPill tone="neutral">Todo o período selecionado</StatusPill>
-            )}
-
-            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--fly-text-muted)]">
-              <span className="tabular-nums">
-                {displayStart.toLocaleString("pt-BR")}-
-                {displayEnd.toLocaleString("pt-BR")} de{" "}
-                {grupos.length.toLocaleString("pt-BR")}
-              </span>
-              <span className="hidden text-[var(--fly-text-dim)] sm:inline">
-                /
-              </span>
-              <label className="flex items-center gap-2">
-                <span>Por página</span>
-                <select
-                  aria-label="Produtos por página"
-                  value={productPageSize}
-                  onChange={(event) =>
-                    setProductPageSize(Number(event.target.value))
-                  }
-                  className="h-8 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                >
-                  {PAGE_SIZE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
+          grupoSelecionado ? (
+            <button
+              type="button"
+              onClick={() => setGrupoSelecionado(null)}
+              className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+            >
+              Ver todos
+            </button>
+          ) : (
+            <StatusPill tone="neutral">Todo o período selecionado</StatusPill>
+          )
         }
       >
         <div className="overflow-x-auto">
@@ -238,7 +199,7 @@ export default function TabelaEstoque({
                   </td>
                 </tr>
               ) : (
-                visibleGrupos.map((grupo) => {
+                grupos.map((grupo) => {
                   const isSelected = grupoSelecionado === grupo.nome_grupo;
 
                   return (
@@ -322,15 +283,45 @@ export default function TabelaEstoque({
           title="Extrato de movimentações"
           description={`${periodoLabel} · ${movimentacoesFiltradas.length.toLocaleString("pt-BR")} registros${grupoSelecionado ? ` · ${grupoSelecionado}` : ""}`}
           action={
-            grupoSelecionado ? (
-              <button
-                type="button"
-                onClick={() => setGrupoSelecionado(null)}
-                className="inline-flex h-8 items-center justify-center rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-muted)] transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-              >
-                Ver todos
-              </button>
-            ) : null
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+              {grupoSelecionado ? (
+                <button
+                  type="button"
+                  onClick={() => setGrupoSelecionado(null)}
+                  className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                >
+                  Ver todos
+                </button>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--fly-text-muted)]">
+                <span className="tabular-nums">
+                  {movementsDisplayStart.toLocaleString("pt-BR")}-
+                  {movementsDisplayEnd.toLocaleString("pt-BR")} de{" "}
+                  {movimentacoesFiltradas.length.toLocaleString("pt-BR")}
+                </span>
+                <span className="hidden text-[var(--fly-text-dim)] sm:inline">
+                  /
+                </span>
+                <label className="flex items-center gap-2">
+                  <span>Por página</span>
+                  <select
+                    aria-label="Movimentações por página"
+                    value={movementsPageSize}
+                    onChange={(event) =>
+                      setMovementsPageSize(Number(event.target.value))
+                    }
+                    className="h-8 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
           }
         >
           <div className="overflow-x-auto">
@@ -355,7 +346,7 @@ export default function TabelaEstoque({
                     </td>
                   </tr>
                 ) : (
-                  movimentacoesFiltradas.slice(0, 120).map((movimentacao) => {
+                  visibleMovimentacoes.map((movimentacao) => {
                     const kind = getMovementKind(movimentacao);
                     const amount = getMovementAmount(movimentacao);
 
