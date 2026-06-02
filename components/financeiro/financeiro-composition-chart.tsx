@@ -238,7 +238,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
         {segments.map((segment) => (
           <div
             key={segment.key}
-            className="flex min-w-0 items-center justify-between gap-2"
+            className="flex min-w-0 items-center justify-between gap-2 rounded-[6px] border border-white/[0.045] bg-white/[0.012] px-2.5 py-2"
           >
             <span className="inline-flex min-w-0 items-center gap-1.5">
               <span
@@ -249,7 +249,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
               <span className="truncate">{segment.label}</span>
             </span>
             <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
-              {formatPercent(segment.ratio)}
+              {compactCurrency(segment.value)}
             </span>
           </div>
         ))}
