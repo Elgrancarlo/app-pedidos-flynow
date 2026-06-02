@@ -935,7 +935,7 @@ function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count:
           {alerts.slice(0, 10).map((alert) => (
             <article
               key={alert.id}
-              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-row-bg)] px-3 py-2.5 transition-colors duration-150 hover:border-[var(--fly-warning-border-hover)] hover:bg-[var(--fly-row-hover)] max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
+              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-transparent bg-transparent px-3 py-2.5 max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
             >
               <span className="text-xs font-medium tabular-nums text-[var(--fly-text-dim)]">
                 {alert.orderNumber ? `#${alert.orderNumber}` : "—"}
@@ -951,7 +951,11 @@ function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count:
               <span className="max-w-[120px] truncate text-xs font-medium tabular-nums text-[var(--fly-brand-strong)] max-md:hidden">
                 {alert.trackingCode ?? "Sem rastreio"}
               </span>
-              <span className="rounded-[7px] border border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] px-2 py-1 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-[var(--fly-warning-strong)]"
+                />
                 {alert.delayDays}d atraso
               </span>
             </article>
