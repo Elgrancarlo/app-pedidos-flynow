@@ -406,7 +406,10 @@ function UpsellsFilters({
   return (
     <section className="flynow-dashboard-enter-item rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] px-3 py-2.5 shadow-[var(--fly-panel-inset)] sm:px-3.5">
       <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-        <FunilPeriodFilter range={range} />
+        <FunilPeriodFilter
+          calendarTriggerClassName="!w-[162px] min-[390px]:!w-[178px] sm:!h-8 sm:!w-[244px] lg:!w-[244px]"
+          range={range}
+        />
 
         <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:shrink-0 xl:items-center">
           <FunilQuerySelect
@@ -550,17 +553,27 @@ function UpsellProductCard({
   return (
     <article className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="truncate text-[15px] font-semibold uppercase text-[var(--fly-text)]">
-            {item.product}
-          </h2>
-          <p className="mt-1 text-[15px] text-[var(--fly-text-muted)]">
-            {formatNumber(item.directSales)} vendas diretas no período
-          </p>
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            aria-hidden="true"
+            className="mt-1 h-8 w-px shrink-0 rounded-full bg-[var(--fly-brand-line)]"
+          />
+          <div className="min-w-0">
+            <h2 className="truncate text-[15px] font-semibold uppercase text-[var(--fly-text)]">
+              {item.product}
+            </h2>
+            <p className="mt-1 text-[15px] text-[var(--fly-text-muted)]">
+              {formatNumber(item.directSales)} vendas diretas no período
+            </p>
+          </div>
         </div>
 
         <div className="shrink-0 text-left sm:text-right">
-          <p className="text-base font-semibold tabular-nums text-[var(--fly-text)]">
+          <p className="inline-flex items-center gap-2 text-base font-semibold tabular-nums text-[var(--fly-text)] sm:justify-end">
+            <span
+              aria-hidden="true"
+              className="size-1.5 shrink-0 rounded-full bg-[var(--fly-chart-revenue)]"
+            />
             {formatCurrency(item.upsellRevenue)}
           </p>
           <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
@@ -572,16 +585,22 @@ function UpsellProductCard({
       <ProductMetricStrip item={item} lastDay={lastDay} />
       <CompactDailyHistory rows={item.dailyRows} />
 
-      <Link
-        className="mt-2 inline-flex text-sm font-semibold text-[var(--fly-text)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-        href={buildFunilHistoryHref({
-          product: item.product,
-          range,
-          selectedChannel,
-        })}
-      >
-        Ver histórico completo do período
-      </Link>
+      <div className="mt-3 flex justify-start sm:justify-end">
+        <Link
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-line)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-chart-revenue-active)] hover:decoration-[var(--fly-chart-revenue-active)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+          href={buildFunilHistoryHref({
+            product: item.product,
+            range,
+            selectedChannel,
+          })}
+        >
+          <span
+            aria-hidden="true"
+            className="size-1 shrink-0 rounded-full bg-[var(--fly-chart-revenue)]"
+          />
+          Ver histórico completo
+        </Link>
+      </div>
     </article>
   );
 }

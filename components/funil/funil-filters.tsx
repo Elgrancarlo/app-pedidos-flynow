@@ -26,6 +26,7 @@ type SelectOption = {
 };
 
 type FunilPeriodFilterProps = {
+  calendarTriggerClassName?: string;
   range: PerformanceRange;
 };
 
@@ -149,7 +150,10 @@ function buildNextHref(pathname: string, params: URLSearchParams) {
   return query ? `${pathname}?${query}` : pathname;
 }
 
-export function FunilPeriodFilter({ range }: FunilPeriodFilterProps) {
+export function FunilPeriodFilter({
+  calendarTriggerClassName,
+  range,
+}: FunilPeriodFilterProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -187,6 +191,7 @@ export function FunilPeriodFilter({ range }: FunilPeriodFilterProps) {
       activeRange={activeRange}
       appliedLabel={`Periodo aplicado: ${range.startDate} - ${range.endDate}`}
       ariaLabel="Periodo do funil"
+      calendarTriggerClassName={calendarTriggerClassName}
       calendarValue={calendarValue}
       maxDate={toCalendarDate(getTodayInAppTimezone())}
       onCalendarChange={selectCalendarRange}

@@ -23,6 +23,7 @@ type SystemDateRangeFilterProps<
   appliedLabel?: string;
   ariaLabel: string;
   calendarCloseSignal?: number;
+  calendarTriggerClassName?: string;
   calendarValue?: RangeValue | null;
   className?: string;
   leadingActions?: ReactNode;
@@ -42,6 +43,7 @@ export function SystemDateRangeFilter<
   appliedLabel,
   ariaLabel,
   calendarCloseSignal,
+  calendarTriggerClassName,
   calendarValue = null,
   className,
   leadingActions,
@@ -181,7 +183,8 @@ export function SystemDateRangeFilter<
                     "!h-10 !w-[132px] !rounded-xl !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-3 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[var(--fly-panel-inset)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] min-[390px]:!w-[140px] sm:!h-7 sm:!w-[228px] sm:!rounded-[10px] sm:!px-2.5 lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[var(--fly-panel-inset)] lg:hover:!bg-[var(--fly-control-hover)]",
                     isCustomRange
                       ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[var(--fly-panel-shadow)]"
-                      : "lg:!text-[var(--fly-text-soft)]"
+                      : "lg:!text-[var(--fly-text-soft)]",
+                    calendarTriggerClassName
                   )}
                   popoverClassName="!z-[120] !border-[var(--fly-brand-border)] !bg-[var(--fly-surface-elevated)]"
                 />
