@@ -1,19 +1,11 @@
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import type { CSSProperties } from "react";
 
-function SkeletonLine({
-  className = "",
-  style,
-}: {
-  className?: string;
-  style?: CSSProperties;
-}) {
+function SkeletonLine({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
       className={`block rounded-full bg-white/[0.055] ${className}`}
-      style={style}
     />
   );
 }
@@ -81,11 +73,9 @@ function EventCardsSkeleton() {
 function FinanceChartRowSkeleton({
   width,
   valueWidth,
-  delay,
 }: {
   width: string;
   valueWidth: string;
-  delay: string;
 }) {
   return (
     <div className="grid gap-2 border-t border-white/[0.055] py-3 sm:grid-cols-[minmax(150px,0.45fr)_minmax(0,1fr)_74px] sm:items-center sm:gap-4">
@@ -99,10 +89,7 @@ function FinanceChartRowSkeleton({
       </div>
 
       <div className="min-w-0 overflow-hidden rounded-full bg-white/[0.055]">
-        <SkeletonLine
-          className={`flynow-finance-chart-loading-bar h-1.5 ${width}`}
-          style={{ animationDelay: delay }}
-        />
+        <SkeletonLine className={`h-1.5 ${width}`} />
       </div>
 
       <SkeletonLine className={`h-2.5 ${valueWidth} sm:ml-auto`} />
@@ -127,7 +114,7 @@ function FinanceChartSkeleton() {
       </div>
 
       <div className="p-3 sm:p-4">
-        <div className="flynow-chart-stage flynow-chart-stage--loading min-h-[430px] space-y-5 rounded-[8px] border border-white/[0.045] bg-white/[0.01] p-4">
+        <div className="flynow-chart-stage min-h-[430px] space-y-5 rounded-[8px] border border-white/[0.045] bg-white/[0.01] p-4">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <div className="min-w-0">
               <SkeletonLine className="h-2.5 w-32" />
@@ -142,18 +129,9 @@ function FinanceChartSkeleton() {
 
           <div className="flynow-chart-plot">
             <div className="flex h-8 overflow-hidden rounded-[6px] bg-white/[0.045]">
-              <span
-                className="flynow-finance-chart-loading-segment h-full basis-[72%] bg-[#4ADE80]/28"
-                style={{ animationDelay: "0ms" }}
-              />
-              <span
-                className="flynow-finance-chart-loading-segment h-full basis-[17%] bg-[#F87171]/24"
-                style={{ animationDelay: "140ms" }}
-              />
-              <span
-                className="flynow-finance-chart-loading-segment h-full basis-[11%] bg-[#F0C76A]/24"
-                style={{ animationDelay: "260ms" }}
-              />
+              <span className="h-full basis-[72%] bg-[#4ADE80]/20" />
+              <span className="h-full basis-[17%] bg-[#F87171]/18" />
+              <span className="h-full basis-[11%] bg-[#F0C76A]/18" />
             </div>
 
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -174,17 +152,16 @@ function FinanceChartSkeleton() {
 
           <div>
             {[
-              ["w-full", "w-10", "0ms"],
-              ["w-[18%]", "w-8", "120ms"],
-              ["w-[12%]", "w-8", "240ms"],
-              ["w-[24%]", "w-8", "360ms"],
-              ["w-[82%]", "w-10", "480ms"],
-            ].map(([width, valueWidth, delay], index) => (
+              ["w-full", "w-10"],
+              ["w-[18%]", "w-8"],
+              ["w-[12%]", "w-8"],
+              ["w-[24%]", "w-8"],
+              ["w-[82%]", "w-10"],
+            ].map(([width, valueWidth], index) => (
               <FinanceChartRowSkeleton
                 key={index}
                 width={width}
                 valueWidth={valueWidth}
-                delay={delay}
               />
             ))}
           </div>
