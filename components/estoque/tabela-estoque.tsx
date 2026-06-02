@@ -286,15 +286,15 @@ export default function TabelaEstoque({
                         {formatNumber(grupo.estoque_atual)}
                       </td>
                       <td className="px-3 py-3.5">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-3">
                           <button
                             type="button"
                             onClick={() => toggleGrupo(grupo.nome_grupo)}
                             className={cn(
-                              "inline-flex h-8 items-center justify-center rounded-[8px] border px-3 text-xs font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
+                              "inline-flex p-0 text-[11px] font-semibold leading-5 underline decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
                               isSelected
-                                ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] text-[var(--fly-brand-strong)]"
-                                : "border-[var(--fly-border)] bg-[var(--fly-control)] text-[var(--fly-text-muted)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)]"
+                                ? "text-[var(--fly-brand-strong)] decoration-[var(--fly-brand-strong)]"
+                                : "text-[var(--fly-text-muted)] decoration-[var(--fly-border-strong)] hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:text-[var(--fly-brand-strong)]"
                             )}
                           >
                             {isSelected ? "Fechar" : "Ver extrato"}
@@ -302,7 +302,7 @@ export default function TabelaEstoque({
                           <button
                             type="button"
                             disabled
-                            className="inline-flex h-8 items-center justify-center rounded-[8px] border border-[var(--fly-border)] bg-transparent px-3 text-xs font-semibold text-[var(--fly-text-dim)] opacity-70"
+                            className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-dim)] underline decoration-[var(--fly-border)] decoration-1 underline-offset-4 opacity-70"
                           >
                             Editar saldo
                           </button>
