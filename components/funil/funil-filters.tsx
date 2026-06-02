@@ -315,20 +315,21 @@ export function FunilFilterStrip({
   selectedProduct,
 }: FunilFilterStripProps) {
   return (
-    <div className="flynow-dashboard-enter-item rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4">
-      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--fly-text)]">
+    <div className="flynow-dashboard-enter-item rounded-[8px] border border-white/[0.06] bg-[#0B0D10] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-3.5">
+      <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-1.5 shrink-0 rounded-full bg-[var(--fly-brand-strong)]"
+          />
+          <p className="truncate text-xs font-semibold uppercase text-[var(--fly-text-muted)]">
             Recortes do funil
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
-            Produto, canal e periodo aplicados aos indicadores.
           </p>
         </div>
 
         <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:flex lg:w-auto lg:shrink-0 lg:items-center">
           <FunilQuerySelect
-            className="lg:w-[220px]"
+            className="lg:h-8 lg:w-[210px]"
             displayLabel="Produto"
             label="produto"
             options={products}
@@ -336,7 +337,7 @@ export function FunilFilterStrip({
             value={selectedProduct}
           />
           <FunilQuerySelect
-            className="lg:w-[220px]"
+            className="lg:h-8 lg:w-[210px]"
             displayLabel="Canal"
             label="canal"
             options={channels}

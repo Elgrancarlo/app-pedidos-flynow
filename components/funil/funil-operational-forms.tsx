@@ -151,6 +151,9 @@ export function FunilOperationalForms({ products }: FunilOperationalFormsProps) 
     products.length > 1 ? products : [{ value: "all", label: "Todos" }];
   const [component, setComponent] = useState(componentOptions[0].value);
   const [product, setProduct] = useState(productOptions[0]?.value ?? "all");
+  const [relatedProduct, setRelatedProduct] = useState(
+    productOptions[0]?.value ?? "all"
+  );
   const [changeType, setChangeType] = useState(changeTypeOptions[0].value);
   const [area, setArea] = useState(areaOptions[0].value);
 
@@ -235,9 +238,12 @@ export function FunilOperationalForms({ products }: FunilOperationalFormsProps) 
               label="Titulo"
               placeholder="Ex: Call sobre queda de recuperacao no WhatsApp"
             />
-            <TextField
+            <SelectField
+              displayLabel="Produto"
               label="Produtos relacionados"
-              placeholder="Derma Bloom, Power 66"
+              onChange={setRelatedProduct}
+              options={productOptions}
+              value={relatedProduct}
             />
           </div>
 
