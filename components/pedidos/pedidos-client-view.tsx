@@ -134,6 +134,18 @@ const LOGISTICS_BADGE_STYLES: Record<PedidoStatusLogistico, string> = {
   devolvido: "flynow-status-badge--danger",
 };
 
+const LOGISTICS_BAR_STYLES: Record<PedidoStatusLogistico, string> = {
+  pago: "bg-[#60A5FA]",
+  nota_fiscal: "bg-[#38BDF8]",
+  separacao: "bg-[#A78BFA]",
+  aguardando_postagem: "bg-[var(--fly-brand)]",
+  postado: "bg-[#60A5FA]",
+  em_transporte: "bg-[#818CF8]",
+  aguardando_retirada: "bg-[#FB923C]",
+  entregue: "bg-[#4ADE80]",
+  devolvido: "bg-[#F87171]",
+};
+
 const PAYMENT_BADGE_STYLES: Record<PedidoStatusPagamento, string> = {
   paid: "flynow-status-badge--success",
   waiting_payment: "flynow-status-badge--warning",
@@ -699,14 +711,13 @@ function LogisticsStatusStrip({
                   {value.toLocaleString("pt-BR")}
                 </span>
               </div>
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--fly-border-subtle)]">
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--fly-control-solid)]">
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "block h-full rounded-full transition-[width] duration-300",
-                    isSelected
-                      ? "bg-[var(--fly-brand)]"
-                      : "bg-[var(--fly-border-strong)]"
+                    "block h-full rounded-full transition-[opacity,width] duration-300",
+                    LOGISTICS_BAR_STYLES[status],
+                    isSelected ? "opacity-100" : "opacity-80"
                   )}
                   style={{
                     width: `${Math.max(percentage, value > 0 ? 6 : 0)}%`,
