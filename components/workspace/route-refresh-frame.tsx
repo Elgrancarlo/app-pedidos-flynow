@@ -14,6 +14,7 @@ export function RouteRefreshFrame({
   const [contentKey, setContentKey] = useState("initial");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const previousHref = useRef<string | null>(null);
+  const refreshTimeout = useRef<number | null>(null);
 
   useEffect(() => {
     const href = `${window.location.pathname}${window.location.search}`;
@@ -31,12 +32,23 @@ export function RouteRefreshFrame({
     setContentKey(href);
     setIsRefreshing(true);
 
-    const timeout = window.setTimeout(() => {
-      setIsRefreshing(false);
-    }, 760);
+    if (refreshTimeout.current !== null) {
+      window.clearTimeout(refreshTimeout.current);
+    }
 
-    return () => window.clearTimeout(timeout);
+    refreshTimeout.current = window.setTimeout(() => {
+      setIsRefreshing(false);
+      refreshTimeout.current = null;
+    }, 760);
   });
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeout.current !== null) {
+        window.clearTimeout(refreshTimeout.current);
+      }
+    };
+  }, []);
 
   return (
     <div
