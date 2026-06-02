@@ -5,6 +5,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
+import { EstoquePeriodFilter } from "@/components/estoque/estoque-period-filter";
 import FormEntrada from "@/components/estoque/form-entrada";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -18,24 +19,11 @@ import {
   StatusPill,
 } from "@/components/workspace/operational-ui";
 import {
-  SystemDateRangeFilter,
-  type SystemDateRangePreset,
-} from "@/components/workspace/system-date-range-filter";
-import {
   getEstoquePageData,
-  type EstoquePeriodoPreset,
   type EstoqueProdutoStatus,
 } from "@/lib/estoque";
 
 export const dynamic = "force-dynamic";
-
-const PERIOD_OPTIONS: Array<SystemDateRangePreset<EstoquePeriodoPreset>> = [
-  { key: "7", label: "7 dias", displayLabel: "7D", href: "/estoque?dias=7" },
-  { key: "15", label: "15 dias", displayLabel: "15D", href: "/estoque?dias=15" },
-  { key: "30", label: "30 dias", displayLabel: "30D", href: "/estoque?dias=30" },
-  { key: "90", label: "90 dias", displayLabel: "90D", href: "/estoque?dias=90" },
-  { key: "all", label: "Tudo", displayLabel: "Tudo", href: "/estoque?dias=all" },
-];
 
 const STATUS_LABELS: Record<EstoqueProdutoStatus, string> = {
   critico: "Critico",
@@ -62,18 +50,6 @@ function formatDate(value: string) {
     day: "2-digit",
     month: "2-digit",
   });
-}
-
-function PeriodActions({ active }: { active: EstoquePeriodoPreset }) {
-  return (
-    <SystemDateRangeFilter
-      activeRange={active}
-      appliedLabel={`Período aplicado: ${active === "all" ? "Tudo" : `${active} dias`}`}
-      ariaLabel="Filtro de período do estoque"
-      presets={PERIOD_OPTIONS}
-      showCalendar={false}
-    />
-  );
 }
 
 function MockEntryForm() {
@@ -120,7 +96,7 @@ export default async function EstoquePage({
       <DashboardHeader
         title="Estoque"
         description="Saldo por produto, giro, cobertura e movimentações"
-        actions={<PeriodActions active={data.periodo.preset} />}
+        actions={<EstoquePeriodFilter active={data.periodo.preset} />}
       />
 
       <PageBody>
