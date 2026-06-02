@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Boxes,
   PackageMinus,
@@ -19,6 +18,10 @@ import {
   StatusPill,
 } from "@/components/workspace/operational-ui";
 import {
+  SystemDateRangeFilter,
+  type SystemDateRangePreset,
+} from "@/components/workspace/system-date-range-filter";
+import {
   getEstoquePageData,
   type EstoquePeriodoPreset,
   type EstoqueProdutoStatus,
@@ -26,12 +29,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const PERIOD_OPTIONS: Array<{ label: string; value: EstoquePeriodoPreset }> = [
-  { label: "7D", value: "7" },
-  { label: "15D", value: "15" },
-  { label: "30D", value: "30" },
-  { label: "90D", value: "90" },
-  { label: "Tudo", value: "all" },
+const PERIOD_OPTIONS: Array<SystemDateRangePreset<EstoquePeriodoPreset>> = [
+  { key: "7", label: "7 dias", displayLabel: "7D", href: "/estoque?dias=7" },
+  { key: "15", label: "15 dias", displayLabel: "15D", href: "/estoque?dias=15" },
+  { key: "30", label: "30 dias", displayLabel: "30D", href: "/estoque?dias=30" },
+  { key: "90", label: "90 dias", displayLabel: "90D", href: "/estoque?dias=90" },
+  { key: "all", label: "Tudo", displayLabel: "Tudo", href: "/estoque?dias=all" },
 ];
 
 const STATUS_LABELS: Record<EstoqueProdutoStatus, string> = {
@@ -63,31 +66,13 @@ function formatDate(value: string) {
 
 function PeriodActions({ active }: { active: EstoquePeriodoPreset }) {
   return (
-    <div className="contents lg:flex lg:w-auto lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1.5">
-      <div className="flynow-period-presets relative col-span-2 row-start-2 -mx-4 flex max-w-[calc(100vw-1px)] gap-1 overflow-x-auto px-4 pb-1 pt-0.5 sm:-mx-5 sm:px-5 md:mx-0 md:grid md:w-full md:grid-cols-5 md:px-0 md:pb-0 lg:col-auto lg:row-auto lg:flex">
-        {PERIOD_OPTIONS.map((option) => {
-          const isActive = option.value === active;
-          const href =
-            option.value === "all" ? "/estoque?dias=all" : `/estoque?dias=${option.value}`;
-
-          return (
-            <Link
-              key={option.value}
-              href={href}
-              aria-current={isActive ? "page" : undefined}
-              className={[
-                "inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:h-8 sm:rounded-[10px] lg:min-w-10",
-                isActive
-                  ? "bg-[var(--fly-control-active)] text-[var(--fly-text)]"
-                  : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)]",
-              ].join(" ")}
-            >
-              {option.label}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
+    <SystemDateRangeFilter
+      activeRange={active}
+      appliedLabel={`Período aplicado: ${active === "all" ? "Tudo" : `${active} dias`}`}
+      ariaLabel="Filtro de período do estoque"
+      presets={PERIOD_OPTIONS}
+      showCalendar={false}
+    />
   );
 }
 

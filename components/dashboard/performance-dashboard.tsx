@@ -30,7 +30,10 @@ import {
 } from "date-fns";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { Calendar, type RangeValue } from "@/components/ui/calendar";
+import {
+  SystemDateRangeFilter,
+  type RangeValue,
+} from "@/components/workspace/system-date-range-filter";
 import { useMetrics } from "@/hooks/useMetrics";
 import type {
   ChannelConversion,
@@ -878,178 +881,19 @@ function PeriodActions({
   onCalendarChange: (value: RangeValue | null) => void;
   onCalendarBeforeOpen: () => void;
 }) {
-  const presetGroupRef = useRef<HTMLDivElement | null>(null);
-  const presetButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const activePreset = RANGE_PRESETS.find((preset) => preset.key === activeRange);
-  const isCustomRange =
-    activeRange === "custom" && Boolean(calendarValue?.start && calendarValue.end);
-  const [presetUnderline, setPresetUnderline] = useState({
-    x: 0,
-    y: 0,
-    width: 0,
-    visible: false,
-  });
-
-  const updatePresetUnderline = useCallback(() => {
-    const group = presetGroupRef.current;
-    const activeButton = activePreset
-      ? presetButtonRefs.current[activePreset.key]
-      : null;
-
-    if (!group || !activeButton) {
-      setPresetUnderline((currentUnderline) =>
-        currentUnderline.visible
-          ? { ...currentUnderline, visible: false }
-          : currentUnderline
-      );
-      return;
-    }
-
-    const nextUnderline = {
-      x: activeButton.offsetLeft + 8,
-      y: activeButton.offsetTop + activeButton.offsetHeight - 5,
-      width: Math.max(activeButton.offsetWidth - 16, 12),
-      visible: true,
-    };
-
-    setPresetUnderline((currentUnderline) => {
-      if (
-        currentUnderline.visible === nextUnderline.visible &&
-        Math.abs(currentUnderline.x - nextUnderline.x) < 0.5 &&
-        Math.abs(currentUnderline.y - nextUnderline.y) < 0.5 &&
-        Math.abs(currentUnderline.width - nextUnderline.width) < 0.5
-      ) {
-        return currentUnderline;
-      }
-
-      return nextUnderline;
-    });
-  }, [activePreset]);
-
-  useEffect(() => {
-    const animationFrame = window.requestAnimationFrame(updatePresetUnderline);
-
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [updatePresetUnderline]);
-
-  useEffect(() => {
-    const group = presetGroupRef.current;
-
-    if (!group) {
-      return;
-    }
-
-    const handleResize = () => updatePresetUnderline();
-    window.addEventListener("resize", handleResize);
-    group.addEventListener("scroll", handleResize, { passive: true });
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(updatePresetUnderline)
-        : null;
-
-    resizeObserver?.observe(group);
-
-    if (activePreset) {
-      const activeButton = presetButtonRefs.current[activePreset.key];
-
-      if (activeButton) {
-        resizeObserver?.observe(activeButton);
-      }
-    }
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      group.removeEventListener("scroll", handleResize);
-      resizeObserver?.disconnect();
-    };
-  }, [activePreset, updatePresetUnderline]);
-
-  const presetUnderlineStyle = {
-    "--flynow-preset-underline-x": `${presetUnderline.x}px`,
-    "--flynow-preset-underline-y": `${presetUnderline.y}px`,
-    "--flynow-preset-underline-width": `${presetUnderline.width}px`,
-  } as CSSProperties;
-
   return (
-    <div className="contents lg:flex lg:w-auto lg:min-w-0 lg:flex-col lg:items-end lg:gap-2">
-      <div
-        role="group"
-        aria-label="Filtro de período"
-        className="flynow-period-filter contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1.5 lg:shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)]"
-      >
-        <div className="flynow-date-picker dark col-start-2 row-start-1 justify-self-end self-center lg:col-auto lg:row-auto lg:w-auto">
-          <Calendar
-            value={calendarValue}
-            onChange={onCalendarChange}
-            horizontalLayout
-            showTimeInput={false}
-            maxValue={maxDate}
-            popoverAlignment="end"
-            triggerActive={isCustomRange}
-            closeSignal={calendarCloseSignal}
-            onBeforeOpen={onCalendarBeforeOpen}
-            compactMobileLabel
-            className="w-auto lg:w-auto"
-            triggerClassName={cn(
-              "!h-10 !w-[140px] !rounded-xl !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-3 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] sm:!h-8 sm:!w-[236px] sm:!rounded-full sm:!px-2.5 lg:!rounded-xl lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[var(--fly-control-hover)]",
-              isCustomRange
-                ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
-                : "lg:!text-[var(--fly-text-soft)]"
-            )}
-            popoverClassName="!z-50 !border-[var(--fly-brand-border)] !bg-[var(--fly-surface-elevated)]"
-          />
-        </div>
-
-        <div
-          aria-hidden="true"
-          className="hidden h-5 w-px bg-[var(--fly-border)] lg:block"
-        />
-
-        <div
-          ref={presetGroupRef}
-          role="group"
-          aria-label="Selecionar período"
-          className="flynow-period-presets relative col-span-2 row-start-2 -mx-4 flex max-w-[calc(100vw-1px)] gap-1 overflow-x-auto overscroll-x-contain px-4 pb-1 pt-0.5 sm:-mx-5 sm:px-5 md:mx-0 md:grid md:w-full md:max-w-full md:grid-cols-5 md:overflow-visible md:px-0 md:pb-0 lg:col-auto lg:row-auto lg:flex lg:w-auto lg:items-center"
-        >
-          <span
-            aria-hidden="true"
-            className="flynow-preset-underline"
-            data-visible={presetUnderline.visible ? "true" : "false"}
-            style={presetUnderlineStyle}
-          />
-          {RANGE_PRESETS.map((preset) => {
-            const isActive = activeRange === preset.key;
-
-            return (
-              <button
-                key={preset.key}
-                ref={(element) => {
-                  presetButtonRefs.current[preset.key] = element;
-                }}
-                type="button"
-                title={preset.label}
-                aria-label={preset.label}
-                aria-pressed={isActive}
-                onClick={() => onSelect(preset)}
-                className={cn(
-                  "relative h-10 shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 sm:h-8 sm:rounded-[10px] sm:px-3 md:shrink lg:min-w-10",
-                  isActive
-                    ? "bg-[var(--fly-control)] text-[var(--fly-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[var(--fly-control-active)] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
-                    : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)] lg:hover:bg-[var(--fly-control-solid)]"
-                )}
-              >
-                {preset.displayLabel}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <span className="sr-only">
-        Período aplicado: {format(range.from, "dd/MM/yyyy")} -{" "}
-        {format(range.to, "dd/MM/yyyy")}
-      </span>
-    </div>
+    <SystemDateRangeFilter
+      activeRange={activeRange}
+      appliedLabel={`Período aplicado: ${format(range.from, "dd/MM/yyyy")} - ${format(range.to, "dd/MM/yyyy")}`}
+      ariaLabel="Filtro de período"
+      calendarCloseSignal={calendarCloseSignal}
+      calendarValue={calendarValue}
+      maxDate={maxDate}
+      onCalendarBeforeOpen={onCalendarBeforeOpen}
+      onCalendarChange={onCalendarChange}
+      onPresetSelect={onSelect}
+      presets={RANGE_PRESETS}
+    />
   );
 }
 

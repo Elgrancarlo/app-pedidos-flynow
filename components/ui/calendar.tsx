@@ -1032,7 +1032,7 @@ export const Calendar = ({
               type="button"
               aria-label="Fechar calendário"
               className={clsx(
-                "flynow-calendar-sheet-backdrop fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px]",
+                "flynow-calendar-sheet-backdrop fixed inset-0 z-[110] bg-black/45 backdrop-blur-[2px]",
                 isPopoverClosing && "flynow-calendar-sheet-backdrop--closing"
               )}
               onClick={closeCalendar}
@@ -1043,7 +1043,7 @@ export const Calendar = ({
             type="menu"
             style={popoverStyle}
             className={twMerge(clsx(
-              "flynow-calendar-popover fixed z-50 overflow-y-auto overscroll-contain border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+              "flynow-calendar-popover fixed z-[120] overflow-y-auto overscroll-contain border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
               isSheetMode && "flynow-calendar-popover--sheet",
               isPopoverClosing && "flynow-calendar-popover--closing",
               !isSheetMode && popoverOriginClass,
