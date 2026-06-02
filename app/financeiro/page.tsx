@@ -1,21 +1,14 @@
-import {
-  BadgePercent,
-  ReceiptText,
-  ShieldAlert,
-  Wallet,
-} from "lucide-react";
+import Link from "next/link";
 
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
-  DataList,
   PageBody,
-  Panel,
-  SimpleTable,
   StatCard,
   StatGrid,
   StatusPill,
 } from "@/components/workspace/operational-ui";
+import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import {
   getDefaultFinanceiroRange,
   getFinanceiroPageData,
@@ -25,20 +18,84 @@ import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function resolveRange(params: { startDate?: string; endDate?: string }) {
-  const defaults = getDefaultFinanceiroRange();
+const PERIOD_PRESETS = [
+  {
+    key: "today",
+    label: "Hoje",
+    getRange: () => {
+      const today = getTodayInAppTimezone();
+      return { startDate: today, endDate: today };
+    },
+  },
+  {
+    key: "7d",
+    label: "7 dias",
+    getRange: () => {
+      const today = getTodayInAppTimezone();
+      return { startDate: shiftDateString(today, -6), endDate: today };
+    },
+  },
+  {
+    key: "15d",
+    label: "15 dias",
+    getRange: () => {
+      const today = getTodayInAppTimezone();
+      return { startDate: shiftDateString(today, -14), endDate: today };
+    },
+  },
+  {
+    key: "30d",
+    label: "30 dias",
+    getRange: () => {
+      const today = getTodayInAppTimezone();
+      return { startDate: shiftDateString(today, -29), endDate: today };
+    },
+  },
+  {
+    key: "month",
+    label: "Este mês",
+    getRange: () => {
+      const today = getTodayInAppTimezone();
+      return { startDate: today.slice(0, 8) + "01", endDate: today };
+    },
+  },
+] satisfies Array<{
+  key: string;
+  label: string;
+  getRange: () => FinanceiroRange;
+}>;
 
-  return {
-    startDate: params.startDate ?? defaults.startDate,
-    endDate: params.endDate ?? defaults.endDate,
-  } satisfies FinanceiroRange;
+function resolveRange(params: { startDate?: string; endDate?: string }) {
+  const defaults = getDefaultFinanceiroRange(1);
+  const startDate = params.startDate ?? defaults.startDate;
+  const endDate = params.endDate ?? defaults.endDate;
+
+  return startDate <= endDate
+    ? ({ startDate, endDate } satisfies FinanceiroRange)
+    : ({ startDate: endDate, endDate: startDate } satisfies FinanceiroRange);
 }
 
-function formatDate(value: string) {
+function formatDateLong(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
-    month: "2-digit",
+    month: "long",
+    weekday: "short",
+    year: "numeric",
   });
+}
+
+function presetHref(range: FinanceiroRange) {
+  return `/financeiro?startDate=${range.startDate}&endDate=${range.endDate}`;
+}
+
+function getActivePreset(range: FinanceiroRange) {
+  return PERIOD_PRESETS.find((preset) => {
+    const presetRange = preset.getRange();
+    return (
+      presetRange.startDate === range.startDate &&
+      presetRange.endDate === range.endDate
+    );
+  })?.key;
 }
 
 function ModeBadge({ source }: { source: "mock" | "real" }) {
@@ -49,179 +106,179 @@ function ModeBadge({ source }: { source: "mock" | "real" }) {
   );
 }
 
+function PeriodFilter({ range }: { range: FinanceiroRange }) {
+  const activePreset = getActivePreset(range);
+
+  return (
+    <section className="flynow-dashboard-enter-item rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
+      <form
+        action="/financeiro"
+        className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"
+      >
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center">
+          <span className="text-xs font-medium text-[var(--fly-text-muted)]">
+            Período
+          </span>
+          <div className="flex max-w-full gap-1 overflow-x-auto pb-1 lg:pb-0">
+            {PERIOD_PRESETS.map((preset) => {
+              const isActive = activePreset === preset.key;
+
+              return (
+                <Link
+                  key={preset.key}
+                  href={presetHref(preset.getRange())}
+                  aria-current={isActive ? "page" : undefined}
+                  className={[
+                    "inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border px-3 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
+                    isActive
+                      ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] text-[var(--fly-brand-strong)]"
+                      : "border-[var(--fly-border)] bg-[var(--fly-control)] text-[var(--fly-text-muted)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text-soft)]",
+                  ].join(" ")}
+                >
+                  {preset.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] sm:items-center xl:min-w-[560px]">
+          <label className="min-w-0">
+            <span className="sr-only">Data inicial</span>
+            <input
+              type="date"
+              name="startDate"
+              defaultValue={range.startDate}
+              className="h-10 w-full rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+            />
+          </label>
+          <span className="hidden text-sm text-[var(--fly-text-dim)] sm:block">
+            -
+          </span>
+          <label className="min-w-0">
+            <span className="sr-only">Data final</span>
+            <input
+              type="date"
+              name="endDate"
+              defaultValue={range.endDate}
+              className="h-10 w-full rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+            />
+          </label>
+          <button
+            type="submit"
+            className="h-10 rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-4 text-xs font-semibold text-[var(--fly-brand-strong)] transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+          >
+            Filtrar
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function FinanceEventCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "red" | "gold" | "neutral";
+}) {
+  const borderClass = {
+    red: "border-l-[#F87171]",
+    gold: "border-l-[#D6A84F]",
+    neutral: "border-l-white/35",
+  }[tone];
+  const valueClass = {
+    red: "text-[#FCA5A5]",
+    gold: "text-[#F0C76A]",
+    neutral: "text-[var(--fly-text)]",
+  }[tone];
+
+  return (
+    <section
+      className={`flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] border-l-4 ${borderClass} bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]`}
+    >
+      <p className={`text-[22px] font-semibold leading-none tabular-nums ${valueClass}`}>
+        {value}
+      </p>
+      <p className="mt-3 text-xs leading-5 text-[var(--fly-text-muted)]">
+        {label}
+      </p>
+    </section>
+  );
+}
+
 export default async function FinanceiroPage({
   searchParams,
 }: {
   searchParams: Promise<{ startDate?: string; endDate?: string }>;
 }) {
   const params = await searchParams;
-  const data = await getFinanceiroPageData(resolveRange(params));
-  const maxDailyRevenue = Math.max(
-    ...data.dailySeries.map((item) => item.receitaBruta),
-    1
-  );
-  const maxPaymentRevenue = Math.max(
-    ...data.paymentMix.map((item) => item.revenue),
-    1
-  );
+  const range = resolveRange(params);
+  const data = await getFinanceiroPageData(range);
 
   return (
     <Shell>
       <DashboardHeader
         title="Financeiro"
-        description="Receita, recebíveis, chargebacks e reembolsos"
+        description={`Receita, reembolsos e chargebacks · ${formatDateLong(data.range.endDate)}`}
         actions={<ModeBadge source={data.source} />}
       />
 
       <PageBody>
+        <PeriodFilter range={data.range} />
+
         <StatGrid>
           <StatCard
             label="Receita bruta"
             value={formatCurrency(data.receitaBruta)}
             detail={`${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
-            Icon={ReceiptText}
             tone="gold"
-            rows={[
-              {
-                label: "Ticket medio",
-                value: formatCurrency(data.ticketMedio),
-                meter: data.receitaBruta > 0 ? data.ticketMedio / data.receitaBruta : 0,
-              },
-            ]}
           />
           <StatCard
-            label="Receita liquida"
+            label="Receita líquida"
             value={formatCurrency(data.receitaLiquida)}
-            detail="Bruta menos chargebacks e reembolsos"
-            Icon={Wallet}
+            detail="bruta do período - reversões por evento no período"
             tone="green"
-            rows={[
-              {
-                label: "Recebivel estimado",
-                value: formatCurrency(data.receitaRecebivel),
-                meter:
-                  data.receitaBruta > 0
-                    ? data.receitaRecebivel / data.receitaBruta
-                    : 0,
-              },
-            ]}
           />
           <StatCard
-            label="Taxas"
-            value={formatCurrency(data.taxaGateway)}
-            detail="Estimativa operacional de gateway"
-            Icon={BadgePercent}
+            label="Ticket médio"
+            value={formatCurrency(data.ticketMedio)}
+            detail="por pedido pago"
             tone="blue"
-            rows={[
-              {
-                label: "Peso na receita",
-                value: formatPercent(
-                  data.receitaBruta > 0 ? data.taxaGateway / data.receitaBruta : 0
-                ),
-                meter:
-                  data.receitaBruta > 0 ? data.taxaGateway / data.receitaBruta : 0,
-              },
-            ]}
           />
           <StatCard
-            label="Revertido"
+            label="Total revertido"
             value={formatCurrency(data.totalRevertido)}
-            detail={`Taxa CB ${formatPercent(data.taxaChargeback)}`}
-            Icon={ShieldAlert}
+            detail={`eventos financeiros no período · taxa CB ${formatPercent(data.taxaChargeback)}`}
             tone="red"
-            rows={[
-              {
-                label: "Chargebacks",
-                value: data.chargebacks.toLocaleString("pt-BR"),
-                meter:
-                  data.totalPedidos > 0 ? data.chargebacks / data.totalPedidos : 0,
-              },
-              {
-                label: "Reembolsos",
-                value: data.reembolsos.toLocaleString("pt-BR"),
-                meter:
-                  data.totalPedidos > 0 ? data.reembolsos / data.totalPedidos : 0,
-              },
-            ]}
           />
         </StatGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.6fr)]">
-          <Panel
-            title="Evolução financeira"
-            description={`${formatDate(data.range.startDate)} - ${formatDate(data.range.endDate)}`}
-          >
-            <DataList
-              valueLabel="receita"
-              rows={data.dailySeries.slice(-10).map((item) => ({
-                label: formatDate(item.day),
-                value: formatCurrency(item.receitaBruta),
-                detail: `${formatCurrency(item.receitaLiquida)} liquido · ${formatCurrency(item.revertido)} revertido`,
-                meter: item.receitaBruta / maxDailyRevenue,
-                tone: item.revertido > 0 ? "gold" : "green",
-              }))}
-            />
-          </Panel>
-
-          <Panel title="Mix de pagamento" description="Métodos com receita paga">
-            <DataList
-              rows={data.paymentMix.map((item) => ({
-                label: item.label,
-                value: formatCurrency(item.revenue),
-                detail: `${item.orders.toLocaleString("pt-BR")} pedidos`,
-                meter: item.revenue / maxPaymentRevenue,
-                tone: item.method === "pix" ? "green" : item.method === "boleto" ? "gold" : "blue",
-              }))}
-            />
-          </Panel>
-        </div>
-
-        <Panel
-          title="Pontos financeiros de atenção"
-          description="Eventos que reduzem receita ou pedem acompanhamento"
-          action={
-            <span className="text-xs font-semibold text-[var(--fly-text-muted)]">
-              {data.riskRows
-                .reduce((total, item) => total + item.quantity, 0)
-                .toLocaleString("pt-BR")}{" "}
-              eventos
-            </span>
-          }
-        >
-          <SimpleTable
-            columns={["Tipo", "Quantidade", "Impacto"]}
-            rows={data.riskRows.map((item) => [
-              item.label,
-              item.quantity.toLocaleString("pt-BR"),
-              formatCurrency(item.amount),
-            ])}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <FinanceEventCard
+            label="Chargebacks"
+            value={data.chargebacks.toLocaleString("pt-BR")}
+            tone="red"
           />
-        </Panel>
-
-        <Panel
-          title="Próxima conexão real"
-          description="A página já usa o mesmo contrato para mock e backend real"
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              ["Modo", data.source === "real" ? "Real" : "Mock"],
-              ["Range", `${data.range.startDate} ate ${data.range.endDate}`],
-              ["Adapter", "getFinanceiroPageData"],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] p-3"
-              >
-                <p className="text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-                  {label}
-                </p>
-                <p className="mt-2 truncate text-sm font-semibold text-[var(--fly-text-soft)]">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Panel>
+          <FinanceEventCard
+            label="Valor em chargeback"
+            value={formatCurrency(data.valorChargebacks)}
+            tone="red"
+          />
+          <FinanceEventCard
+            label="Reembolsos"
+            value={data.reembolsos.toLocaleString("pt-BR")}
+            tone="gold"
+          />
+          <FinanceEventCard
+            label="Valor reembolsado"
+            value={formatCurrency(data.valorReembolsos)}
+            tone="neutral"
+          />
+        </div>
       </PageBody>
     </Shell>
   );

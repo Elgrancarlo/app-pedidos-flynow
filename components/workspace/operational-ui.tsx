@@ -76,7 +76,7 @@ export function StatCard({
   label: string;
   value: string;
   detail: string;
-  Icon: LucideIcon;
+  Icon?: LucideIcon;
   tone?: Tone;
   rows?: Array<{
     label: string;
