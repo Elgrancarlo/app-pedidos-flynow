@@ -214,6 +214,50 @@ function getPedidoSearchText(pedido: Pedido) {
     .toLowerCase();
 }
 
+function getPaytOrderHref(pedido: Pedido) {
+  return `https://app.payt.com.br/admin/vendas/${pedido.paytTransactionId}`;
+}
+
+function getWhatsAppNumber(phone: string | null) {
+  const digits = phone?.replace(/\D/g, "") ?? "";
+
+  if (!digits) return null;
+  if (digits.startsWith("55")) return digits;
+  if (digits.length === 10 || digits.length === 11) return `55${digits}`;
+
+  return digits;
+}
+
+function getWhatsAppHref(pedido: Pedido) {
+  const number = getWhatsAppNumber(pedido.customerPhone);
+
+  if (!number) return null;
+
+  const message = encodeURIComponent(
+    `Ola, ${pedido.customerName}. Tudo bem? Estou falando sobre seu pedido ${pedido.paytTransactionId} da Flynow.`
+  );
+
+  return `https://wa.me/${number}?text=${message}`;
+}
+
+function formatPhone(phone: string | null) {
+  if (!phone) return null;
+
+  const digits = phone.replace(/\D/g, "");
+  const localDigits =
+    digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
+
+  if (localDigits.length === 11) {
+    return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2, 7)}-${localDigits.slice(7)}`;
+  }
+
+  if (localDigits.length === 10) {
+    return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2, 6)}-${localDigits.slice(6)}`;
+  }
+
+  return phone;
+}
+
 function getPaymentDotClass(status: PedidoStatusPagamento) {
   if (status === "paid") return "flynow-status-dot--success";
   if (status === "chargeback") return "flynow-status-dot--danger";
@@ -594,6 +638,89 @@ function OverviewPanel({
   );
 }
 
+function LogisticsStatusStrip({
+  contagem,
+  totalPedidos,
+  selectedStatus,
+  onStatusSelect,
+}: {
+  contagem: Record<PedidoStatusLogistico, number>;
+  totalPedidos: number;
+  selectedStatus: string;
+  onStatusSelect: (status: "all" | PedidoStatusLogistico) => void;
+}) {
+  return (
+    <section className="rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)]">
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-sm font-semibold text-[var(--fly-text)]">
+            Status logisticos
+          </h2>
+          <p className="mt-0.5 text-xs text-[var(--fly-text-muted)]">
+            Leitura rapida da fila no periodo
+          </p>
+        </div>
+        {selectedStatus !== "all" ? (
+          <button
+            type="button"
+            onClick={() => onStatusSelect("all")}
+            className="shrink-0 text-xs font-semibold text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+          >
+            Limpar status
+          </button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-9">
+        {PEDIDO_LOGISTICS_PIPELINE.map((status) => {
+          const value = contagem[status];
+          const percentage =
+            totalPedidos > 0 ? Math.round((value / totalPedidos) * 100) : 0;
+          const isSelected = selectedStatus === status;
+
+          return (
+            <button
+              key={status}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onStatusSelect(isSelected ? "all" : status)}
+              className={cn(
+                "group min-w-0 rounded-[8px] border p-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
+                isSelected
+                  ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]"
+                  : "border-[var(--fly-border)] bg-[var(--fly-control)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)]"
+              )}
+            >
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                <span className="truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--fly-text-muted)]">
+                  {PEDIDO_STATUS_LOGISTICO_LABELS[status]}
+                </span>
+                <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                  {value.toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--fly-border-subtle)]">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "block h-full rounded-full transition-[width] duration-300",
+                    isSelected
+                      ? "bg-[var(--fly-brand)]"
+                      : "bg-[var(--fly-border-strong)]"
+                  )}
+                  style={{
+                    width: `${Math.max(percentage, value > 0 ? 6 : 0)}%`,
+                  }}
+                />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ViewToggle({
   view,
   onChange,
@@ -823,6 +950,23 @@ function FilterPanel({
           ) : null}
           <button
             type="button"
+            aria-pressed={paymentStatus === "chargeback"}
+            onClick={() =>
+              onPaymentStatusChange(
+                paymentStatus === "chargeback" ? "all" : "chargeback"
+              )
+            }
+            className={cn(
+              "hidden h-10 shrink-0 items-center justify-center rounded-[8px] border px-3 text-xs font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:inline-flex",
+              paymentStatus === "chargeback"
+                ? "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] text-[var(--fly-danger-strong)]"
+                : "border-[var(--fly-border)] bg-[var(--fly-control)] text-[var(--fly-text-soft)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)]"
+            )}
+          >
+            Chargebacks
+          </button>
+          <button
+            type="button"
             aria-expanded={filtersOpen}
             aria-controls="pedidos-filter-controls"
             onClick={() => onFiltersOpenChange(!filtersOpen)}
@@ -930,6 +1074,23 @@ function FilterPanel({
           >
             <AlertTriangle aria-hidden="true" className="size-3.5" />
             Problemas
+          </button>
+          <button
+            type="button"
+            aria-pressed={paymentStatus === "chargeback"}
+            onClick={() =>
+              onPaymentStatusChange(
+                paymentStatus === "chargeback" ? "all" : "chargeback"
+              )
+            }
+            className={cn(
+              "inline-flex h-9 items-center justify-center rounded-[8px] border px-3 text-xs font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:hidden",
+              paymentStatus === "chargeback"
+                ? "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] text-[var(--fly-danger-strong)]"
+                : "border-[var(--fly-border)] bg-[var(--fly-control)] text-[var(--fly-text-soft)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)]"
+            )}
+          >
+            Chargebacks
           </button>
       </div>
     </div>
@@ -1051,103 +1212,132 @@ function OrdersTable({
 }) {
   return (
     <div className="hidden min-h-[520px] overflow-x-auto lg:block">
-      <table className="w-full min-w-[980px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[1180px] table-fixed text-left text-sm">
         <colgroup>
-          <col className="w-[29%]" />
-          <col className="w-[23%]" />
-          <col className="w-[17%]" />
+          <col className="w-[24%]" />
+          <col className="w-[13%]" />
+          <col className="w-[18%]" />
+          <col className="w-[16%]" />
           <col className="w-[20%]" />
-          <col className="w-[11%]" />
+          <col className="w-[9%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
             <th className="px-4 py-3.5">Cliente</th>
+            <th className="px-4 py-3.5">PayT</th>
             <th className="px-4 py-3.5">Produto</th>
             <th className="px-4 py-3.5">Financeiro</th>
             <th className="px-4 py-3.5">Entrega</th>
-            <th className="py-3.5 pl-3 pr-8 text-right">
-              <span className="sr-only">Detalhes</span>
-            </th>
+            <th className="py-3.5 pl-3 pr-8 text-right">Acoes</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/[0.055]">
-          {pedidos.map((pedido) => (
-            <tr
-              key={pedido.id}
-              className="group transition-colors duration-150 hover:bg-white/[0.018]"
-            >
-              <td className="px-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
-                    {pedido.customerName}
-                  </p>
-                  <div className="mt-1 flex min-w-0 items-center gap-2">
-                    <span className="truncate text-xs text-[var(--fly-text-muted)]">
-                      {pedido.customerEmail}
-                    </span>
-                    <span className="size-1 rounded-full bg-[var(--fly-border-strong)]" />
-                    <span className="shrink-0 font-mono text-[11px] font-semibold text-[var(--fly-brand-strong)]">
-                      {pedido.paytTransactionId}
-                    </span>
+          {pedidos.map((pedido) => {
+            const whatsappHref = getWhatsAppHref(pedido);
+            const formattedPhone = formatPhone(pedido.customerPhone);
+
+            return (
+              <tr
+                key={pedido.id}
+                className="group transition-colors duration-150 hover:bg-white/[0.018]"
+              >
+                <td className="px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+                      {pedido.customerName}
+                    </p>
+                    <div className="mt-1 flex min-w-0 flex-col gap-0.5 text-xs text-[var(--fly-text-muted)]">
+                      <span className="truncate">
+                        {pedido.customerEmail ?? "Sem e-mail"}
+                      </span>
+                      <span className="truncate">
+                        {formattedPhone ?? "Sem telefone"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
-                  {pedido.productGroup ?? pedido.productName ?? "-"}
-                </p>
-                <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--fly-text-muted)]">
-                  <span className="truncate">{PEDIDO_CANAL_LABELS[pedido.channel]}</span>
-                  <span className="size-1 rounded-full bg-[var(--fly-border-strong)]" />
-                  <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                    {pedido.jars ?? "-"} potes
-                  </span>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                  {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
-                </p>
-                <PaymentStatusInline
-                  status={pedido.paymentStatus}
-                  paidAt={pedido.paidAt}
-                  className="mt-1"
-                />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex min-w-0 flex-col items-start gap-1.5">
-                  <div className="flex min-w-0 max-w-full items-center gap-2">
-                    <StatusBadge
-                      label={PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus]}
-                      className={LOGISTICS_BADGE_STYLES[pedido.logisticsStatus]}
-                    />
-                    <IssueIndicator issue={pedido.issue} />
-                  </div>
-                  {pedido.trackingCode ? (
-                    <span className="block max-w-full truncate font-mono text-xs font-semibold text-[var(--fly-text-muted)]">
-                      {pedido.trackingCode}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-[var(--fly-text-dim)]">
-                      Sem rastreio
-                    </span>
-                  )}
-                </div>
-              </td>
-              <td className="py-3 pl-3 pr-8">
-                <div className="flex items-center justify-end gap-1">
-                  <button
-                    type="button"
-                    aria-label={`Ver detalhes de ${pedido.customerName}`}
-                    onClick={() => onDetail(pedido)}
-                    className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                </td>
+                <td className="px-4 py-3">
+                  <a
+                    href={getPaytOrderHref(pedido)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex max-w-full items-center gap-1.5 font-mono text-xs font-semibold text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-line)] underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-chart-revenue-active)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
                   >
-                    <span>Ver detalhes</span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+                    <span className="truncate">{pedido.paytTransactionId}</span>
+                    <ExternalLink aria-hidden="true" className="size-3 shrink-0" />
+                  </a>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
+                    {pedido.productGroup ?? pedido.productName ?? "-"}
+                  </p>
+                  <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--fly-text-muted)]">
+                    <span className="truncate">{PEDIDO_CANAL_LABELS[pedido.channel]}</span>
+                    <span className="size-1 rounded-full bg-[var(--fly-border-strong)]" />
+                    <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                      {pedido.jars ?? "-"} potes
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                    {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
+                  </p>
+                  <PaymentStatusInline
+                    status={pedido.paymentStatus}
+                    paidAt={pedido.paidAt}
+                    className="mt-1"
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex min-w-0 flex-col items-start gap-1.5">
+                    <div className="flex min-w-0 max-w-full items-center gap-2">
+                      <StatusBadge
+                        label={PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus]}
+                        className={LOGISTICS_BADGE_STYLES[pedido.logisticsStatus]}
+                      />
+                      <IssueIndicator issue={pedido.issue} />
+                    </div>
+                    {pedido.trackingCode ? (
+                      <span className="block max-w-full truncate font-mono text-xs font-semibold text-[var(--fly-text-muted)]">
+                        {pedido.trackingCode}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--fly-text-dim)]">
+                        Sem rastreio
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="py-3 pl-3 pr-8">
+                  <div className="flex flex-col items-end gap-1.5">
+                    {whatsappHref ? (
+                      <a
+                        href={whatsappHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-success-text)] underline decoration-[var(--fly-success-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-success)] hover:decoration-[var(--fly-success)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                      >
+                        WhatsApp
+                      </a>
+                    ) : (
+                      <span className="text-[11px] font-medium leading-5 text-[var(--fly-text-dim)]">
+                        Sem WhatsApp
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Ver detalhes de ${pedido.customerName}`}
+                      onClick={() => onDetail(pedido)}
+                      className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                    >
+                      <span>Ver detalhes</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1163,53 +1353,85 @@ function MobileOrdersList({
 }) {
   return (
     <div className="min-h-[520px] divide-y divide-white/[0.055] lg:hidden">
-      {pedidos.map((pedido) => (
-        <button
-          key={pedido.id}
-          type="button"
-          onClick={() => onDetail(pedido)}
-          className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(82px,auto)] gap-x-3 gap-y-1.5 px-3 py-2.5 text-left outline-none transition-colors duration-150 hover:bg-white/[0.02] active:bg-white/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--fly-brand-ring)]"
-        >
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold leading-5 text-[var(--fly-text)]">
-              {pedido.customerName}
-            </p>
-            <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
-              {pedido.productGroup ?? pedido.productName ?? "-"}
-              {pedido.jars ? ` · ${pedido.jars} potes` : ""}
-            </p>
-          </div>
+      {pedidos.map((pedido) => {
+        const whatsappHref = getWhatsAppHref(pedido);
+        const formattedPhone = formatPhone(pedido.customerPhone);
 
-          <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5">
-            <span className="shrink-0 text-[13px] font-semibold leading-4 tabular-nums text-[var(--fly-text)]">
-              {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
-            </span>
-            <MobilePaymentSignal status={pedido.paymentStatus} />
-          </div>
+        return (
+          <article
+            key={pedido.id}
+            className="px-3 py-2.5 transition-colors duration-150 hover:bg-white/[0.02]"
+          >
+            <button
+              type="button"
+              onClick={() => onDetail(pedido)}
+              className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_minmax(82px,auto)] gap-x-3 gap-y-1.5 text-left outline-none focus-visible:rounded-[8px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold leading-5 text-[var(--fly-text)]">
+                  {pedido.customerName}
+                </p>
+                <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                  {pedido.productGroup ?? pedido.productName ?? "-"}
+                  {pedido.jars ? ` · ${pedido.jars} potes` : ""}
+                </p>
+                <p className="truncate text-[11px] leading-4 text-[var(--fly-text-dim)]">
+                  {formattedPhone ?? pedido.customerEmail ?? "Sem contato"}
+                </p>
+              </div>
 
-          <div className="col-span-2 flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-[11px] leading-4 text-[var(--fly-text-muted)]">
-              <span className="shrink-0 font-mono font-semibold text-[var(--fly-brand-strong)]">
-                {pedido.paytTransactionId}
-              </span>
-              <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]" />
-              <span className="truncate font-mono">
-                {pedido.trackingCode ?? formatDate(pedido.paidAt, { year: undefined })}
-              </span>
+              <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5">
+                <span className="shrink-0 text-[13px] font-semibold leading-4 tabular-nums text-[var(--fly-text)]">
+                  {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
+                </span>
+                <MobilePaymentSignal status={pedido.paymentStatus} />
+              </div>
+
+              <div className="col-span-2 flex min-w-0 items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2 text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                  <span className="shrink-0 font-mono font-semibold text-[var(--fly-brand-strong)]">
+                    {pedido.paytTransactionId}
+                  </span>
+                  <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]" />
+                  <span className="truncate font-mono">
+                    {pedido.trackingCode ?? formatDate(pedido.paidAt, { year: undefined })}
+                  </span>
+                </div>
+                <div className="flex max-w-[46%] shrink-0 items-center justify-end gap-1.5">
+                  <StatusBadge
+                    label={PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus]}
+                    className={cn(
+                      LOGISTICS_BADGE_STYLES[pedido.logisticsStatus],
+                      "px-1.5 py-0.5 text-[10px]"
+                    )}
+                  />
+                  <IssueIndicator issue={pedido.issue} />
+                </div>
+              </div>
+            </button>
+
+            <div className="mt-2 flex items-center justify-end gap-3">
+              {whatsappHref ? (
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-success-text)] underline decoration-[var(--fly-success-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-success)] hover:decoration-[var(--fly-success)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                >
+                  WhatsApp
+                </a>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onDetail(pedido)}
+                className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              >
+                Ver detalhes
+              </button>
             </div>
-            <div className="flex max-w-[46%] shrink-0 items-center justify-end gap-1.5">
-              <StatusBadge
-                label={PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus]}
-                className={cn(
-                  LOGISTICS_BADGE_STYLES[pedido.logisticsStatus],
-                  "px-1.5 py-0.5 text-[10px]"
-                )}
-              />
-              <IssueIndicator issue={pedido.issue} />
-            </div>
-          </div>
-        </button>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -1304,6 +1526,20 @@ function PedidosSkeleton() {
           </div>
         ))}
       </div>
+      <div className="flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-3">
+        <div className="mb-3 space-y-2">
+          <span className="block h-3 w-28 rounded-full bg-white/[0.07]" />
+          <span className="block h-2.5 w-44 rounded-full bg-white/[0.045]" />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-9">
+          {Array.from({ length: 9 }).map((_, index) => (
+            <span
+              key={index}
+              className="h-[58px] rounded-[8px] bg-white/[0.045]"
+            />
+          ))}
+        </div>
+      </div>
       <div className="flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12]">
         <div className="border-b border-white/[0.06] p-3 sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -1312,8 +1548,8 @@ function PedidosSkeleton() {
           </div>
         </div>
         <div className="hidden lg:block">
-          <div className="grid grid-cols-[31%_24%_18%_23%_4%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
-            {Array.from({ length: 5 }).map((_, index) => (
+          <div className="grid grid-cols-[24%_13%_18%_16%_20%_9%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
+            {Array.from({ length: 6 }).map((_, index) => (
               <span
                 key={index}
                 className="h-2.5 w-20 rounded-full bg-white/[0.055]"
@@ -1324,12 +1560,14 @@ function PedidosSkeleton() {
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="grid grid-cols-[31%_24%_18%_23%_4%] items-center gap-0 py-4"
+                className="grid grid-cols-[24%_13%_18%_16%_20%_9%] items-center gap-0 py-4"
               >
                 <div className="space-y-2">
                   <span className="block h-3.5 w-36 rounded-full bg-white/[0.07]" />
-                  <span className="block h-2.5 w-52 rounded-full bg-white/[0.045]" />
+                  <span className="block h-2.5 w-44 rounded-full bg-white/[0.045]" />
+                  <span className="block h-2.5 w-28 rounded-full bg-white/[0.045]" />
                 </div>
+                <span className="block h-3 w-20 rounded-full bg-white/[0.055]" />
                 <div className="space-y-2">
                   <span className="block h-3.5 w-44 rounded-full bg-white/[0.06]" />
                   <span className="block h-2.5 w-24 rounded-full bg-white/[0.045]" />
@@ -1342,7 +1580,10 @@ function PedidosSkeleton() {
                   <span className="block h-6 w-28 rounded-[7px] bg-white/[0.06]" />
                   <span className="block h-2.5 w-32 rounded-full bg-white/[0.045]" />
                 </div>
-                <span className="block size-8 rounded-[7px] bg-white/[0.05]" />
+                <div className="ml-auto space-y-2">
+                  <span className="block h-2.5 w-16 rounded-full bg-white/[0.055]" />
+                  <span className="block h-2.5 w-20 rounded-full bg-white/[0.045]" />
+                </div>
               </div>
             ))}
           </div>
@@ -1604,6 +1845,7 @@ function DetailDrawer({
   ]
     .filter(Boolean)
     .join("\n");
+  const whatsappHref = getWhatsAppHref(pedido);
 
   return (
     <div
@@ -1635,7 +1877,7 @@ function DetailDrawer({
                 {pedido.customerName}
               </h2>
               <a
-                href={`https://app.payt.com.br/admin/vendas/${pedido.paytTransactionId}`}
+                href={getPaytOrderHref(pedido)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-[var(--fly-brand-strong)] outline-none hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
@@ -1682,18 +1924,30 @@ function DetailDrawer({
                 ["CPF", pedido.customerDocument],
               ]}
               action={
-                <button
-                  type="button"
-                  onClick={() => copyValue("contact", contactText)}
-                  className="inline-flex h-8 items-center gap-2 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2.5 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                >
-                  {copied === "contact" ? (
-                    <Check aria-hidden="true" className="size-3.5 text-[#86EFAC]" />
-                  ) : (
-                    <Copy aria-hidden="true" className="size-3.5" />
-                  )}
-                  Copiar
-                </button>
+                <div className="flex items-center gap-2">
+                  {whatsappHref ? (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-8 items-center rounded-[7px] border border-[var(--fly-success-border)] bg-[var(--fly-success-surface)] px-2.5 text-xs font-semibold text-[var(--fly-success-text)] outline-none transition-colors duration-150 hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                    >
+                      WhatsApp
+                    </a>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => copyValue("contact", contactText)}
+                    className="inline-flex h-8 items-center gap-2 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2.5 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                  >
+                    {copied === "contact" ? (
+                      <Check aria-hidden="true" className="size-3.5 text-[#86EFAC]" />
+                    ) : (
+                      <Copy aria-hidden="true" className="size-3.5" />
+                    )}
+                    Copiar
+                  </button>
+                </div>
               }
             />
             <DetailSection
@@ -2039,13 +2293,21 @@ export default function PedidosClientView({
               className="flynow-dashboard-enter-item"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
             >
-              <OverviewPanel
-                totalPedidos={periodPedidos.length}
-                valorPago={periodMetrics.valorPago}
-                financeiro={periodMetrics.financeiro}
-                contagem={periodMetrics.contagem}
-                pedidos={periodPedidos}
-              />
+              <div className="space-y-3">
+                <OverviewPanel
+                  totalPedidos={periodPedidos.length}
+                  valorPago={periodMetrics.valorPago}
+                  financeiro={periodMetrics.financeiro}
+                  contagem={periodMetrics.contagem}
+                  pedidos={periodPedidos}
+                />
+                <LogisticsStatusStrip
+                  contagem={periodMetrics.contagem}
+                  totalPedidos={periodPedidos.length}
+                  selectedStatus={logisticsStatus}
+                  onStatusSelect={setLogisticsStatus}
+                />
+              </div>
             </div>
 
             <div
