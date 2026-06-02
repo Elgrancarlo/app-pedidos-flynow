@@ -1222,6 +1222,7 @@ export function PerformanceDashboard() {
                     value={formatNumber(dashboardData.carrinhos24h)}
                   />
                 </div>
+                <OrdersFunnelCard rows={dashboardData.funnelRows} />
               </SectionGroup>
             </div>
 
@@ -1264,13 +1265,7 @@ export function PerformanceDashboard() {
               style={{ "--flynow-enter-delay": "210ms" } as CSSProperties}
             >
               <SectionGroup title="Análise de pedidos">
-                <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-                  <div className="grid gap-5">
-                    <OrdersFunnelCard rows={dashboardData.funnelRows} />
-                    <FunnelAlertsPanel alerts={dashboardData.alertasFunil} />
-                  </div>
-                  <TrendChart data={dashboardData.trend} />
-                </div>
+                <TrendChart data={dashboardData.trend} />
               </SectionGroup>
             </div>
 
@@ -1282,6 +1277,13 @@ export function PerformanceDashboard() {
                 alerts={dashboardData.activeAlerts}
                 count={dashboardData.alertasAtivos}
               />
+            </div>
+
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "350ms" } as CSSProperties}
+            >
+              <FunnelAlertsPanel alerts={dashboardData.alertasFunil} />
             </div>
           </div>
         ) : null}
