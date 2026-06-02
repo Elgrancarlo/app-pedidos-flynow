@@ -1,21 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Panel, StatusPill } from "@/components/workspace/operational-ui";
 import type { EstoqueProdutoResumo, EstoqueProdutoStatus } from "@/lib/estoque";
-import type { EstoqueMovimentacao } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 type TabelaEstoqueProps = {
   grupos: EstoqueProdutoResumo[];
-  movimentacoes: EstoqueMovimentacao[];
   periodoLabel: string;
 };
-
-type MovementKind = "entrada" | "venda" | "estorno" | "ajuste" | "reativacao";
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const STATUS_LABELS: Record<EstoqueProdutoStatus, string> = {
   critico: "Crítico",
@@ -34,25 +28,6 @@ const STATUS_TONES: Record<
   excesso: "blue",
 };
 
-const MOVEMENT_LABELS: Record<MovementKind, string> = {
-  entrada: "Entrada",
-  venda: "Venda",
-  estorno: "Estorno",
-  ajuste: "Ajuste",
-  reativacao: "Reativação",
-};
-
-const MOVEMENT_TONES: Record<
-  MovementKind,
-  "blue" | "gold" | "green" | "red" | "neutral"
-> = {
-  entrada: "blue",
-  venda: "gold",
-  estorno: "green",
-  ajuste: "neutral",
-  reativacao: "red",
-};
-
 function formatNumber(value: number, maximumFractionDigits = 0) {
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits,
@@ -65,43 +40,6 @@ function formatDate(value: string) {
     month: "2-digit",
     year: "numeric",
   });
-}
-
-function signedNumber(value: number) {
-  if (value === 0) return "0";
-  return `${value > 0 ? "+" : "-"}${formatNumber(Math.abs(value))}`;
-}
-
-function observationContains(
-  item: EstoqueMovimentacao,
-  ...fragments: string[]
-) {
-  const observation = item.observacao?.toLocaleLowerCase("pt-BR") ?? "";
-  return fragments.some((fragment) => observation.includes(fragment));
-}
-
-function getMovementKind(item: EstoqueMovimentacao): MovementKind {
-  if (
-    observationContains(item, "estorno automatico", "estorno automático")
-  ) {
-    return "estorno";
-  }
-
-  if (
-    observationContains(item, "reativacao automatica", "reativação automática")
-  ) {
-    return "reativacao";
-  }
-
-  if (observationContains(item, "ajuste manual")) {
-    return "ajuste";
-  }
-
-  return item.tipo;
-}
-
-function getMovementAmount(item: EstoqueMovimentacao) {
-  return item.tipo === "entrada" ? item.qtd_potes : -item.qtd_potes;
 }
 
 function getStockTone(value: number) {
@@ -117,28 +55,11 @@ function coverageLabel(grupo: EstoqueProdutoResumo) {
 
 export default function TabelaEstoque({
   grupos,
-  movimentacoes,
   periodoLabel,
 }: TabelaEstoqueProps) {
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null);
-  const [movementsPageSize, setMovementsPageSize] = useState<number>(25);
-
-  const movimentacoesFiltradas = useMemo(() => {
-    if (!grupoSelecionado) return movimentacoes;
-    return movimentacoes.filter(
-      (movimentacao) => movimentacao.produto_grupo === grupoSelecionado
-    );
-  }, [grupoSelecionado, movimentacoes]);
-
-  const visibleMovimentacoes = useMemo(
-    () => movimentacoesFiltradas.slice(0, movementsPageSize),
-    [movimentacoesFiltradas, movementsPageSize]
-  );
-
-  const movementsDisplayStart = movimentacoesFiltradas.length === 0 ? 0 : 1;
-  const movementsDisplayEnd = Math.min(
-    movementsPageSize,
-    movimentacoesFiltradas.length
+  const selectedGrupo = grupos.find(
+    (grupo) => grupo.nome_grupo === grupoSelecionado
   );
 
   function toggleGrupo(nomeGrupo: string) {
@@ -148,7 +69,7 @@ export default function TabelaEstoque({
     if (nextGrupo) {
       window.requestAnimationFrame(() => {
         document
-          .getElementById("extrato-estoque")
+          .getElementById("ofertas-estoque")
           ?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
@@ -205,8 +126,9 @@ export default function TabelaEstoque({
                   return (
                     <tr
                       key={grupo.id}
+                      onClick={() => toggleGrupo(grupo.nome_grupo)}
                       className={cn(
-                        "transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                        "cursor-pointer transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
                         isSelected && "bg-[var(--fly-brand-soft)]"
                       )}
                     >
@@ -250,7 +172,10 @@ export default function TabelaEstoque({
                         <div className="flex justify-end gap-3">
                           <button
                             type="button"
-                            onClick={() => toggleGrupo(grupo.nome_grupo)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleGrupo(grupo.nome_grupo);
+                            }}
                             className={cn(
                               "inline-flex p-0 text-[11px] font-semibold leading-5 underline decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
                               isSelected
@@ -258,7 +183,7 @@ export default function TabelaEstoque({
                                 : "text-[var(--fly-text-muted)] decoration-[var(--fly-border-strong)] hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:text-[var(--fly-brand-strong)]"
                             )}
                           >
-                            {isSelected ? "Fechar" : "Ver extrato"}
+                            {isSelected ? "Fechar" : "Ver ofertas"}
                           </button>
                           <button
                             type="button"
@@ -278,120 +203,118 @@ export default function TabelaEstoque({
         </div>
       </Panel>
 
-      <div id="extrato-estoque" className="scroll-mt-24">
-        <Panel
-          title="Extrato de movimentações"
-          description={`${periodoLabel} · ${movimentacoesFiltradas.length.toLocaleString("pt-BR")} registros${grupoSelecionado ? ` · ${grupoSelecionado}` : ""}`}
-          action={
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-              {grupoSelecionado ? (
-                <button
-                  type="button"
-                  onClick={() => setGrupoSelecionado(null)}
-                  className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+      {selectedGrupo ? (
+        <div id="ofertas-estoque" className="scroll-mt-24">
+          <Panel
+            title="Ofertas vinculadas"
+            description={`${selectedGrupo.nome_grupo} · ${selectedGrupo.ofertas.length.toLocaleString("pt-BR")} ofertas no período`}
+            action={
+              <button
+                type="button"
+                onClick={() => setGrupoSelecionado(null)}
+                className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              >
+                Fechar detalhes
+              </button>
+            }
+          >
+            <div className="grid gap-2 border-b border-[var(--fly-divider)] p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-4">
+              <div className="rounded-[8px] bg-[var(--fly-surface-muted)] px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  Saldo atual
+                </p>
+                <p
+                  className={cn(
+                    "mt-1 text-base font-semibold tabular-nums",
+                    getStockTone(selectedGrupo.estoque_atual)
+                  )}
                 >
-                  Ver todos
-                </button>
-              ) : null}
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--fly-text-muted)]">
-                <span className="tabular-nums">
-                  {movementsDisplayStart.toLocaleString("pt-BR")}-
-                  {movementsDisplayEnd.toLocaleString("pt-BR")} de{" "}
-                  {movimentacoesFiltradas.length.toLocaleString("pt-BR")}
-                </span>
-                <span className="hidden text-[var(--fly-text-dim)] sm:inline">
-                  /
-                </span>
-                <label className="flex items-center gap-2">
-                  <span>Por página</span>
-                  <select
-                    aria-label="Movimentações por página"
-                    value={movementsPageSize}
-                    onChange={(event) =>
-                      setMovementsPageSize(Number(event.target.value))
-                    }
-                    className="h-8 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  {formatNumber(selectedGrupo.estoque_atual)} potes
+                </p>
+              </div>
+              <div className="rounded-[8px] bg-[var(--fly-surface-muted)] px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  Vendidos no período
+                </p>
+                <p className="mt-1 text-base font-semibold tabular-nums text-[var(--fly-text)]">
+                  {formatNumber(selectedGrupo.vendasPeriodo)} potes
+                </p>
+              </div>
+              <div className="rounded-[8px] bg-[var(--fly-surface-muted)] px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  Entradas no período
+                </p>
+                <p className="mt-1 text-base font-semibold tabular-nums text-[var(--fly-text)]">
+                  {formatNumber(selectedGrupo.entradasPeriodo)} potes
+                </p>
+              </div>
+              <div className="rounded-[8px] bg-[var(--fly-surface-muted)] px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  Cobertura estimada
+                </p>
+                <p className="mt-1 text-base font-semibold tabular-nums text-[var(--fly-text)]">
+                  {coverageLabel(selectedGrupo)}
+                </p>
               </div>
             </div>
-          }
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] table-fixed text-left text-sm">
-              <thead>
-                <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-                  <th className="w-[14%] px-3 py-3">Data</th>
-                  <th className="w-[26%] px-3 py-3">Produto</th>
-                  <th className="w-[15%] px-3 py-3">Tipo</th>
-                  <th className="w-[15%] px-3 py-3 text-right">Potes</th>
-                  <th className="w-[30%] px-3 py-3">Obs.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
-                {movimentacoesFiltradas.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="px-3 py-10 text-center text-sm text-[var(--fly-text-muted)]"
-                    >
-                      Nenhuma movimentação no período
-                    </td>
-                  </tr>
-                ) : (
-                  visibleMovimentacoes.map((movimentacao) => {
-                    const kind = getMovementKind(movimentacao);
-                    const amount = getMovementAmount(movimentacao);
 
-                    return (
-                      <tr
-                        key={movimentacao.id}
-                        className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
-                      >
-                        <td className="px-3 py-3.5 font-medium tabular-nums text-[var(--fly-text-soft)]">
-                          {formatDate(movimentacao.created_at)}
-                        </td>
-                        <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
-                          <span className="block truncate">
-                            {movimentacao.produto_grupo}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3.5">
-                          <StatusPill tone={MOVEMENT_TONES[kind]}>
-                            {MOVEMENT_LABELS[kind]}
-                          </StatusPill>
-                        </td>
-                        <td
-                          className={cn(
-                            "px-3 py-3.5 text-right font-semibold tabular-nums",
-                            amount >= 0
-                              ? "text-[var(--fly-chart-investment-active)]"
-                              : "text-[var(--fly-warning-strong)]"
-                          )}
-                        >
-                          {signedNumber(amount)}
-                        </td>
-                        <td className="px-3 py-3.5 text-xs text-[var(--fly-text-muted)]">
-                          <span className="block truncate">
-                            {movimentacao.observacao ?? "-"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[840px] table-fixed text-left text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                    <th className="w-[30%] px-3 py-3">Oferta</th>
+                    <th className="w-[16%] px-3 py-3">Canal</th>
+                    <th className="w-[13%] px-3 py-3 text-right">Pedidos</th>
+                    <th className="w-[13%] px-3 py-3 text-right">
+                      Potes/pedido
+                    </th>
+                    <th className="w-[14%] px-3 py-3 text-right">
+                      Potes vendidos
+                    </th>
+                    <th className="w-[14%] px-3 py-3 text-right">
+                      Última venda
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+                  {selectedGrupo.ofertas.map((oferta) => (
+                    <tr
+                      key={oferta.id}
+                      className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
+                    >
+                      <td className="px-3 py-3.5 align-middle">
+                        <span className="block truncate font-medium text-[var(--fly-text)]">
+                          {oferta.nome}
+                        </span>
+                        <span className="mt-1 block text-xs text-[var(--fly-text-muted)]">
+                          Participação{" "}
+                          {formatNumber(oferta.participacaoPeriodo * 100, 1)}%
+                          no consumo do período
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
+                        {oferta.canal}
+                      </td>
+                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                        {formatNumber(oferta.pedidosPeriodo)}
+                      </td>
+                      <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                        {formatNumber(oferta.potesPorPedido)}
+                      </td>
+                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+                        {formatNumber(oferta.potesVendidosPeriodo)}
+                      </td>
+                      <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-muted)]">
+                        {oferta.ultimaVenda ? formatDate(oferta.ultimaVenda) : "-"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </div>
+      ) : null}
     </>
   );
 }

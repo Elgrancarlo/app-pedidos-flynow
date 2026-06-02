@@ -137,7 +137,6 @@ export default function EstoqueLoading() {
           <MetricCardsSkeleton />
           <EntryFormSkeleton />
           <TableSkeleton titleWidth="w-40" rows={6} />
-          <TableSkeleton titleWidth="w-52" rows={7} />
         </div>
         <span className="sr-only">Carregando conteúdo de estoque.</span>
       </div>

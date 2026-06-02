@@ -18,12 +18,25 @@ export type EstoquePeriodoPreset = "7" | "15" | "30" | "90" | "all";
 
 export type EstoqueProdutoStatus = "critico" | "baixo" | "ok" | "excesso";
 
+export type EstoqueProdutoOferta = {
+  id: string;
+  produtoGrupo: string;
+  nome: string;
+  canal: string;
+  pedidosPeriodo: number;
+  potesPorPedido: number;
+  potesVendidosPeriodo: number;
+  participacaoPeriodo: number;
+  ultimaVenda: string | null;
+};
+
 export type EstoqueProdutoResumo = EstoqueGrupo & {
   entradasPeriodo: number;
   vendasPeriodo: number;
   giroPeriodo: number;
   coberturaDias: number | null;
   statusOperacional: EstoqueProdutoStatus;
+  ofertas: EstoqueProdutoOferta[];
 };
 
 export type EstoquePageData = {
@@ -211,6 +224,72 @@ function buildMockMovimentacoes(): EstoqueMovimentacao[] {
   );
 }
 
+const OFFER_TEMPLATES = [
+  { label: "Kit principal", canal: "Front", potesPorPedido: 3, share: 0.46 },
+  { label: "Kit promocional", canal: "Front", potesPorPedido: 5, share: 0.24 },
+  { label: "Televendas", canal: "Call Center", potesPorPedido: 3, share: 0.2 },
+  { label: "Recuperacao", canal: "WhatsApp", potesPorPedido: 1, share: 0.1 },
+] as const;
+
+function slugify(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function latestSaleDate(movimentacoes: EstoqueMovimentacao[]) {
+  const latest = movimentacoes
+    .filter((item) => item.tipo === "venda")
+    .sort(
+      (first, second) =>
+        new Date(second.created_at).getTime() -
+        new Date(first.created_at).getTime()
+    )[0];
+
+  return latest?.created_at ?? null;
+}
+
+function buildOfertasProduto({
+  produtoGrupo,
+  vendasPeriodo,
+  movimentacoesPeriodo,
+}: {
+  produtoGrupo: string;
+  vendasPeriodo: number;
+  movimentacoesPeriodo: EstoqueMovimentacao[];
+}): EstoqueProdutoOferta[] {
+  const latest = latestSaleDate(movimentacoesPeriodo);
+  let allocatedPotes = 0;
+
+  return OFFER_TEMPLATES.map((template, index) => {
+    const isLast = index === OFFER_TEMPLATES.length - 1;
+    const potesVendidosPeriodo = isLast
+      ? Math.max(0, vendasPeriodo - allocatedPotes)
+      : Math.round(vendasPeriodo * template.share);
+
+    allocatedPotes += potesVendidosPeriodo;
+
+    return {
+      id: `${slugify(produtoGrupo)}-${slugify(template.label)}`,
+      produtoGrupo,
+      nome: `${produtoGrupo} · ${template.label}`,
+      canal: template.canal,
+      pedidosPeriodo:
+        potesVendidosPeriodo > 0
+          ? Math.max(1, Math.round(potesVendidosPeriodo / template.potesPorPedido))
+          : 0,
+      potesPorPedido: template.potesPorPedido,
+      potesVendidosPeriodo,
+      participacaoPeriodo:
+        vendasPeriodo > 0 ? potesVendidosPeriodo / vendasPeriodo : 0,
+      ultimaVenda: potesVendidosPeriodo > 0 ? latest : null,
+    };
+  });
+}
+
 function getStatusOperacional(
   estoqueAtual: number,
   coberturaDias: number | null
@@ -276,6 +355,9 @@ function buildEstoqueData({
         groupTotals.vendas > 0 && days > 0 ? groupTotals.vendas / days : 0;
       const coberturaDias =
         giroPeriodo > 0 ? Math.round(grupo.estoque_atual / giroPeriodo) : null;
+      const movimentacoesDoGrupo = movimentacoesPeriodo.filter(
+        (item) => item.produto_grupo === grupo.nome_grupo
+      );
 
       return {
         ...grupo,
@@ -287,6 +369,11 @@ function buildEstoqueData({
           grupo.estoque_atual,
           coberturaDias
         ),
+        ofertas: buildOfertasProduto({
+          produtoGrupo: grupo.nome_grupo,
+          vendasPeriodo: groupTotals.vendas,
+          movimentacoesPeriodo: movimentacoesDoGrupo,
+        }),
       };
     })
     .sort(

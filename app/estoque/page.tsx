@@ -212,7 +212,6 @@ export default async function EstoquePage({
 
         <TabelaEstoque
           grupos={data.grupos}
-          movimentacoes={data.movimentacoes}
           periodoLabel={data.periodo.label}
         />
       </PageBody>
