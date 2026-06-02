@@ -13,8 +13,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Flynow — Order System",
-  description: "Dashboard de gestão de pedidos FLYNOW",
+  title: "Flynow — Operação",
+  description: "Painel operacional Flynow",
 };
 
 export default function RootLayout({
