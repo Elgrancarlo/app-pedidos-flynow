@@ -50,17 +50,11 @@ function FinanceEventCard({
     gold: "border-l-[var(--fly-chart-revenue)]",
     neutral: "border-l-[var(--fly-border-strong)]",
   }[tone];
-  const valueClass = {
-    red: "text-[var(--fly-danger-strong)]",
-    gold: "text-[var(--fly-brand-strong)]",
-    neutral: "text-[var(--fly-text)]",
-  }[tone];
-
   return (
     <section
       className={`flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] border-l-4 ${borderClass} bg-[var(--fly-surface)] p-4 shadow-[var(--fly-panel-shadow)]`}
     >
-      <p className={`text-[22px] font-semibold leading-none tabular-nums ${valueClass}`}>
+      <p className="text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
         {value}
       </p>
       <p className="mt-3 text-xs leading-5 text-[var(--fly-text-muted)]">

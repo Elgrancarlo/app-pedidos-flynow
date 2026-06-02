@@ -73,15 +73,15 @@ const metricToneStyles: Record<
 > = {
   gold: {
     dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-brand-strong)]",
+    value: "text-[var(--fly-text)]",
   },
   blue: {
     dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-chart-investment-active)]",
+    value: "text-[var(--fly-text)]",
   },
   green: {
     dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-success)]",
+    value: "text-[var(--fly-text)]",
   },
   neutral: {
     dot: "bg-[var(--fly-text-dim)]",
