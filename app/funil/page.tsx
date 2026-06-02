@@ -652,7 +652,7 @@ export default async function FunilPage({
   return (
     <Shell>
       <DashboardHeader
-        title="Analytics / Funil"
+        title="Funil"
         description="Funil diario por produto, canal e take rate de upsells"
         actions={<FunilPeriodFilter range={range} />}
       />

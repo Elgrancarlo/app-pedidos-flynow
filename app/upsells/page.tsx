@@ -655,7 +655,7 @@ export default async function UpsellsPage({
   return (
     <Shell>
       <DashboardHeader
-        title="Analytics / Upsells"
+        title="Upsells"
         description="Taxa total como leitura principal; US1 e US2 como apoio por produto"
       />
 

@@ -625,7 +625,7 @@ export default async function CanaisPage({
   return (
     <Shell>
       <DashboardHeader
-        title="Analytics / Canais"
+        title="Canais"
         description="Receita PayT por origem, mídia RedTrack e leitura por produto"
       />
 
