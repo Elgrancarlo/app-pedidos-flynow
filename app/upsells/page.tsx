@@ -431,7 +431,7 @@ function UpsellsFilters({
   );
 }
 
-function ProductMiniMetric({
+function ProductMetricItem({
   detail,
   label,
   value,
@@ -441,13 +441,13 @@ function ProductMiniMetric({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
-      <p className="truncate text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+    <div className="min-w-0 px-3 py-2.5">
+      <dt className="truncate text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
         {label}
-      </p>
-      <p className="mt-2 truncate text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+      </dt>
+      <dd className="mt-1.5 truncate text-sm font-semibold tabular-nums text-[var(--fly-text)]">
         {value}
-      </p>
+      </dd>
       <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
         {detail}
       </p>
@@ -455,55 +455,83 @@ function ProductMiniMetric({
   );
 }
 
-function DailyHistoryTable({ rows }: { rows: UpsellDailyRow[] }) {
+function ProductMetricStrip({
+  item,
+  lastDay,
+}: {
+  item: UpsellProductCardData;
+  lastDay: UpsellDailyRow | null;
+}) {
   return (
-    <div className="overflow-x-auto rounded-[8px] border border-[var(--fly-border-subtle)]">
-      <table className="w-full min-w-[520px] table-fixed text-left text-sm">
-        <thead>
-          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[16%] px-3 py-3">Dia</th>
-            <th className="w-[18%] px-3 py-3 text-right">Vendas</th>
-            <th className="w-[18%] px-3 py-3 text-right">Aprovados</th>
-            <th className="w-[24%] px-2.5 py-3 text-right">Taxa de conversão</th>
-            <th className="w-[24%] px-2.5 py-3 text-right">R$ upsell</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
-          {rows.length ? (
-            rows.map((row) => (
-              <tr
-                key={row.day}
-                className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
-              >
-                <td className="px-3 py-3.5 font-medium text-[var(--fly-text)]">
-                  {formatDateShort(row.day)}
-                </td>
-                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                  {formatNumber(row.directSales)}
-                </td>
-                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                  {formatNumber(row.totalApproved)}
-                </td>
-                <td className="px-2.5 py-3.5 text-right font-medium tabular-nums text-[var(--fly-text)]">
-                  {formatPercent(row.takeRateTotal)}
-                </td>
-                <td className="px-2.5 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                  {formatCurrency(row.upsellRevenue)}
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td
-                className="px-3 py-7 text-center text-sm text-[var(--fly-text-muted)]"
-                colSpan={5}
-              >
-                Nenhum histórico encontrado no período.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] sm:grid-cols-4 sm:divide-x sm:divide-[var(--fly-divider-subtle)]">
+      <ProductMetricItem
+        label="Hoje"
+        value={lastDay ? formatDateShort(lastDay.day) : "-"}
+        detail={`${formatNumber(lastDay?.directSales ?? 0)} vendas`}
+      />
+      <ProductMetricItem
+        label="Conversão hoje"
+        value={formatPercent(lastDay?.takeRateTotal ?? 0)}
+        detail={`${formatNumber(lastDay?.totalApproved ?? 0)} aprovados`}
+      />
+      <ProductMetricItem
+        label="Últimos 7 dias"
+        value={`${formatNumber(item.sevenDayDirectSales)} vendas`}
+        detail={`${formatCurrency(item.sevenDayRevenue)} upsell`}
+      />
+      <ProductMetricItem
+        label="Conversão 7D"
+        value={formatPercent(item.sevenDayTakeRate)}
+        detail={`${formatNumber(item.sevenDayApproved)} aprovados`}
+      />
+    </dl>
+  );
+}
+
+function CompactDailyHistory({ rows }: { rows: UpsellDailyRow[] }) {
+  const visibleRows = rows.slice(0, 3);
+
+  return (
+    <div className="mt-4 border-t border-[var(--fly-divider-subtle)] pt-3">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[var(--fly-text)]">
+            Histórico recente
+          </p>
+          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+            Últimos dias do período
+          </p>
+        </div>
+        <span className="shrink-0 text-xs font-medium tabular-nums text-[var(--fly-text-muted)]">
+          {formatNumber(rows.length)} dias
+        </span>
+      </div>
+
+      <div className="mt-2 divide-y divide-[var(--fly-divider-subtle)]">
+        {visibleRows.length ? (
+          visibleRows.map((row) => (
+            <div
+              key={row.day}
+              className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-sm"
+            >
+              <span className="font-medium tabular-nums text-[var(--fly-text)]">
+                {formatDateShort(row.day)}
+              </span>
+              <span className="min-w-0 truncate text-[var(--fly-text-muted)]">
+                {formatNumber(row.directSales)} vendas ·{" "}
+                {formatNumber(row.totalApproved)} aprovados
+              </span>
+              <span className="shrink-0 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                {formatPercent(row.takeRateTotal)}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p className="py-4 text-sm text-[var(--fly-text-muted)]">
+            Nenhum histórico encontrado no período.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -541,48 +569,11 @@ function UpsellProductCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
-        <ProductMiniMetric
-          label="Hoje"
-          value={lastDay ? formatDateShort(lastDay.day) : "-"}
-          detail={`${formatNumber(lastDay?.directSales ?? 0)} vendas`}
-        />
-        <ProductMiniMetric
-          label="Conversão hoje"
-          value={formatPercent(lastDay?.takeRateTotal ?? 0)}
-          detail={`${formatNumber(lastDay?.totalApproved ?? 0)} aprovados`}
-        />
-        <ProductMiniMetric
-          label="Últimos 7 dias"
-          value={`${formatNumber(item.sevenDayDirectSales)} vendas`}
-          detail={`${formatCurrency(item.sevenDayRevenue)} upsell`}
-        />
-        <ProductMiniMetric
-          label="Conversão 7D"
-          value={formatPercent(item.sevenDayTakeRate)}
-          detail={`${formatNumber(item.sevenDayApproved)} aprovados`}
-        />
-      </div>
-
-      <p className="mt-3 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5 text-sm leading-5 text-[var(--fly-text-soft)]">
-        A leitura principal aqui é a taxa total de upsell. US1 e US2 aparecem
-        como apoio quando a marcação do checkout estiver consistente.
-      </p>
-
-      <div className="mt-4">
-        <div className="mb-2">
-          <p className="text-sm font-semibold text-[var(--fly-text)]">
-            Últimos 7 dias
-          </p>
-          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-            Resumo rápido antes de abrir o histórico completo
-          </p>
-        </div>
-        <DailyHistoryTable rows={item.dailyRows} />
-      </div>
+      <ProductMetricStrip item={item} lastDay={lastDay} />
+      <CompactDailyHistory rows={item.dailyRows} />
 
       <Link
-        className="mt-3 flex min-h-10 items-center rounded-[8px] border border-[var(--fly-border-subtle)] px-3 text-sm font-semibold text-[var(--fly-text)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[border-color,color,text-decoration-color] duration-150 hover:border-[var(--fly-border-strong)] hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+        className="mt-2 inline-flex text-sm font-semibold text-[var(--fly-text)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
         href={buildFunilHistoryHref({
           product: item.product,
           range,
@@ -654,7 +645,7 @@ export default async function UpsellsPage({
     <Shell>
       <DashboardHeader
         title="Analytics / Upsells"
-        description="Leitura específica de US1 e US2 por produto"
+        description="Taxa total como leitura principal; US1 e US2 como apoio por produto"
         actions={<SourceBadge source={data.source} />}
       />
 
