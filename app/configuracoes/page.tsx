@@ -273,7 +273,7 @@ function IntegrationHealth({
         <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm font-semibold text-[var(--fly-text)]">
-              Contrato mock-first
+              Contrato de dados
             </p>
             <StatusPill tone="green">Normalizado</StatusPill>
           </div>
@@ -293,8 +293,8 @@ function IntegrationHealth({
             </StatusPill>
           </div>
           <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-            Em mock, rotinas com mutação ficam bloqueadas para evitar disparos ou
-            recálculos acidentais.
+            Rotinas com mutação ficam protegidas enquanto as conexões sensíveis
+            não estão prontas para operação.
           </p>
         </div>
       </div>
@@ -369,19 +369,14 @@ export default function ConfiguracoesPage() {
       <DashboardHeader
         title="Configurações"
         description="Ambiente, integrações e rotinas administrativas"
-        actions={
-          <StatusPill tone={mode === "real" ? "green" : "gold"}>
-            {mode === "real" ? "Modo real" : "Modo mock"}
-          </StatusPill>
-        }
       />
 
       <PageBody>
         <StatGrid>
           <StatCard
-            label="Modo de dados"
-            value={mode === "real" ? "Real" : "Mock"}
-            detail="Define se o frontend consome dados reais ou mockados"
+            label="Camada de dados"
+            value={mode === "real" ? "Conectada" : "Preparada"}
+            detail="Adapters prontos para alternar a origem das informações"
             tone={mode === "real" ? "green" : "gold"}
           />
           <StatCard
@@ -406,7 +401,7 @@ export default function ConfiguracoesPage() {
 
         <Panel
           title="Health das integrações"
-          description="Chaves e endpoints que habilitam a troca de mock por dados reais"
+          description="Chaves e endpoints que habilitam a conexão com dados reais"
           action={
             <StatusPill
               tone={configuredCount === integrationRows.length ? "green" : "gold"}
@@ -501,7 +496,7 @@ export default function ConfiguracoesPage() {
             description="Rotinas manuais com impacto no banco e no estoque"
             action={
               <StatusPill tone={mode === "real" ? "green" : "neutral"}>
-                {mode === "real" ? "Liberado" : "Bloqueado em mock"}
+                {mode === "real" ? "Liberado" : "Protegido"}
               </StatusPill>
             }
           >
@@ -523,7 +518,7 @@ export default function ConfiguracoesPage() {
                   disabled
                   className="inline-flex h-10 items-center justify-center rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70"
                 >
-                  Bloqueado em mock
+                  Protegido
                 </button>
               </div>
             )}

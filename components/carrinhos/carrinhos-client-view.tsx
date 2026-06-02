@@ -1255,7 +1255,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
             Carrinhos indisponiveis
           </p>
           <p className="flynow-dashboard-error-message mt-1 leading-5 text-[#FCA5A5]">
-            O mock de erro esta ativo. Tente novamente para voltar a base local.
+            Um cenário de erro esta ativo. Tente novamente para voltar a base local.
           </p>
         </div>
       </div>
@@ -2092,7 +2092,7 @@ export default function CarrinhosClientView({
     window.setTimeout(() => {
       setStatus("success");
       setActionNotice(
-        "Mock sincronizado: eventos H7 preservados para futura integracao."
+        "Sincronização simulada: eventos H7 preservados para futura integração."
       );
     }, 720);
   }, []);
@@ -2105,7 +2105,7 @@ export default function CarrinhosClientView({
 
   const prepareRecovery = useCallback(() => {
     setActionNotice(
-      "Recuperacao em mock: proximos passos simulados sem disparar mensagens reais."
+      "Recuperação preparada: próximos passos simulados sem disparar mensagens reais."
     );
   }, []);
 

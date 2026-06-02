@@ -7,7 +7,6 @@ import {
   PageBody,
   Panel,
   StatGrid,
-  StatusPill,
 } from "@/components/workspace/operational-ui";
 import { getEstoquePageData } from "@/lib/estoque";
 import type { EstoqueMovimentacao } from "@/lib/supabase";
@@ -125,7 +124,7 @@ function MockEntryForm() {
               ? "Power 66"
               : index === 1
                 ? "240"
-                : "Entrada visual em modo mock"}
+                : "Entrada visual para validação"}
           </span>
         </label>
       ))}
@@ -203,11 +202,6 @@ export default async function EstoquePage({
         <Panel
           title="Registrar entrada de estoque"
           description="Entrada manual de potes para grupos cadastrados"
-          action={
-            <StatusPill tone={data.source === "real" ? "green" : "gold"}>
-              {data.source === "real" ? "Dados reais" : "Mock ativo"}
-            </StatusPill>
-          }
         >
           {data.source === "real" ? (
             <FormEntrada grupos={data.grupos.map((grupo) => grupo.nome_grupo)} />

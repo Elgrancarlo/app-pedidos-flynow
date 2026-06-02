@@ -16,7 +16,6 @@ import {
   PageBody,
   Panel,
   StatGrid,
-  StatusPill,
 } from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
@@ -409,14 +408,6 @@ function MetricCard({
   );
 }
 
-function SourceBadge({ source }: { source: "mock" | "real" }) {
-  return (
-    <StatusPill tone={source === "real" ? "green" : "gold"}>
-      {source === "real" ? "Dados reais" : "Mock ativo"}
-    </StatusPill>
-  );
-}
-
 function CanaisFilters({
   channelOptions,
   range,
@@ -636,7 +627,6 @@ export default async function CanaisPage({
       <DashboardHeader
         title="Analytics / Canais"
         description="Receita PayT por origem, mídia RedTrack e leitura por produto"
-        actions={<SourceBadge source={data.source} />}
       />
 
       <PageBody>

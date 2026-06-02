@@ -1494,7 +1494,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
             Pedidos indisponiveis
           </p>
           <p className="flynow-dashboard-error-message mt-1 leading-5 text-[#FCA5A5]">
-            O mock de erro esta ativo. Tente novamente para voltar a base local.
+            Um cenário de erro esta ativo. Tente novamente para voltar a base local.
           </p>
         </div>
       </div>
@@ -2269,7 +2269,7 @@ export default function PedidosClientView({
     window.setTimeout(() => {
       setStatus("success");
       setActionNotice(
-        "Mock sincronizado: dados locais preservados para futura integracao H7."
+        "Sincronização simulada: dados locais preservados para futura integração H7."
       );
     }, 720);
   }, []);

@@ -6,7 +6,7 @@ import {
 } from "@/components/funil/funil-filters";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { PageBody, StatGrid, StatusPill } from "@/components/workspace/operational-ui";
+import { PageBody, StatGrid } from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
@@ -382,14 +382,6 @@ function UpsellsMetricCard({
   );
 }
 
-function SourceBadge({ source }: { source: "mock" | "real" }) {
-  return (
-    <StatusPill tone={source === "real" ? "green" : "gold"}>
-      {source === "real" ? "Dados reais" : "Mock ativo"}
-    </StatusPill>
-  );
-}
-
 function UpsellsFilters({
   channelOptions,
   productOptions,
@@ -665,7 +657,6 @@ export default async function UpsellsPage({
       <DashboardHeader
         title="Analytics / Upsells"
         description="Taxa total como leitura principal; US1 e US2 como apoio por produto"
-        actions={<SourceBadge source={data.source} />}
       />
 
       <PageBody>

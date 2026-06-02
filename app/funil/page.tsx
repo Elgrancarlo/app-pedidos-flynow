@@ -13,7 +13,7 @@ import {
 import { FunilOperationalForms } from "@/components/funil/funil-operational-forms";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { PageBody, Panel, StatGrid, StatusPill } from "@/components/workspace/operational-ui";
+import { PageBody, Panel, StatGrid } from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
@@ -382,14 +382,6 @@ function MetricCard({
   );
 }
 
-function SourceBadge({ source }: { source: "mock" | "real" }) {
-  return (
-    <StatusPill tone={source === "real" ? "green" : "gold"}>
-      {source === "real" ? "Dados reais" : "Mock ativo"}
-    </StatusPill>
-  );
-}
-
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
   const toneByLevel: Record<PerformanceAlert["level"], string> = {
     danger: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
@@ -666,16 +658,13 @@ export default async function FunilPage({
       />
 
       <PageBody>
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="grid gap-3">
           <FunilFilterStrip
             channels={channelOptions}
             products={productOptions}
             selectedChannel={selectedChannel}
             selectedProduct={selectedProduct}
           />
-          <div className="flynow-dashboard-enter-item flex items-center justify-start lg:justify-end">
-            <SourceBadge source={data.source} />
-          </div>
         </div>
 
         <StatGrid columns="xl:grid-cols-3">
