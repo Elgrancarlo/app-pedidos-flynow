@@ -219,9 +219,9 @@ export function FunilSelectControl({
       <RadixDropdownMenu.Trigger
         aria-label={`Selecionar ${label}`}
         className={cn(
-          "group flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-xl border bg-[var(--fly-control)] px-3 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] data-[state=open]:border-[var(--fly-brand-border)] data-[state=open]:bg-[var(--fly-control-hover)] sm:h-9 sm:rounded-[10px] sm:text-xs lg:bg-[var(--fly-control-solid)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+          "group flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-xl border bg-[var(--fly-control)] px-3 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-border-strong)] data-[state=open]:border-[var(--fly-border-strong)] data-[state=open]:bg-[var(--fly-control-hover)] sm:h-9 sm:rounded-[10px] sm:text-xs lg:bg-[var(--fly-control-solid)] lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
           isFiltered
-            ? "border-[var(--fly-brand-border)] text-[var(--fly-text)]"
+            ? "border-[var(--fly-border-strong)] text-[var(--fly-text)]"
             : "border-[var(--fly-border)]",
           className
         )}
@@ -245,7 +245,7 @@ export function FunilSelectControl({
           align="end"
           side="bottom"
           sideOffset={8}
-          className="flynow-calendar-popover flynow-offer-select-content z-[90] max-h-[280px] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[180px] overflow-y-auto rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[var(--fly-tooltip-shadow)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
+          className="flynow-calendar-popover flynow-offer-select-content z-[90] max-h-[280px] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[180px] overflow-y-auto rounded-xl border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[var(--fly-tooltip-shadow)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
         >
           <RadixDropdownMenu.RadioGroup value={value} onValueChange={onChange}>
             {options.map((option) => (
