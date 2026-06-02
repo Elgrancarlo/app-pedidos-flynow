@@ -1,15 +1,8 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  Inbox,
-  RefreshCw,
-} from "lucide-react";
-import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -20,11 +13,12 @@ import {
   YAxis,
 } from "recharts";
 import {
+  differenceInCalendarDays,
   endOfDay,
   endOfMonth,
   format,
-  startOfMonth,
   startOfDay,
+  startOfMonth,
   subDays,
   subMonths,
 } from "date-fns";
@@ -35,13 +29,21 @@ import {
   type RangeValue,
 } from "@/components/workspace/system-date-range-filter";
 import { useMetrics } from "@/hooks/useMetrics";
-import type {
-  ChannelConversion,
-  MetricsData,
-  Offer,
-  OfferStageKey,
-  RecoveryChannelKey,
-} from "@/lib/metrics";
+import {
+  createMockCarrinhos,
+  getCarrinhosResumo,
+  type Carrinho,
+} from "@/lib/carrinhos";
+import type { MetricsData } from "@/lib/metrics";
+import {
+  createMockPedidos,
+  getPedidosContagemPorStatus,
+  getPedidosFinanceiroResumo,
+  getPedidosValorPago,
+  PEDIDO_STATUS_LOGISTICO_LABELS,
+  type Pedido,
+  type PedidoStatusLogistico,
+} from "@/lib/pedidos";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 type RangePreset = {
@@ -51,37 +53,76 @@ type RangePreset = {
   getRange: () => { from: Date; to: Date };
 };
 
+type DashboardTone = "blue" | "gold" | "green" | "red" | "neutral";
+
 type KpiMetricProps = {
+  detail: string;
   label: string;
+  tone?: DashboardTone;
   value: string;
-  supportingText: string;
-  tone?: "gold" | "blue" | "green";
 };
 
-type ConversionItemProps = {
+type PedidoFunnelRow = {
+  amount: number;
+  count: number;
   label: string;
-  quantidade: number;
-  receita: number;
-  taxa?: number | null;
-  marker?: string;
-  percentage: number;
-  accent?: "neutral" | "blue";
+  tone: DashboardTone;
 };
 
-type RevenueChartTooltipPayload = {
+type DashboardAlert = {
+  customerName: string;
+  delayDays: number;
+  id: string;
+  orderNumber: number | null;
+  productGroup: string;
+  statusLabel: string;
+  trackingCode: string | null;
+};
+
+type FunnelAlert = {
+  detail: string;
+  source: string;
+  title: string;
+};
+
+type TrendPoint = {
+  data: string;
+  receita: number;
+  reembolsos: number;
+};
+
+type DashboardData = {
+  activeAlerts: DashboardAlert[];
+  alertasAtivos: number;
+  alertasFunil: FunnelAlert[];
+  carrinhos24h: number;
+  checkoutMonitorado: number;
+  emTransito: number;
+  funnelRows: PedidoFunnelRow[];
+  pedidosHoje: number;
+  receitaLiquida: number;
+  reembolsosHojeEventos: number;
+  reembolsosHoje: number;
+  salesValue: number;
+  taxaPerda: number;
+  taxaRecuperacao: number;
+  taxaReembolso: number;
+  trend: TrendPoint[];
+};
+
+type TrendChartTooltipPayload = {
+  color?: string;
   dataKey?: string | number;
   name?: string | number;
   value?: string | number;
 };
 
-type RevenueChartTooltipProps = {
+type TrendChartTooltipProps = {
   active?: boolean;
   isCompact: boolean;
   label?: string | number;
-  payload?: RevenueChartTooltipPayload[];
+  payload?: TrendChartTooltipPayload[];
 };
-
-const ALL_OFFERS_KEY = "all";
 
 const RANGE_PRESETS: RangePreset[] = [
   {
@@ -134,25 +175,31 @@ const RANGE_PRESETS: RangePreset[] = [
   },
 ];
 
-const STAGE_LABELS: Array<{
-  key: OfferStageKey;
-  label: string;
-}> = [
-  { key: "frontend", label: "Frontend" },
-  { key: "upsell", label: "Upsell" },
-  { key: "downsell", label: "Downsell" },
+const OPEN_LOGISTICS_STATUSES: PedidoStatusLogistico[] = [
+  "pago",
+  "nota_fiscal",
+  "separacao",
+  "aguardando_postagem",
+  "postado",
+  "em_transporte",
+  "aguardando_retirada",
 ];
 
-const CHANNEL_LABELS: Array<{
-  key: RecoveryChannelKey;
-  label: string;
-  marker: string;
-}> = [
-  { key: "ia_recuperacao", label: "IA", marker: "IA" },
-  { key: "email", label: "Email", marker: "EM" },
-  { key: "call_center", label: "Call Center", marker: "CC" },
-  { key: "sms", label: "SMS", marker: "SMS" },
-];
+const toneDotClass: Record<DashboardTone, string> = {
+  blue: "bg-[var(--fly-chart-investment)]",
+  gold: "bg-[var(--fly-chart-revenue)]",
+  green: "bg-[var(--fly-success)]",
+  neutral: "bg-[var(--fly-text-muted)]",
+  red: "bg-[var(--fly-danger-strong)]",
+};
+
+const toneBarClass: Record<DashboardTone, string> = {
+  blue: "bg-[var(--fly-chart-investment)]",
+  gold: "bg-[var(--fly-chart-revenue)]",
+  green: "bg-[var(--fly-success)]",
+  neutral: "bg-[var(--fly-text-soft)]",
+  red: "bg-[var(--fly-danger-strong)]",
+};
 
 function compactCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -181,6 +228,10 @@ function compactChartValue(value: number) {
   }).format(value);
 }
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
 function formatDateLabel(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -188,7 +239,21 @@ function formatDateLabel(value: string) {
   });
 }
 
-function getCompactChartTicks(data: MetricsData["serie_temporal"]) {
+function getDateFromIso(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isWithinRange(value: string | null | undefined, range: { from: Date; to: Date }) {
+  const date = getDateFromIso(value);
+  if (!date) return false;
+
+  return date.getTime() >= range.from.getTime() && date.getTime() <= range.to.getTime();
+}
+
+function getCompactChartTicks(data: TrendPoint[]) {
   if (data.length <= 5) {
     return data.map((item) => item.data);
   }
@@ -207,14 +272,202 @@ function getCompactChartTicks(data: MetricsData["serie_temporal"]) {
     .filter((tick): tick is string => Boolean(tick));
 }
 
-function getOfferLabel(offers: Offer[], value: string) {
-  const option = offers.find((item) => item.id === value);
+function isOpenLogisticsStatus(status: PedidoStatusLogistico) {
+  return OPEN_LOGISTICS_STATUSES.includes(status);
+}
 
-  if (value === ALL_OFFERS_KEY || !option) {
-    return "Todas as ofertas";
+function getDelayDays(pedido: Pedido, index: number) {
+  const promisedAt = getDateFromIso(pedido.promisedAt);
+  const naturalDelay = promisedAt
+    ? differenceInCalendarDays(new Date(), promisedAt)
+    : 0;
+
+  if (naturalDelay > 0) return naturalDelay;
+  if (pedido.issue === "atrasado") return 1 + ((pedido.orderNumber ?? index) % 70);
+
+  return 0;
+}
+
+function getTodaySeriesPoint(data: MetricsData) {
+  return data.serie_temporal.at(-1);
+}
+
+function getAverageTicket(data: MetricsData, pedidos: Pedido[]) {
+  const frontend = data.conversoes_etapa.frontend;
+  if (frontend.quantidade > 0 && frontend.receita > 0) {
+    return frontend.receita / frontend.quantidade;
   }
 
-  return option.nome;
+  const paidValue = getPedidosValorPago(pedidos);
+  const paidCount = pedidos.filter((pedido) => pedido.paymentStatus === "paid").length;
+
+  return paidCount > 0 ? paidValue / paidCount : 192;
+}
+
+function buildTrend(data: MetricsData, financeiroRate: number): TrendPoint[] {
+  return data.serie_temporal.map((item, index) => {
+    const refundPulse = index % 6 === 2 ? 1.45 : index % 7 === 4 ? 0.62 : 1;
+
+    return {
+      data: item.data,
+      receita: item.faturamento,
+      reembolsos: Math.round(item.faturamento * financeiroRate * refundPulse * 100) / 100,
+    };
+  });
+}
+
+function buildFunnelAlerts({
+  dashboardData,
+  data,
+}: {
+  dashboardData: Pick<DashboardData, "pedidosHoje" | "taxaPerda">;
+  data: MetricsData;
+}): FunnelAlert[] {
+  const trend = data.serie_temporal;
+  const latest = trend.at(-1);
+  const previousWindow = trend.slice(Math.max(trend.length - 4, 0), -1);
+  const previousAverage =
+    previousWindow.length > 0
+      ? previousWindow.reduce((total, item) => total + item.faturamento, 0) /
+        previousWindow.length
+      : latest?.faturamento ?? 0;
+  const revenueDrop =
+    latest && previousAverage > 0
+      ? Math.max(1 - latest.faturamento / previousAverage, 0)
+      : 0;
+
+  return [
+    {
+      title: "Queda de receita no funil",
+      detail: `${latest ? latest.data : format(new Date(), "yyyy-MM-dd")}: receita ficou ${formatPercent(revenueDrop)} abaixo da média dos 3 dias anteriores.`,
+      source: "IA",
+    },
+    {
+      title: "Diminuição de vendas diretas",
+      detail: `${latest ? latest.data : format(new Date(), "yyyy-MM-dd")}: ${dashboardData.pedidosHoje} vendas diretas no recorte monitorado.`,
+      source: "IA",
+    },
+    {
+      title: "Impacto de novo produto no funil",
+      detail: `A taxa de perda está em ${formatPercent(dashboardData.taxaPerda)}; vale monitorar mudanças de oferta e recuperação.`,
+      source: "IA",
+    },
+  ];
+}
+
+function buildDashboardData({
+  carrinhos,
+  data,
+  pedidos,
+  range,
+}: {
+  carrinhos: Carrinho[];
+  data: MetricsData;
+  pedidos: Pedido[];
+  range: { from: Date; to: Date };
+}): DashboardData {
+  const periodPedidos = pedidos.filter((pedido) =>
+    isWithinRange(pedido.paidAt ?? pedido.createdAt, range)
+  );
+  const todayKey = format(range.to, "yyyy-MM-dd");
+  const todayPedidos = periodPedidos.filter((pedido) => {
+    const paidAt = getDateFromIso(pedido.paidAt ?? pedido.createdAt);
+    return paidAt ? format(paidAt, "yyyy-MM-dd") === todayKey : false;
+  });
+  const periodCarrinhos = carrinhos.filter((carrinho) =>
+    isWithinRange(carrinho.lastActivityAt ?? carrinho.createdAt, range)
+  );
+  const todayCarrinhos = carrinhos.filter((carrinho) => {
+    const activity = getDateFromIso(carrinho.lastActivityAt ?? carrinho.createdAt);
+    return activity ? activity.getTime() >= subDays(new Date(), 1).getTime() : false;
+  });
+  const financeiroHoje = getPedidosFinanceiroResumo(todayPedidos);
+  const statusCounts = getPedidosContagemPorStatus(periodPedidos);
+  const carrinhosResumo = getCarrinhosResumo(periodCarrinhos);
+  const todaySeriesPoint = getTodaySeriesPoint(data);
+  const averageTicket = getAverageTicket(data, periodPedidos);
+  const salesValue =
+    todaySeriesPoint?.faturamento ?? getPedidosValorPago(todayPedidos);
+  const reembolsosHoje = financeiroHoje.valorReembolsos;
+  const receitaLiquida = Math.max(salesValue - reembolsosHoje, 0);
+  const pedidosHoje =
+    todayPedidos.filter((pedido) => pedido.paymentStatus === "paid").length ||
+    Math.round(salesValue / Math.max(averageTicket, 1));
+  const activeAlerts = periodPedidos
+    .filter((pedido, index) => {
+      const delayDays = getDelayDays(pedido, index);
+
+      return (
+        isOpenLogisticsStatus(pedido.logisticsStatus) &&
+        (pedido.issue === "atrasado" || delayDays > 0)
+      );
+    })
+    .map((pedido, index) => ({
+      customerName: pedido.customerName,
+      delayDays: getDelayDays(pedido, index),
+      id: pedido.id,
+      orderNumber: pedido.orderNumber,
+      productGroup: pedido.productGroup ?? pedido.productName ?? "Produto sem grupo",
+      statusLabel: PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus],
+      trackingCode: pedido.trackingCode,
+    }))
+    .sort((first, second) => second.delayDays - first.delayDays);
+  const emTransito =
+    statusCounts.postado +
+    statusCounts.em_transporte +
+    statusCounts.aguardando_retirada;
+  const checkoutMonitorado =
+    periodCarrinhos.length > 0
+      ? periodCarrinhos.length
+      : carrinhosResumo.total;
+  const perdaBase =
+    carrinhosResumo.abandonados + carrinhosResumo.perdidos + carrinhosResumo.recuperados;
+  const taxaPerda =
+    perdaBase > 0
+      ? (carrinhosResumo.abandonados + carrinhosResumo.perdidos) / perdaBase
+      : 0;
+  const refundRate = salesValue > 0 ? reembolsosHoje / salesValue : 0;
+  const financeiroRate =
+    data.faturamento_total > 0
+      ? Math.max(refundRate, 0.006)
+      : 0.006;
+  const dashboardDataBase = {
+    pedidosHoje,
+    taxaPerda,
+  };
+  const funnelRows: PedidoFunnelRow[] = [
+    {
+      amount: statusCounts.aguardando_postagem * averageTicket,
+      count: statusCounts.aguardando_postagem,
+      label: "Aguard. postagem",
+      tone: "gold",
+    },
+    {
+      amount: statusCounts.postado * averageTicket,
+      count: statusCounts.postado,
+      label: "Postado",
+      tone: "blue",
+    },
+  ];
+
+  return {
+    activeAlerts,
+    alertasAtivos: activeAlerts.length,
+    alertasFunil: buildFunnelAlerts({ dashboardData: dashboardDataBase, data }),
+    carrinhos24h: todayCarrinhos.length,
+    checkoutMonitorado,
+    emTransito,
+    funnelRows,
+    pedidosHoje,
+    receitaLiquida,
+    reembolsosHojeEventos: financeiroHoje.reembolsos,
+    reembolsosHoje,
+    salesValue,
+    taxaPerda,
+    taxaRecuperacao: carrinhosResumo.taxaRecuperacao,
+    taxaReembolso: refundRate,
+    trend: buildTrend(data, financeiroRate),
+  };
 }
 
 function useCompactViewport() {
@@ -238,7 +491,7 @@ function SectionHeader({
   description,
 }: {
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
@@ -250,279 +503,51 @@ function SectionHeader({
         <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
           {title}
         </h2>
-        <p className="mt-1.5 text-[13px] leading-5 text-[var(--fly-text-muted)] sm:text-sm">
-          {description}
-        </p>
+        {description ? (
+          <p className="mt-1.5 text-[13px] leading-5 text-[var(--fly-text-muted)] sm:text-sm">
+            {description}
+          </p>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function OfferSelectControl({
-  value,
-  offers,
-  open,
-  onChange,
-  onOpenChange,
-}: {
-  value: string;
-  offers: Offer[];
-  open: boolean;
-  onChange: (value: string) => void;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const selectedLabel = getOfferLabel(offers, value);
-
+function KpiCard({ detail, label, tone = "neutral", value }: KpiMetricProps) {
   return (
-    <RadixDropdownMenu.Root
-      modal={false}
-      open={open}
-      onOpenChange={onOpenChange}
-    >
-      <RadixDropdownMenu.Trigger
-        aria-label="Selecionar oferta"
-        className="group flex h-10 w-full min-w-[190px] max-w-full items-center justify-between gap-2 rounded-xl border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-left text-[11px] font-medium text-[var(--fly-text-soft)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] data-[state=open]:border-[var(--fly-brand-border)] data-[state=open]:bg-[var(--fly-control-hover)] sm:h-8 sm:w-[236px] sm:min-w-[236px] sm:rounded-full sm:px-2.5 lg:rounded-xl lg:border-[var(--fly-border-strong)] lg:bg-[var(--fly-control-solid)] lg:text-xs lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-      >
-        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
-          Oferta
-        </span>
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
+      <div className="flex min-w-0 items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-3.5 w-px shrink-0 bg-[var(--fly-border)]"
+          className={cn("size-1.5 shrink-0 rounded-full", toneDotClass[tone])}
         />
-        <span className="min-w-0 flex-1 truncate">{selectedLabel}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className="size-3.5 shrink-0 text-[var(--fly-text-muted)] transition-transform duration-200 group-data-[state=open]:rotate-180"
-        />
-      </RadixDropdownMenu.Trigger>
-
-      <RadixDropdownMenu.Portal>
-        <RadixDropdownMenu.Content
-          align="end"
-          avoidCollisions={false}
-          side="bottom"
-          sideOffset={8}
-          className="flynow-calendar-popover flynow-offer-select-content z-[80] max-h-[280px] min-w-[236px] overflow-hidden rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[var(--fly-tooltip-shadow)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
-        >
-          <RadixDropdownMenu.RadioGroup value={value} onValueChange={onChange}>
-            <OfferSelectItem value={ALL_OFFERS_KEY}>
-              Todas as ofertas
-            </OfferSelectItem>
-            {offers.map((offer) => (
-              <OfferSelectItem key={offer.id} value={offer.id}>
-                {offer.nome}
-              </OfferSelectItem>
-            ))}
-          </RadixDropdownMenu.RadioGroup>
-        </RadixDropdownMenu.Content>
-      </RadixDropdownMenu.Portal>
-    </RadixDropdownMenu.Root>
-  );
-}
-
-function OfferSelectItem({
-  value,
-  children,
-}: {
-  value: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <RadixDropdownMenu.RadioItem
-      value={value}
-      className="relative flex h-8 cursor-pointer select-none items-center rounded-[8px] py-1.5 pl-8 pr-3 text-xs font-medium text-[var(--fly-text-soft)] outline-none transition-colors duration-150 data-[highlighted]:bg-[var(--fly-control-hover)] data-[highlighted]:text-[var(--fly-text)] data-[state=checked]:text-[var(--fly-text)]"
-    >
-      <RadixDropdownMenu.ItemIndicator className="absolute left-2.5 inline-flex size-3.5 items-center justify-center text-[var(--fly-chart-revenue)]">
-        <Check aria-hidden="true" className="size-3.5" />
-      </RadixDropdownMenu.ItemIndicator>
-      <span className="truncate">{children}</span>
-    </RadixDropdownMenu.RadioItem>
-  );
-}
-
-function KpiMetric({
-  label,
-  value,
-  supportingText,
-  tone = "gold",
-}: KpiMetricProps) {
-  const dotClass = {
-    gold: "bg-[var(--fly-chart-revenue)]",
-    blue: "bg-[var(--fly-chart-investment)]",
-    green: "bg-[var(--fly-success)]",
-  }[tone];
-
-  return (
-    <div className="min-w-0">
-      <div className="flex items-start justify-between gap-3 sm:block">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            aria-hidden="true"
-            className={cn("size-1.5 shrink-0 rounded-full", dotClass)}
-          />
-          <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-            {label}
-          </p>
-        </div>
-        <p className="min-w-0 shrink-0 text-right text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:mt-3 sm:text-left sm:text-[30px] md:text-[32px]">
-          {value}
+        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+          {label}
         </p>
       </div>
-      <p className="mt-1.5 max-w-[32ch] text-[11px] leading-4 text-[var(--fly-text-muted)] sm:mt-3 sm:max-w-[28ch] sm:text-[13px] sm:leading-5">
-        {supportingText}
+      <p className="mt-3 text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[28px] 2xl:text-[30px]">
+        {value}
       </p>
-    </div>
-  );
-}
-
-function OverviewPanel({ data }: { data: MetricsData }) {
-  const metrics: KpiMetricProps[] = [
-    {
-      label: "Faturamento",
-      value: formatCurrency(data.faturamento_total),
-      supportingText: "Receita consolidada no período",
-      tone: "gold",
-    },
-    {
-      label: "Investimento",
-      value: formatCurrency(data.investimento_total),
-      supportingText: "Mídia paga aplicada no período",
-      tone: "blue",
-    },
-    {
-      label: "ROAS",
-      value: `${data.roas.toLocaleString("pt-BR", {
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      })}x`,
-      supportingText: "Retorno sobre investimento em anúncios",
-      tone: "green",
-    },
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] shadow-[var(--fly-panel-shadow)]">
-      <span
-        aria-hidden="true"
-        className="block h-px bg-gradient-to-r from-transparent via-[var(--fly-brand-line)] to-transparent"
-      />
-      <div className="flex flex-col gap-1 border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
-        <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
-          Visão geral
-        </h2>
-        <p className="text-[13px] leading-5 text-[var(--fly-text-muted)] sm:text-sm">
-          Resumo do período selecionado
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-3">
-        {metrics.map((metric, index) => (
-          <div
-            key={metric.label}
-            className={cn(
-              "px-4 py-3 sm:px-5 sm:py-5",
-              index > 0 &&
-                "border-t border-[var(--fly-divider)] md:border-l md:border-t-0"
-            )}
-          >
-            <KpiMetric {...metric} />
-          </div>
-        ))}
-      </div>
+      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+        {detail}
+      </p>
     </section>
   );
 }
 
-function ConversionItem({
-  label,
-  quantidade,
-  receita,
-  taxa,
-  marker,
-  percentage,
-  accent = "neutral",
-}: ConversionItemProps) {
-  const barClass =
-    accent === "blue"
-      ? "bg-gradient-to-r from-[#2563EB] to-[#93C5FD]"
-      : "bg-gradient-to-r from-[var(--fly-text-dim)] to-[var(--fly-text-soft)]";
-  const markerClass =
-    accent === "blue"
-      ? "text-[var(--fly-chart-investment-active)]"
-      : "text-[var(--fly-text-soft)]";
-
-  return (
-    <div className="min-w-0 rounded-[7px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg-strong)] px-3 py-2.5 transition-colors duration-200 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-row-hover)] sm:px-3.5 sm:py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {marker ? (
-            <span
-              aria-hidden="true"
-              className={cn(
-                "flynow-channel-marker flex w-8 shrink-0 items-center text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors duration-200",
-                markerClass
-              )}
-            >
-              {marker}
-            </span>
-          ) : null}
-          <div className="min-w-0">
-            <h3 className="truncate text-[13px] font-medium text-[var(--fly-text)]">
-              {label}
-            </h3>
-            <p className="mt-0.5 text-xs text-[var(--fly-text-muted)]">
-              {quantidade.toLocaleString("pt-BR")} conversões
-            </p>
-          </div>
-        </div>
-        {typeof taxa === "number" ? (
-          <span className="shrink-0 rounded-md border border-[var(--fly-success-border)] bg-[var(--fly-success-surface)] px-2 py-0.5 text-xs font-medium tabular-nums text-[var(--fly-success-text)]">
-            {formatPercent(taxa)}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-2.5 sm:mt-3">
-        <div className="flex items-end justify-between gap-3">
-          <p className="min-w-0 truncate text-[14px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[16px]">
-            {formatCurrency(receita)}
-          </p>
-          <p className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-[var(--fly-text-muted)] sm:text-xs">
-            {Math.round(percentage)}% do maior
-          </p>
-        </div>
-        <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-[var(--fly-divider)]">
-          <div
-            className={cn("flynow-conversion-bar h-full rounded-full", barClass)}
-            style={{ width: `${Math.max(percentage, 4)}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConversionPanel({
-  title,
-  description,
-  action,
+function SectionGroup({
   children,
+  title,
 }: {
-  title: string;
-  description: string;
-  action?: React.ReactNode;
   children: React.ReactNode;
+  title: string;
 }) {
   return (
-    <section className="rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
-      <div className="flex min-w-0 flex-col gap-3 2xl:flex-row 2xl:items-start 2xl:justify-between">
-        <SectionHeader title={title} description={description} />
-        {action ? (
-          <div className="min-w-0 2xl:max-w-[260px] 2xl:shrink-0">{action}</div>
-        ) : null}
-      </div>
-      <div className="mt-3 space-y-2.5 sm:mt-4">{children}</div>
+    <section className="space-y-3">
+      <h2 className="px-1 text-sm font-semibold text-[var(--fly-text-soft)]">
+        {title}
+      </h2>
+      {children}
     </section>
   );
 }
@@ -534,35 +559,35 @@ function DashboardSkeleton() {
       aria-label="Carregando métricas"
       className="flynow-dashboard-skeleton space-y-5"
     >
-      <div className="flynow-dashboard-skeleton-panel h-[288px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] md:h-[214px]">
-        <div className="grid h-full md:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className={cn(
-                "flex flex-col justify-end gap-3 p-4 sm:p-5",
-                index > 0 &&
-                  "border-t border-[var(--fly-divider)] md:border-l md:border-t-0"
-              )}
-            >
-              <span className="h-2.5 w-24 rounded-full bg-[var(--fly-skeleton-line)]" />
-              <span className="h-8 w-40 rounded-md bg-[var(--fly-skeleton-line)]" />
-              <span className="h-2.5 w-32 rounded-full bg-[var(--fly-skeleton-line)]" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flynow-dashboard-skeleton-panel h-[420px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] sm:h-[470px] lg:h-[520px]" />
-
-      <div className="grid items-start gap-5 xl:grid-cols-2">
-        {Array.from({ length: 2 }).map((_, index) => (
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="flynow-dashboard-skeleton-panel h-[316px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
+            className="flynow-dashboard-skeleton-panel h-[134px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
           />
         ))}
       </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="flynow-dashboard-skeleton-panel h-[126px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
+          />
+        ))}
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="flynow-dashboard-skeleton-panel h-[126px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
+          />
+        ))}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+        <div className="flynow-dashboard-skeleton-panel h-[320px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
+        <div className="flynow-dashboard-skeleton-panel h-[320px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
+      </div>
+      <div className="flynow-dashboard-skeleton-panel h-[430px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
       <span className="sr-only">Carregando métricas do dashboard.</span>
     </div>
   );
@@ -662,12 +687,12 @@ function EmptyState({
   );
 }
 
-function RevenueChartTooltip({
+function TrendChartTooltip({
   active,
   isCompact,
   label,
   payload,
-}: RevenueChartTooltipProps) {
+}: TrendChartTooltipProps) {
   if (!active || !payload?.length) {
     return null;
   }
@@ -685,17 +710,8 @@ function RevenueChartTooltip({
       <div className="space-y-1.5">
         {payload.map((item) => {
           const key = String(item.dataKey ?? item.name);
-          const isRevenue = key === "faturamento";
-          const labelText = isCompact
-            ? isRevenue
-              ? "Receita"
-              : "Mídia"
-            : isRevenue
-              ? "Faturamento"
-              : "Investimento";
-          const color = isRevenue
-            ? "var(--fly-chart-revenue)"
-            : "var(--fly-chart-investment)";
+          const isRevenue = key === "receita";
+          const labelText = isRevenue ? "Receita" : "Reembolsos";
 
           return (
             <div
@@ -706,7 +722,7 @@ function RevenueChartTooltip({
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full"
-                  style={{ background: color }}
+                  style={{ background: item.color }}
                 />
                 {labelText}
               </span>
@@ -721,41 +737,25 @@ function RevenueChartTooltip({
   );
 }
 
-function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
+function TrendChart({ data }: { data: TrendPoint[] }) {
   const isCompact = useCompactViewport();
   const hasChartData = data.length > 0;
   const compactChartTicks = useMemo(() => getCompactChartTicks(data), [data]);
 
   return (
     <section className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
-      <div className="mb-3 flex flex-col gap-2.5 md:flex-row md:items-start md:justify-between lg:mb-6">
+      <div className="mb-4">
         <SectionHeader
-          title="Faturamento vs investimento"
-          description="Evolução diária no período selecionado"
+          title="Tendência"
+          description="Receita e reembolsos nos últimos dias"
         />
-        <div className="flynow-chart-legend flex w-full items-center gap-1 rounded-[9px] border border-[var(--fly-divider)] bg-[var(--fly-row-bg-strong)] p-1 text-[10px] font-medium text-[var(--fly-text-soft)] shadow-[var(--fly-panel-inset)] sm:w-auto sm:justify-start sm:gap-4 sm:px-3 sm:py-2 sm:text-xs">
-          <span className="inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[7px] bg-[var(--fly-row-bg)] px-2 sm:h-auto sm:flex-none sm:bg-transparent sm:p-0">
-            <span
-              aria-hidden="true"
-              className="size-1.5 rounded-full bg-[var(--fly-chart-revenue)]"
-            />
-            Faturamento
-          </span>
-          <span className="inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-[7px] bg-[var(--fly-row-bg)] px-2 sm:h-auto sm:flex-none sm:bg-transparent sm:p-0">
-            <span
-              aria-hidden="true"
-              className="size-1.5 rounded-full bg-[var(--fly-chart-investment)]"
-            />
-            Investimento
-          </span>
-        </div>
       </div>
 
       {hasChartData ? (
         <div
           role="img"
-          aria-label="Gráfico diário comparando faturamento e investimento"
-          className="flynow-chart-stage h-[292px] min-w-0 sm:h-[340px] lg:h-[420px]"
+          aria-label="Gráfico de tendência com receita e reembolsos"
+          className="flynow-chart-stage h-[292px] min-w-0 sm:h-[320px]"
         >
           <div className="flynow-chart-plot h-full min-w-0">
             <ResponsiveContainer
@@ -769,7 +769,7 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                 data={data}
                 margin={
                   isCompact
-                    ? { top: 18, right: 18, bottom: 2, left: -4 }
+                    ? { top: 18, right: 16, bottom: 2, left: -8 }
                     : { top: 8, right: 12, bottom: 0, left: 0 }
                 }
               >
@@ -791,9 +791,6 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                   interval={isCompact ? 0 : "preserveEnd"}
                   minTickGap={isCompact ? 8 : 24}
                   tickMargin={isCompact ? 10 : 8}
-                  padding={
-                    isCompact ? { left: 2, right: 12 } : { left: 0, right: 0 }
-                  }
                 />
                 <YAxis
                   tick={{
@@ -813,38 +810,46 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
                 />
                 <Tooltip
                   allowEscapeViewBox={{ x: true, y: true }}
-                  content={<RevenueChartTooltip isCompact={isCompact} />}
+                  content={<TrendChartTooltip isCompact={isCompact} />}
                   cursor={{
                     stroke: "var(--fly-border-strong)",
                     strokeDasharray: "4 4",
                     strokeWidth: 1,
                   }}
                   position={isCompact ? { x: 50, y: 8 } : undefined}
-                  wrapperStyle={{ outline: "none", zIndex: 20 }}
+                  wrapperStyle={{
+                    outline: "none",
+                    pointerEvents: "none",
+                    zIndex: 20,
+                  }}
                 />
                 <Line
-                  isAnimationActive={false}
+                  animationBegin={120}
+                  animationDuration={820}
+                  animationEasing="ease-out"
                   type="monotone"
-                  dataKey="faturamento"
-                  stroke="var(--fly-chart-revenue)"
+                  dataKey="receita"
+                  stroke="var(--fly-success)"
                   strokeWidth={isCompact ? 2.4 : 2.25}
                   dot={false}
                   activeDot={{
                     r: isCompact ? 3.75 : 4,
-                    fill: "var(--fly-chart-revenue-active)",
+                    fill: "var(--fly-success)",
                     stroke: "var(--fly-surface)",
                   }}
                 />
                 <Line
-                  isAnimationActive={false}
+                  animationBegin={220}
+                  animationDuration={720}
+                  animationEasing="ease-out"
                   type="monotone"
-                  dataKey="investimento"
-                  stroke="var(--fly-chart-investment)"
-                  strokeWidth={isCompact ? 2.15 : 2}
+                  dataKey="reembolsos"
+                  stroke="var(--fly-danger-strong)"
+                  strokeWidth={isCompact ? 2.05 : 1.9}
                   dot={false}
                   activeDot={{
-                    r: isCompact ? 3.75 : 4,
-                    fill: "var(--fly-chart-investment-active)",
+                    r: isCompact ? 3.4 : 3.75,
+                    fill: "var(--fly-danger-strong)",
                     stroke: "var(--fly-surface)",
                   }}
                 />
@@ -854,10 +859,153 @@ function RevenueChart({ data }: { data: MetricsData["serie_temporal"] }) {
         </div>
       ) : (
         <EmptyState
-          title="Sem dados no período"
-          description="O gráfico será exibido assim que houver faturamento ou investimento para comparar."
+          compact
+          title="Sem tendência no período"
+          description="A curva será exibida quando houver dados suficientes."
         />
       )}
+    </section>
+  );
+}
+
+function OrdersFunnelCard({ rows }: { rows: PedidoFunnelRow[] }) {
+  const total = rows.reduce((sum, row) => sum + row.count, 0);
+  const max = Math.max(...rows.map((row) => row.count), 1);
+
+  return (
+    <section className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
+      <div className="mb-5">
+        <SectionHeader
+          title="Funil de pedidos"
+          description={`${formatNumber(total)} pedidos totais no recorte`}
+        />
+      </div>
+      <div className="space-y-4">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="grid grid-cols-[minmax(110px,0.7fr)_minmax(120px,1fr)_auto] items-center gap-3 text-sm max-sm:grid-cols-1"
+          >
+            <p className="truncate text-[var(--fly-text-soft)]">{row.label}</p>
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+              <span
+                aria-hidden="true"
+                className={cn("block h-full rounded-full", toneBarClass[row.tone])}
+                style={{ width: `${Math.max((row.count / max) * 100, 5)}%` }}
+              />
+            </div>
+            <div className="flex min-w-[132px] items-center justify-end gap-5 tabular-nums max-sm:justify-between">
+              <span className="font-semibold text-[var(--fly-text)]">
+                {formatNumber(row.count)}
+              </span>
+              <span className="text-xs text-[var(--fly-text-muted)]">
+                {compactCurrency(row.amount)}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count: number }) {
+  return (
+    <section className="rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
+      <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-1.5 shrink-0 rounded-full bg-[var(--fly-warning-strong)]"
+          />
+          <h2 className="text-[15px] font-semibold text-[var(--fly-text)]">
+            Alertas ativos
+          </h2>
+          <span className="rounded-full border border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] px-2 py-0.5 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+            {formatNumber(count)}
+          </span>
+        </div>
+        <p className="text-xs text-[var(--fly-text-muted)]">
+          Pedidos com data prometida vencida
+        </p>
+      </div>
+
+      {alerts.length ? (
+        <div className="space-y-2">
+          {alerts.slice(0, 10).map((alert) => (
+            <article
+              key={alert.id}
+              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-row-bg)] px-3 py-2.5 transition-colors duration-150 hover:border-[var(--fly-warning-border-hover)] hover:bg-[var(--fly-row-hover)] max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
+            >
+              <span className="text-xs font-medium tabular-nums text-[var(--fly-text-dim)]">
+                {alert.orderNumber ? `#${alert.orderNumber}` : "—"}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--fly-text)]">
+                  {alert.customerName}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-[var(--fly-text-muted)]">
+                  {alert.productGroup} · {alert.statusLabel}
+                </p>
+              </div>
+              <span className="max-w-[120px] truncate text-xs font-medium tabular-nums text-[var(--fly-brand-strong)] max-md:hidden">
+                {alert.trackingCode ?? "Sem rastreio"}
+              </span>
+              <span className="rounded-[7px] border border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] px-2 py-1 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+                {alert.delayDays}d atraso
+              </span>
+            </article>
+          ))}
+          {count > 10 ? (
+            <p className="pt-2 text-center text-xs text-[var(--fly-text-muted)]">
+              +{formatNumber(count - 10)} outros alertas
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <EmptyState
+          compact
+          title="Sem alertas ativos"
+          description="Nenhum pedido atrasado foi encontrado para este período."
+        />
+      )}
+    </section>
+  );
+}
+
+function FunnelAlertsPanel({ alerts }: { alerts: FunnelAlert[] }) {
+  return (
+    <section className="rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-[15px] font-semibold text-[var(--fly-text)]">
+          Alertas do funil
+        </h2>
+        <span className="text-xs text-[var(--fly-text-muted)]">
+          {formatNumber(alerts.length)} sinais
+        </span>
+      </div>
+      <div className="space-y-2.5">
+        {alerts.map((alert) => (
+          <article
+            key={alert.title}
+            className="rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] px-3 py-3"
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--fly-text)]">
+                  {alert.title}
+                </p>
+                <p className="mt-1 text-sm leading-5 text-[var(--fly-text-soft)]">
+                  {alert.detail}
+                </p>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                {alert.source}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -870,7 +1018,6 @@ function PeriodActions({
   calendarCloseSignal,
   onSelect,
   onCalendarChange,
-  onCalendarBeforeOpen,
 }: {
   activeRange: string;
   range: { from: Date; to: Date };
@@ -879,7 +1026,6 @@ function PeriodActions({
   calendarCloseSignal: number;
   onSelect: (preset: RangePreset) => void;
   onCalendarChange: (value: RangeValue | null) => void;
-  onCalendarBeforeOpen: () => void;
 }) {
   return (
     <SystemDateRangeFilter
@@ -889,7 +1035,6 @@ function PeriodActions({
       calendarCloseSignal={calendarCloseSignal}
       calendarValue={calendarValue}
       maxDate={maxDate}
-      onCalendarBeforeOpen={onCalendarBeforeOpen}
       onCalendarChange={onCalendarChange}
       onPresetSelect={onSelect}
       presets={RANGE_PRESETS}
@@ -908,20 +1053,15 @@ export function PerformanceDashboard() {
       )}`,
     [initialRange]
   );
+  const pedidosMock = useMemo(() => createMockPedidos(), []);
+  const carrinhosMock = useMemo(() => createMockCarrinhos(), []);
   const [activeRange, setActiveRange] = useState("30d");
   const [range, setRange] = useState(initialRange);
   const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
     start: initialRange.from,
     end: initialRange.to,
   });
-  const [selectedOfferId, setSelectedOfferId] = useState(ALL_OFFERS_KEY);
-  const [isOfferSelectOpen, setIsOfferSelectOpen] = useState(false);
-  const [calendarCloseSignal, setCalendarCloseSignal] = useState(0);
-  const [offerTransitionKey, setOfferTransitionKey] = useState(0);
-  const [isOfferTransitioning, setIsOfferTransitioning] = useState(false);
-  const offerTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const [calendarCloseSignal] = useState(0);
   const {
     data,
     status,
@@ -936,78 +1076,24 @@ export function PerformanceDashboard() {
     [range]
   );
   const [contentVersion, setContentVersion] = useState(initialRangeKey);
+  const dashboardData = useMemo(
+    () =>
+      data
+        ? buildDashboardData({
+            carrinhos: carrinhosMock,
+            data,
+            pedidos: pedidosMock,
+            range,
+          })
+        : null,
+    [carrinhosMock, data, pedidosMock, range]
+  );
 
   useEffect(() => {
     if ((status === "success" || status === "empty") && data) {
       setContentVersion(rangeKey);
     }
   }, [data, rangeKey, status]);
-
-  useEffect(() => {
-    return () => {
-      if (offerTransitionTimeoutRef.current) {
-        clearTimeout(offerTransitionTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (
-      data &&
-      selectedOfferId !== ALL_OFFERS_KEY &&
-      !data.ofertas.some((offer) => offer.id === selectedOfferId)
-    ) {
-      setSelectedOfferId(ALL_OFFERS_KEY);
-    }
-  }, [data, selectedOfferId]);
-
-  const selectedStageConversions =
-    data && selectedOfferId !== ALL_OFFERS_KEY
-      ? data.conversoes_etapa_por_oferta?.[selectedOfferId] ??
-        data.conversoes_etapa
-      : data?.conversoes_etapa;
-
-  const selectedChannelConversions =
-    data && selectedOfferId !== ALL_OFFERS_KEY
-      ? data.conversoes_canal_por_oferta?.[selectedOfferId] ??
-        data.conversoes_canal
-      : data?.conversoes_canal;
-
-  const stageMax = selectedStageConversions
-    ? Math.max(
-        ...Object.values(selectedStageConversions).map(
-          (item) => item.receita
-        ),
-        1
-      )
-    : 1;
-
-  const channelMax = selectedChannelConversions
-    ? Math.max(
-        ...Object.values(selectedChannelConversions).map(
-          (item: ChannelConversion) => item.receita
-        ),
-        1
-      )
-    : 1;
-
-  const selectedOfferLabel = data
-    ? getOfferLabel(data.ofertas, selectedOfferId)
-    : "Todas as ofertas";
-  const conversionsDescription =
-    selectedOfferId === ALL_OFFERS_KEY
-      ? "Todas as ofertas no período selecionado"
-      : `${selectedOfferLabel} no período selecionado`;
-  const hasStageData = selectedStageConversions
-    ? Object.values(selectedStageConversions).some(
-        (item) => item.quantidade > 0 || item.receita > 0
-      )
-    : false;
-  const hasChannelData = selectedChannelConversions
-    ? Object.values(selectedChannelConversions).some(
-        (item) => item.quantidade > 0 || item.receita > 0
-      )
-    : false;
 
   function selectPreset(preset: RangePreset) {
     const nextRange = preset.getRange();
@@ -1031,42 +1117,11 @@ export function PerformanceDashboard() {
     }
   }
 
-  const closeOfferSelect = useCallback(() => {
-    setIsOfferSelectOpen(false);
-  }, []);
-
-  const handleOfferSelectOpenChange = useCallback((open: boolean) => {
-    if (open) {
-      setCalendarCloseSignal((currentSignal) => currentSignal + 1);
-    }
-
-    setIsOfferSelectOpen(open);
-  }, []);
-
-  function selectOffer(offerId: string) {
-    if (offerId === selectedOfferId) {
-      return;
-    }
-
-    setSelectedOfferId(offerId);
-    setOfferTransitionKey((currentKey) => currentKey + 1);
-    setIsOfferTransitioning(true);
-
-    if (offerTransitionTimeoutRef.current) {
-      clearTimeout(offerTransitionTimeoutRef.current);
-    }
-
-    offerTransitionTimeoutRef.current = setTimeout(() => {
-      setIsOfferTransitioning(false);
-      offerTransitionTimeoutRef.current = null;
-    }, 620);
-  }
-
   return (
     <>
       <DashboardHeader
-        title="Central da Operação"
-        description="Receita, mídia e conversão em tempo real"
+        title="Dashboard"
+        description="Métricas do dia atual e sinais operacionais"
         actions={
           <PeriodActions
             activeRange={activeRange}
@@ -1076,7 +1131,6 @@ export function PerformanceDashboard() {
             calendarCloseSignal={calendarCloseSignal}
             onSelect={selectPreset}
             onCalendarChange={selectCalendarRange}
-            onCalendarBeforeOpen={closeOfferSelect}
           />
         }
       />
@@ -1094,129 +1148,144 @@ export function PerformanceDashboard() {
         {!isInitialLoading && isEmpty ? (
           <EmptyState
             title="Sem dados para o período"
-            description="Altere o período ou a oferta para visualizar as métricas disponíveis."
+            description="Altere o período para visualizar as métricas disponíveis."
           />
         ) : null}
 
-        {data && !isEmpty ? (
+        {data && dashboardData && !isEmpty ? (
           <div
             key={contentVersion}
             aria-busy={isRefreshing}
             className={cn(
-              "flynow-dashboard-content relative flex flex-col gap-4 sm:gap-5",
+              "flynow-dashboard-content relative flex flex-col gap-5",
               isRefreshing && "flynow-dashboard-content--refreshing"
             )}
           >
             {error ? <RefreshErrorNotice onRetry={retry} /> : null}
 
             <div
-              className="flynow-dashboard-enter-item order-1"
+              className="flynow-dashboard-enter-item"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
             >
-              <OverviewPanel data={data} />
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item order-2"
-              style={{ "--flynow-enter-delay": "90ms" } as CSSProperties}
-            >
-              <RevenueChart data={data.serie_temporal} />
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item order-3"
-              style={{ "--flynow-enter-delay": "180ms" } as CSSProperties}
-            >
-              <div
-                aria-busy={isOfferTransitioning}
-                className={cn(
-                  "flynow-offer-conversions relative space-y-4",
-                  isOfferTransitioning &&
-                    "flynow-offer-conversions--refreshing"
-                )}
-              >
-                <div className="flex min-w-0 flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between">
-                  <SectionHeader
-                    title="Conversões por oferta"
-                    description={conversionsDescription}
+              <SectionGroup title="Visão geral">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <KpiCard
+                    detail={`${formatNumber(dashboardData.pedidosHoje)} pedidos`}
+                    label="Vendas hoje"
+                    tone="green"
+                    value={formatCurrency(dashboardData.salesValue)}
                   />
-                  <OfferSelectControl
-                    value={selectedOfferId}
-                    offers={data.ofertas}
-                    open={isOfferSelectOpen}
-                    onChange={selectOffer}
-                    onOpenChange={handleOfferSelectOpenChange}
+                  <KpiCard
+                    detail="vendas do dia menos reversões"
+                    label="Receita líquida"
+                    tone="green"
+                    value={formatCurrency(dashboardData.receitaLiquida)}
+                  />
+                  <KpiCard
+                    detail={`${formatNumber(dashboardData.reembolsosHojeEventos)} eventos`}
+                    label="Reembolsos hoje"
+                    tone="red"
+                    value={formatCurrency(dashboardData.reembolsosHoje)}
+                  />
+                  <KpiCard
+                    detail="com base nas vendas de hoje"
+                    label="Taxa de reembolso"
+                    tone="gold"
+                    value={formatPercent(dashboardData.taxaReembolso)}
                   />
                 </div>
+              </SectionGroup>
+            </div>
 
-                <section
-                  key={offerTransitionKey}
-                  className="flynow-offer-conversions-grid grid items-start gap-5 xl:grid-cols-2"
-                >
-                  <ConversionPanel
-                    title="Conversão por etapa"
-                    description="Frontend, upsell e downsell"
-                  >
-                    {hasStageData ? (
-                      STAGE_LABELS.map((item) => {
-                        const conversion =
-                          selectedStageConversions?.[item.key] ??
-                          data.conversoes_etapa[item.key];
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "70ms" } as CSSProperties}
+            >
+              <SectionGroup title="Operacional">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <KpiCard
+                    detail="pedidos em rota"
+                    label="Em trânsito"
+                    tone="blue"
+                    value={formatNumber(dashboardData.emTransito)}
+                  />
+                  <KpiCard
+                    detail="requerem atenção"
+                    label="Alertas ativos"
+                    tone="gold"
+                    value={formatNumber(dashboardData.alertasAtivos)}
+                  />
+                  <KpiCard
+                    detail={`${formatNumber(dashboardData.checkoutMonitorado)} monitorados`}
+                    label="Carrinhos (24h)"
+                    tone="gold"
+                    value={formatNumber(dashboardData.carrinhos24h)}
+                  />
+                </div>
+              </SectionGroup>
+            </div>
 
-                        return (
-                          <ConversionItem
-                            key={item.key}
-                            label={item.label}
-                            quantidade={conversion.quantidade}
-                            receita={conversion.receita}
-                            taxa={conversion.taxa}
-                            percentage={(conversion.receita / stageMax) * 100}
-                            accent="neutral"
-                          />
-                        );
-                      })
-                    ) : (
-                      <EmptyState
-                        compact
-                        title="Sem conversões por etapa"
-                        description="As etapas serão listadas quando houver pedidos no período."
-                      />
-                    )}
-                  </ConversionPanel>
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "140ms" } as CSSProperties}
+            >
+              <SectionGroup title="Saúde do funil">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <KpiCard
+                    detail="base dos eventos PayT no período"
+                    label="Checkout monitorado"
+                    tone="blue"
+                    value={formatNumber(dashboardData.checkoutMonitorado)}
+                  />
+                  <KpiCard
+                    detail="abandono e perda no recorte"
+                    label="Taxa de perda"
+                    tone="red"
+                    value={formatPercent(dashboardData.taxaPerda)}
+                  />
+                  <KpiCard
+                    detail="recuperados após evento não pago"
+                    label="Taxa de recuperação"
+                    tone="green"
+                    value={formatPercent(dashboardData.taxaRecuperacao)}
+                  />
+                  <KpiCard
+                    detail="sinais avaliados pela camada analítica"
+                    label="Alertas de funil"
+                    tone="gold"
+                    value={formatNumber(dashboardData.alertasFunil.length)}
+                  />
+                </div>
+              </SectionGroup>
+            </div>
 
-                  <ConversionPanel
-                    title="Conversão por canal de recuperação"
-                    description="IA, Email, Call Center e SMS"
-                  >
-                    {hasChannelData ? (
-                      CHANNEL_LABELS.map((item) => {
-                        const conversion =
-                          selectedChannelConversions?.[item.key] ??
-                          data.conversoes_canal[item.key];
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "210ms" } as CSSProperties}
+            >
+              <SectionGroup title="Análise de pedidos">
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                  <OrdersFunnelCard rows={dashboardData.funnelRows} />
+                  <TrendChart data={dashboardData.trend} />
+                </div>
+              </SectionGroup>
+            </div>
 
-                        return (
-                          <ConversionItem
-                            key={item.key}
-                            label={item.label}
-                            quantidade={conversion.quantidade}
-                            receita={conversion.receita}
-                            taxa={conversion.taxa}
-                            marker={item.marker}
-                            percentage={(conversion.receita / channelMax) * 100}
-                            accent="blue"
-                          />
-                        );
-                      })
-                    ) : (
-                      <EmptyState
-                        compact
-                        title="Sem conversões por canal"
-                        description="Os canais serão listados quando houver recuperação no período."
-                      />
-                    )}
-                  </ConversionPanel>
-                </section>
-              </div>
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "280ms" } as CSSProperties}
+            >
+              <ActiveAlertsPanel
+                alerts={dashboardData.activeAlerts}
+                count={dashboardData.alertasAtivos}
+              />
+            </div>
+
+            <div
+              className="flynow-dashboard-enter-item"
+              style={{ "--flynow-enter-delay": "350ms" } as CSSProperties}
+            >
+              <FunnelAlertsPanel alerts={dashboardData.alertasFunil} />
             </div>
           </div>
         ) : null}
