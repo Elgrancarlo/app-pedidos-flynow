@@ -157,7 +157,7 @@ export function SystemDateRangeFilter<
       <div
         role="group"
         aria-label={ariaLabel}
-        className="flynow-period-filter contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1 lg:rounded-[12px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1 lg:shadow-[0_14px_34px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.03)]"
+        className="flynow-period-filter contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1 lg:rounded-[12px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1 lg:shadow-[var(--fly-panel-shadow)]"
       >
         {canRenderCalendar || leadingActions ? (
           <div className="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1.5 self-center lg:col-auto lg:row-auto">
@@ -178,9 +178,9 @@ export function SystemDateRangeFilter<
                   compactMobileLabel
                   className="w-auto lg:w-auto"
                   triggerClassName={cn(
-                    "!h-10 !w-[132px] !rounded-xl !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-3 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] min-[390px]:!w-[140px] sm:!h-7 sm:!w-[228px] sm:!rounded-[10px] sm:!px-2.5 lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] lg:hover:!bg-[var(--fly-control-hover)]",
+                    "!h-10 !w-[132px] !rounded-xl !border-[var(--fly-border)] !bg-[var(--fly-control)] !px-3 !text-[11px] !font-medium !text-[var(--fly-text-soft)] !shadow-[var(--fly-panel-inset)] hover:!border-[var(--fly-border-strong)] hover:!bg-[var(--fly-control-hover)] min-[390px]:!w-[140px] sm:!h-7 sm:!w-[228px] sm:!rounded-[10px] sm:!px-2.5 lg:!border-[var(--fly-border-strong)] lg:!bg-[var(--fly-control-solid)] lg:!text-xs lg:!shadow-[var(--fly-panel-inset)] lg:hover:!bg-[var(--fly-control-hover)]",
                     isCustomRange
-                      ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_8px_24px_rgba(214,168,79,0.08)]"
+                      ? "!border-[var(--fly-brand-border)] !text-[var(--fly-text)] !shadow-[var(--fly-panel-shadow)]"
                       : "lg:!text-[var(--fly-text-soft)]"
                   )}
                   popoverClassName="!z-[120] !border-[var(--fly-brand-border)] !bg-[var(--fly-surface-elevated)]"
@@ -212,9 +212,9 @@ export function SystemDateRangeFilter<
           {presets.map((preset) => {
             const isActive = activeRange === preset.key;
             const controlClassName = cn(
-              "relative h-10 shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D6A84F]/35 sm:h-7 sm:rounded-[9px] sm:px-2.5 md:shrink lg:min-w-10",
+              "relative h-10 shrink-0 whitespace-nowrap rounded-xl px-3.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:h-7 sm:rounded-[9px] sm:px-2.5 md:shrink lg:min-w-10",
               isActive
-                ? "bg-[var(--fly-control)] text-[var(--fly-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] lg:bg-[var(--fly-control-active)] lg:shadow-[0_1px_0_rgba(255,255,255,0.05),0_10px_24px_rgba(0,0,0,0.28)]"
+                ? "bg-[var(--fly-control)] text-[var(--fly-text)] shadow-[var(--fly-panel-inset)] lg:bg-[var(--fly-control-active)] lg:shadow-[var(--fly-panel-shadow)]"
                 : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)] lg:hover:bg-[var(--fly-control-solid)]"
             );
 

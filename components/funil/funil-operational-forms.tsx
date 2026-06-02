@@ -130,8 +130,8 @@ function FormPanel({
   title: string;
 }) {
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
-      <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+    <section className="flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] shadow-[var(--fly-panel-shadow)]">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
             {title}
@@ -204,7 +204,7 @@ export function FunilOperationalForms({ products }: FunilOperationalFormsProps) 
           <div className="flex justify-end">
             <button
               type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[var(--fly-brand)] px-4 text-sm font-semibold text-[#111111] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] bg-[var(--fly-brand)] px-4 text-sm font-semibold text-[var(--fly-on-brand)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
             >
               Salvar alteracao
             </button>
@@ -264,7 +264,7 @@ export function FunilOperationalForms({ products }: FunilOperationalFormsProps) 
           <div className="flex justify-end">
             <button
               type="submit"
-              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-white/[0.08] bg-[var(--fly-control-solid)] px-4 text-sm font-semibold text-[var(--fly-text)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              className="inline-flex h-10 items-center justify-center rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control-solid)] px-4 text-sm font-semibold text-[var(--fly-text)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
             >
               Salvar transcricao
             </button>

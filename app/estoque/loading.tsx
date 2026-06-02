@@ -5,7 +5,7 @@ function SkeletonLine({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block rounded-full bg-white/[0.055] ${className}`}
+      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
     />
   );
 }
@@ -19,7 +19,7 @@ function SkeletonPanel({
 }) {
   return (
     <section
-      className={`flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12] ${className}`}
+      className={`flynow-dashboard-skeleton-panel rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] ${className}`}
     >
       {children}
     </section>
@@ -35,7 +35,7 @@ function DateFilterSkeleton() {
       {["7D", "15D", "30D", "90D", "Tudo"].map((item, index) => (
         <span
           key={item}
-          className={`h-7 rounded-[9px] bg-white/[0.055] ${
+          className={`h-7 rounded-[9px] bg-[var(--fly-skeleton-line)] ${
             index === 4 ? "w-12" : "w-10"
           }`}
         />
@@ -64,7 +64,7 @@ function MetricCardsSkeleton() {
 function EntryFormSkeleton() {
   return (
     <SkeletonPanel className="overflow-hidden">
-      <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <SkeletonLine className="h-4 w-52 rounded-md" />
         <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
       </div>
@@ -87,17 +87,17 @@ function TableSkeleton({
 }) {
   return (
     <SkeletonPanel className="overflow-hidden">
-      <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <SkeletonLine className={`h-4 rounded-md ${titleWidth}`} />
         <SkeletonLine className="mt-3 h-2.5 w-56 max-w-full" />
       </div>
       <div className="overflow-hidden">
-        <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr] gap-3 border-b border-white/[0.06] bg-white/[0.018] px-3 py-3">
+        <div className="grid grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr] gap-3 border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] px-3 py-3">
           {Array.from({ length: 5 }).map((_, index) => (
             <SkeletonLine key={index} className="h-2.5 rounded-md" />
           ))}
         </div>
-        <div className="divide-y divide-white/[0.055]">
+        <div className="divide-y divide-[var(--fly-divider-subtle)]">
           {Array.from({ length: rows }).map((_, index) => (
             <div
               key={index}

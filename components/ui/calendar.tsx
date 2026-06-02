@@ -1043,7 +1043,7 @@ export const Calendar = ({
             type="menu"
             style={popoverStyle}
             className={twMerge(clsx(
-              "flynow-calendar-popover fixed z-[120] overflow-y-auto overscroll-contain border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-3 font-sans shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]",
+              "flynow-calendar-popover fixed z-[120] overflow-y-auto overscroll-contain border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-3 font-sans shadow-[var(--fly-tooltip-shadow)] backdrop-blur-[28px]",
               isSheetMode && "flynow-calendar-popover--sheet",
               isPopoverClosing && "flynow-calendar-popover--closing",
               !isSheetMode && popoverOriginClass,
@@ -1053,7 +1053,7 @@ export const Calendar = ({
           >
             {isSheetMode ? (
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#858A94]">
+                <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
                   Período
                 </h2>
                 <button
@@ -1069,7 +1069,7 @@ export const Calendar = ({
           <div className={clsx(horizontalLayout && "flex flex-col gap-4 min-[520px]:flex-row min-[520px]:gap-5")}>
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-sm text-[#F5F2EA] font-medium">
+                <h2 className="text-sm font-medium text-[var(--fly-text)]">
                   {formatInTimeZone(currentDate, selectedTimezone, "MMMM yyyy", { locale: ptBR })}
                 </h2>
                 <div className="flex gap-0.5">

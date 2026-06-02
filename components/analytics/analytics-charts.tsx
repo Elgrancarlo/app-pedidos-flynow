@@ -64,7 +64,7 @@ function ChartTooltip({ active, label, payload }: TooltipProps) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
+    <div className="min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[var(--fly-tooltip-shadow)] backdrop-blur-xl">
       {label ? (
         <p className="mb-2 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
           {String(label).includes("-") ? formatDateLabel(label) : label}
@@ -118,7 +118,7 @@ export function RevenueInvestmentChart({
           margin={{ bottom: 4, left: 4, right: 14, top: 8 }}
         >
           <CartesianGrid
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--fly-chart-grid)"
             strokeDasharray="3 3"
             vertical={false}
           />
@@ -126,35 +126,35 @@ export function RevenueInvestmentChart({
             axisLine={false}
             dataKey="day"
             interval="preserveStartEnd"
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={formatDateLabel}
             tickLine={false}
             ticks={ticks}
           />
           <YAxis
             axisLine={false}
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={(value) => compactCurrency(Number(value))}
             tickLine={false}
             width={72}
           />
           <Tooltip content={<ChartTooltip />} cursor={false} />
           <Line
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             dataKey="revenue"
             dot={false}
             name="Faturamento"
-            stroke="#D6A84F"
+            stroke="var(--fly-chart-revenue)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
           />
           <Line
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             dataKey="spend"
             dot={false}
             name="Investimento"
-            stroke="#60A5FA"
+            stroke="var(--fly-chart-investment)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
@@ -182,7 +182,7 @@ export function ProductRevenueChart({ products }: ProductRevenueChartProps) {
           margin={{ bottom: 24, left: 0, right: 10, top: 8 }}
         >
           <CartesianGrid
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--fly-chart-grid)"
             strokeDasharray="3 3"
             vertical={false}
           />
@@ -191,7 +191,7 @@ export function ProductRevenueChart({ products }: ProductRevenueChartProps) {
             dataKey="product"
             height={46}
             interval={0}
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 10 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 10 }}
             tickFormatter={(value) =>
               String(value).length > 12
                 ? `${String(value).slice(0, 12)}...`
@@ -201,15 +201,18 @@ export function ProductRevenueChart({ products }: ProductRevenueChartProps) {
           />
           <YAxis
             axisLine={false}
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={(value) => compactCurrency(Number(value))}
             tickLine={false}
             width={68}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ fill: "var(--fly-row-bg-strong)" }}
+          />
           <Bar
             dataKey="revenue"
-            fill="#D6A84F"
+            fill="var(--fly-chart-revenue)"
             maxBarSize={58}
             name="Receita"
             radius={[6, 6, 0, 0]}

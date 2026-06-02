@@ -110,7 +110,7 @@ function ChartTooltip({ active, label, payload }: TooltipProps) {
   if (!active || !payload?.length) return null;
 
   return (
-    <div className="min-w-[190px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
+    <div className="min-w-[190px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[var(--fly-tooltip-shadow)] backdrop-blur-xl">
       {label ? (
         <p className="mb-2 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
           {String(label).includes("-") ? formatDateLabel(label) : label}
@@ -161,7 +161,7 @@ function chartTicks(series: FunilChartPoint[]) {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[300px] items-center justify-center rounded-[8px] border border-white/[0.045] bg-white/[0.01] text-sm text-[var(--fly-text-muted)] sm:h-[340px]">
+    <div className="flex h-[300px] items-center justify-center rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-sm text-[var(--fly-text-muted)] sm:h-[340px]">
       Sem dados para o recorte selecionado.
     </div>
   );
@@ -179,16 +179,32 @@ export function FunnelRevenueChart({ series }: FunilChartsProps) {
         >
           <defs>
             <linearGradient id="funilRevenueFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#D6A84F" stopOpacity={0.24} />
-              <stop offset="100%" stopColor="#D6A84F" stopOpacity={0} />
+              <stop
+                offset="0%"
+                stopColor="var(--fly-chart-revenue)"
+                stopOpacity={0.24}
+              />
+              <stop
+                offset="100%"
+                stopColor="var(--fly-chart-revenue)"
+                stopOpacity={0}
+              />
             </linearGradient>
             <linearGradient id="funilUpsellFill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#4ADE80" stopOpacity={0.18} />
-              <stop offset="100%" stopColor="#4ADE80" stopOpacity={0} />
+              <stop
+                offset="0%"
+                stopColor="var(--fly-success)"
+                stopOpacity={0.18}
+              />
+              <stop
+                offset="100%"
+                stopColor="var(--fly-success)"
+                stopOpacity={0}
+              />
             </linearGradient>
           </defs>
           <CartesianGrid
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--fly-chart-grid)"
             strokeDasharray="3 3"
             vertical={false}
           />
@@ -196,21 +212,21 @@ export function FunnelRevenueChart({ series }: FunilChartsProps) {
             axisLine={false}
             dataKey="day"
             interval="preserveStartEnd"
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={formatDateLabel}
             tickLine={false}
             ticks={chartTicks(series)}
           />
           <YAxis
             axisLine={false}
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={(value) => compactCurrency(Number(value))}
             tickLine={false}
             width={72}
           />
           <Tooltip content={<ChartTooltip />} cursor={false} />
           <Area
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             animationDuration={760}
             animationEasing="ease-out"
             dataKey="revenueTotal"
@@ -218,13 +234,13 @@ export function FunnelRevenueChart({ series }: FunilChartsProps) {
             fill="url(#funilRevenueFill)"
             isAnimationActive
             name="Receita total"
-            stroke="#D6A84F"
+            stroke="var(--fly-chart-revenue)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
           />
           <Area
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             animationDuration={820}
             animationEasing="ease-out"
             dataKey="upsellRevenue"
@@ -232,7 +248,7 @@ export function FunnelRevenueChart({ series }: FunilChartsProps) {
             fill="url(#funilUpsellFill)"
             isAnimationActive
             name="Receita upsells"
-            stroke="#4ADE80"
+            stroke="var(--fly-success)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
@@ -254,7 +270,7 @@ export function FunnelTakeRateChart({ series }: FunilChartsProps) {
           margin={{ bottom: 4, left: 4, right: 14, top: 8 }}
         >
           <CartesianGrid
-            stroke="rgba(255,255,255,0.06)"
+            stroke="var(--fly-chart-grid)"
             strokeDasharray="3 3"
             vertical={false}
           />
@@ -262,7 +278,7 @@ export function FunnelTakeRateChart({ series }: FunilChartsProps) {
             axisLine={false}
             dataKey="day"
             interval="preserveStartEnd"
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={formatDateLabel}
             tickLine={false}
             ticks={chartTicks(series)}
@@ -270,34 +286,34 @@ export function FunnelTakeRateChart({ series }: FunilChartsProps) {
           <YAxis
             axisLine={false}
             domain={[0, "dataMax + 0.05"]}
-            tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={(value) => formatPercent(Number(value))}
             tickLine={false}
             width={72}
           />
           <Tooltip content={<ChartTooltip />} cursor={false} />
           <Line
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             animationDuration={760}
             animationEasing="ease-out"
             dataKey="takeRateUs1"
             dot={false}
             isAnimationActive
             name="Take rate US1"
-            stroke="#60A5FA"
+            stroke="var(--fly-chart-investment)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
           />
           <Line
-            activeDot={{ r: 4, stroke: "#0B0D10", strokeWidth: 2 }}
+            activeDot={{ r: 4, stroke: "var(--fly-active-dot-stroke)", strokeWidth: 2 }}
             animationDuration={820}
             animationEasing="ease-out"
             dataKey="takeRateUs2"
             dot={false}
             isAnimationActive
             name="Take rate US2"
-            stroke="#8B5CF6"
+            stroke="var(--fly-violet)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"

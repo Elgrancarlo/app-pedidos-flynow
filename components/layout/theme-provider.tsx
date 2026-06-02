@@ -140,7 +140,7 @@ export function DashboardThemeProvider({ children }: { children: ReactNode }) {
       <div
         data-theme={theme}
         className={[
-          "flynow-dashboard-shell min-h-dvh overflow-x-clip bg-[#050505] text-[#F5F2EA] transition-colors duration-300 [--sidebar-width:0rem] xl:[--sidebar-width:16rem]",
+          "flynow-dashboard-shell min-h-dvh overflow-x-clip bg-[var(--fly-bg)] text-[var(--fly-text)] transition-colors duration-300 [--sidebar-width:0rem] xl:[--sidebar-width:16rem]",
           isThemeTransitioning ? "flynow-theme-transitioning" : "",
         ].join(" ")}
       >

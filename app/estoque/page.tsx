@@ -24,19 +24,19 @@ const metricToneStyles: Record<
   }
 > = {
   blue: {
-    dot: "bg-[#60A5FA]",
-    value: "text-[#93C5FD]",
+    dot: "bg-[var(--fly-chart-investment)]",
+    value: "text-[var(--fly-chart-investment-active)]",
   },
   orange: {
-    dot: "bg-[#FB923C]",
-    value: "text-[#FDBA74]",
+    dot: "bg-[var(--fly-warning-strong)]",
+    value: "text-[var(--fly-warning-strong)]",
   },
   green: {
-    dot: "bg-[#4ADE80]",
-    value: "text-[#86EFAC]",
+    dot: "bg-[var(--fly-success)]",
+    value: "text-[var(--fly-success)]",
   },
   gold: {
-    dot: "bg-[#D6A84F]",
+    dot: "bg-[var(--fly-chart-revenue)]",
     value: "text-[var(--fly-brand-strong)]",
   },
 };
@@ -92,7 +92,7 @@ function InventoryMetricCard({
 
   return (
     <section
-      className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4"
+      className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4"
     >
       <div className="flex min-w-0 items-center gap-2">
         <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />

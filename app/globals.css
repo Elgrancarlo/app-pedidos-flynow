@@ -382,6 +382,33 @@ html[data-flynow-theme="dark"],
   --fly-warning-border-hover: rgba(245, 158, 11, 0.34);
   --fly-warning-text: #f8d88a;
   --fly-warning-strong: #fcd34d;
+  --fly-panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --fly-panel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  --fly-tooltip-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --fly-row-bg: rgba(255, 255, 255, 0.012);
+  --fly-row-bg-strong: rgba(255, 255, 255, 0.018);
+  --fly-row-hover: rgba(255, 255, 255, 0.028);
+  --fly-table-head: rgba(255, 255, 255, 0.018);
+  --fly-divider: rgba(255, 255, 255, 0.06);
+  --fly-divider-subtle: rgba(255, 255, 255, 0.055);
+  --fly-skeleton-line: rgba(255, 255, 255, 0.055);
+  --fly-chart-grid: rgba(255, 255, 255, 0.06);
+  --fly-chart-axis: rgba(245, 242, 234, 0.48);
+  --fly-active-dot-stroke: #0b0d10;
+  --fly-info-bg: rgba(10, 20, 36, 0.45);
+  --fly-info-border: rgba(96, 165, 250, 0.16);
+  --fly-info-text: #93c5fd;
+  --fly-success-surface: rgba(13, 31, 20, 0.42);
+  --fly-success-border: rgba(74, 222, 128, 0.16);
+  --fly-success-text: #86efac;
+  --fly-violet: #8b5cf6;
+  --fly-violet-strong: #a78bfa;
+  --fly-violet-surface: rgba(23, 18, 37, 0.52);
+  --fly-violet-border: rgba(167, 139, 250, 0.14);
   color-scheme: dark;
 }
 
@@ -435,6 +462,35 @@ html[data-flynow-theme="light"],
   --fly-warning-border-hover: rgba(181, 121, 0, 0.32);
   --fly-warning-text: #8a5b10;
   --fly-warning-strong: #6b4508;
+  --fly-panel-shadow:
+    0 10px 24px rgba(15, 23, 42, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  --fly-panel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --fly-tooltip-shadow:
+    0 18px 44px rgba(15, 23, 42, 0.14),
+    0 0 0 1px rgba(255, 255, 255, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --fly-row-bg: rgba(17, 24, 39, 0.018);
+  --fly-row-bg-strong: rgba(17, 24, 39, 0.026);
+  --fly-row-hover: rgba(17, 24, 39, 0.045);
+  --fly-table-head: rgba(17, 24, 39, 0.032);
+  --fly-divider: rgba(17, 24, 39, 0.08);
+  --fly-divider-subtle: rgba(17, 24, 39, 0.065);
+  --fly-skeleton-line: rgba(17, 24, 39, 0.08);
+  --fly-chart-grid: rgba(17, 24, 39, 0.08);
+  --fly-chart-axis: rgba(51, 65, 85, 0.62);
+  --fly-active-dot-stroke: #ffffff;
+  --fly-info-bg: #eff6ff;
+  --fly-info-border: rgba(37, 99, 235, 0.14);
+  --fly-info-text: #175cd3;
+  --fly-success-surface: #ecfdf3;
+  --fly-success-border: rgba(22, 163, 74, 0.16);
+  --fly-success-text: #067647;
+  --fly-violet: #7c3aed;
+  --fly-violet-strong: #6d28d9;
+  --fly-violet-surface: #f5f3ff;
+  --fly-violet-border: rgba(124, 58, 237, 0.14);
   color-scheme: light;
 }
 
@@ -638,11 +694,21 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#15171C\] {
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.018\],
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.025\],
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.035\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.01\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.012\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.016\],
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.05\],
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.055\],
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.07\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.08\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.1\],
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.12\],
 html[data-flynow-theme="light"] .flynow-calendar-popover .bg-white\/\[0\.035\] {
   background-color: var(--fly-control) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-white\/30 {
+  background-color: var(--fly-text-dim) !important;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .bg-white\/\[0\.16\] {
@@ -661,6 +727,10 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#D6A84F\] {
   background-color: var(--fly-brand) !important;
 }
 
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#FB923C\] {
+  background-color: var(--fly-warning-strong) !important;
+}
+
 .flynow-dashboard-shell[data-theme="light"] .bg-\[\#60A5FA\] {
   background-color: var(--fly-chart-investment) !important;
 }
@@ -671,6 +741,29 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .bg-\[\#D6A84F\] {
 
 .flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D1F14\]\/80 {
   background-color: var(--fly-success-bg) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D1F14\]\/42,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D1F14\]\/60,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0D1F14\]\/62 {
+  background-color: var(--fly-success-surface) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0A1424\]\/45,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0A1424\]\/70,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#0B1626\]\/58 {
+  background-color: var(--fly-info-bg) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#171225\]\/52 {
+  background-color: var(--fly-violet-surface) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#2B1515\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#2B1515\]\/80,
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#3A1B1B\],
+.flynow-dashboard-shell[data-theme="light"] .bg-\[\#431F1F\] {
+  background-color: var(--fly-danger-bg) !important;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .text-\[\#F5F2EA\],
@@ -704,6 +797,10 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#F0C76A\] {
   color: var(--fly-brand-strong) !important;
 }
 
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#FDBA74\] {
+  color: var(--fly-warning-strong) !important;
+}
+
 .flynow-dashboard-shell[data-theme="light"] .fill-\[\#D6A84F\] {
   fill: var(--fly-brand-strong) !important;
 }
@@ -725,9 +822,23 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
   color: var(--fly-success) !important;
 }
 
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#FCA5A5\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#FECACA\] {
+  color: var(--fly-danger-strong) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#C4B5FD\],
+.flynow-dashboard-shell[data-theme="light"] .text-\[\#A78BFA\] {
+  color: var(--fly-violet-strong) !important;
+}
+
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-\[\#151619\]:hover,
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-\[\#14161A\]:hover,
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-\[\#171A20\]:hover,
+.flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.018\]:hover,
+.flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover,
+.flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.028\]:hover,
+.flynow-dashboard-shell[data-theme="light"] .active\:bg-white\/\[0\.03\]:active,
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.035\]:hover,
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.045\]:hover,
 .flynow-dashboard-shell[data-theme="light"] .hover\:bg-white\/\[0\.055\]:hover {
@@ -764,6 +875,9 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
 .flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.07\],
 .flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.08\],
 .flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.09\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.045\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.1\],
+.flynow-dashboard-shell[data-theme="light"] .border-white\/\[0\.12\],
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#1C2026\],
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#1D2026\],
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#20242B\],
@@ -788,6 +902,10 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 .flynow-dashboard-shell[data-theme="light"] .ring-\[\#242932\],
 .flynow-dashboard-shell[data-theme="light"] .ring-white\/\[0\.055\] {
   --tw-ring-color: var(--fly-border) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .divide-white\/\[0\.055\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--fly-divider-subtle) !important;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-preset-underline {
@@ -1337,6 +1455,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-skeleton-panel {
+  background-color: var(--fly-surface) !important;
+  border-color: var(--fly-border) !important;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.72),
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
@@ -1380,6 +1500,14 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-detail-drawer__overlay {
   background-color: rgba(15, 23, 42, 0.26) !important;
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-detail-drawer__panel {
+  background-color: var(--fly-surface) !important;
+  border-color: var(--fly-border) !important;
+  box-shadow:
+    -18px 0 58px rgba(15, 23, 42, 0.16),
+    inset 1px 0 0 rgba(255, 255, 255, 0.82) !important;
 }
 
 .flynow-chart-stage {

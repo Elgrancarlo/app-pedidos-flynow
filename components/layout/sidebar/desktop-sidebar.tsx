@@ -19,7 +19,7 @@ export function DesktopSidebar({
   ThemeIcon,
 }: DesktopSidebarProps) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden rounded-r-2xl border-r border-[#1C2026] bg-[#0B0C0E] shadow-[10px_0_30px_rgba(0,0,0,0.18)] xl:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden rounded-r-2xl border-r border-[var(--fly-border)] bg-[var(--fly-sidebar)] shadow-[10px_0_30px_rgba(0,0,0,0.18)] xl:flex">
       <div className="px-3 pb-3 pt-4">
         <div className="flex h-11 items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1.5 text-left">
@@ -74,7 +74,7 @@ export function DesktopSidebar({
           <div className="space-y-3">
             {WORKSPACE_NAV_SECTIONS.map((section) => (
               <section key={section.label}>
-                <p className="px-3 pb-1 text-[9px] font-semibold uppercase leading-3 tracking-[0.14em] text-[#565B65]">
+                <p className="px-3 pb-1 text-[9px] font-semibold uppercase leading-3 tracking-[0.14em] text-[var(--fly-text-dim)]">
                   {section.label}
                 </p>
                 <div className="space-y-1">
@@ -95,17 +95,19 @@ export function DesktopSidebar({
       </nav>
 
       <div className="shrink-0 px-3 pb-4 pt-2">
-        <div className="flex h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-150 hover:bg-[#151619]">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#151619] text-xs font-semibold text-[#D6A84F] ring-1 ring-[#242932]">
+        <div className="flex h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-150 hover:bg-[var(--fly-control-hover)]">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--fly-control-solid)] text-xs font-semibold text-[var(--fly-brand-strong)] ring-1 ring-[var(--fly-border)]">
             AF
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#E8E9EC]">
+            <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
               Admin
             </p>
-            <p className="text-xs font-medium text-[#6B707A]">Online</p>
+            <p className="text-xs font-medium text-[var(--fly-text-muted)]">
+              Online
+            </p>
           </div>
-          <LogOut size={15} className="shrink-0 text-[#5E636D]" />
+          <LogOut size={15} className="shrink-0 text-[var(--fly-text-dim)]" />
         </div>
       </div>
     </aside>

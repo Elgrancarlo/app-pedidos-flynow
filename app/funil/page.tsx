@@ -72,19 +72,19 @@ const metricToneStyles: Record<
   }
 > = {
   gold: {
-    dot: "bg-[#D6A84F]",
+    dot: "bg-[var(--fly-chart-revenue)]",
     value: "text-[var(--fly-brand-strong)]",
   },
   blue: {
-    dot: "bg-[#60A5FA]",
-    value: "text-[#93C5FD]",
+    dot: "bg-[var(--fly-chart-investment)]",
+    value: "text-[var(--fly-chart-investment-active)]",
   },
   green: {
-    dot: "bg-[#4ADE80]",
-    value: "text-[#86EFAC]",
+    dot: "bg-[var(--fly-success)]",
+    value: "text-[var(--fly-success)]",
   },
   neutral: {
-    dot: "bg-white/35",
+    dot: "bg-[var(--fly-text-dim)]",
     value: "text-[var(--fly-text)]",
   },
 };
@@ -360,7 +360,7 @@ function MetricCard({
   const styles = metricToneStyles[tone];
 
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4">
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
       <div className="flex min-w-0 items-center gap-2">
         <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
         <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
@@ -393,8 +393,8 @@ function SourceBadge({ source }: { source: "mock" | "real" }) {
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
   const toneByLevel: Record<PerformanceAlert["level"], string> = {
     danger: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
-    info: "border-[#60A5FA]/16 bg-[#0A1424]/45",
-    ok: "border-[#4ADE80]/16 bg-[#0D1F14]/42",
+    info: "border-[var(--fly-info-border)] bg-[var(--fly-info-bg)]",
+    ok: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)]",
     warning: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
   };
 
@@ -421,7 +421,7 @@ function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
           </article>
         ))
       ) : (
-        <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+        <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
           Nenhum alerta registrado no periodo.
         </p>
       )}
@@ -465,7 +465,7 @@ function SourceSummaryTable({ rows }: { rows: SourceSummaryRow[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             <th className="w-[18%] px-3 py-3">Canal</th>
             <th className="w-[25%] px-3 py-3">UTM campaign</th>
             <th className="w-[17%] px-3 py-3">UTM source</th>
@@ -475,12 +475,12 @@ function SourceSummaryTable({ rows }: { rows: SourceSummaryRow[] }) {
             <th className="w-[9%] px-3 py-3 text-right">Upsell ratio</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.055]">
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
           {rows.length ? (
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="transition-colors duration-150 hover:bg-white/[0.018]"
+                className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
               >
                 <td className="px-3 py-3.5 font-medium text-[var(--fly-text)]">
                   <span className="block truncate">
@@ -555,10 +555,10 @@ function PaginationFooter({
   const controlClassName =
     "inline-flex h-8 items-center justify-center rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]";
   const disabledClassName =
-    "inline-flex h-8 items-center justify-center rounded-[7px] border border-white/[0.045] bg-white/[0.015] px-3 text-xs font-semibold text-[var(--fly-text-dim)]";
+    "inline-flex h-8 items-center justify-center rounded-[7px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 text-xs font-semibold text-[var(--fly-text-dim)]";
 
   return (
-    <div className="flex flex-col gap-3 border-t border-white/[0.06] bg-white/[0.012] px-3 py-3 text-xs text-[var(--fly-text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-4">
+    <div className="flex flex-col gap-3 border-t border-[var(--fly-divider)] bg-[var(--fly-row-bg)] px-3 py-3 text-xs text-[var(--fly-text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <span className="font-medium tabular-nums text-[var(--fly-text-soft)]">
         Pagina {currentPage} de {totalPages}
       </span>
@@ -589,7 +589,7 @@ function LogsTable({ logs }: { logs: PerformanceLog[] }) {
         logs.map((log) => (
           <article
             key={`${log.day}-${log.title}-${log.owner}`}
-            className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.028]"
+            className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-row-hover)]"
           >
             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -615,7 +615,7 @@ function LogsTable({ logs }: { logs: PerformanceLog[] }) {
           </article>
         ))
       ) : (
-        <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+        <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
           Nenhuma alteracao registrada no periodo.
         </p>
       )}
@@ -774,7 +774,7 @@ export default async function FunilPage({
             title="Transcricoes operacionais"
             description="Registro operacional do periodo"
           >
-            <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+            <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
               Nenhuma transcricao encontrada no periodo.
             </p>
           </Panel>

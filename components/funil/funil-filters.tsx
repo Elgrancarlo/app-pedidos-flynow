@@ -245,7 +245,7 @@ export function FunilSelectControl({
           align="end"
           side="bottom"
           sideOffset={8}
-          className="flynow-calendar-popover flynow-offer-select-content z-[90] max-h-[280px] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[180px] overflow-y-auto rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
+          className="flynow-calendar-popover flynow-offer-select-content z-[90] max-h-[280px] w-[var(--radix-dropdown-menu-trigger-width)] min-w-[180px] overflow-y-auto rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[var(--fly-tooltip-shadow)] backdrop-blur-[28px] data-[side=bottom]:origin-top-right"
         >
           <RadixDropdownMenu.RadioGroup value={value} onValueChange={onChange}>
             {options.map((option) => (
@@ -315,7 +315,7 @@ export function FunilFilterStrip({
   selectedProduct,
 }: FunilFilterStripProps) {
   return (
-    <div className="flynow-dashboard-enter-item rounded-[8px] border border-white/[0.06] bg-[#0B0D10] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:px-3.5">
+    <div className="flynow-dashboard-enter-item rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] px-3 py-2.5 shadow-[var(--fly-panel-inset)] sm:px-3.5">
       <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <span

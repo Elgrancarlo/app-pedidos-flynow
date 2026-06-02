@@ -1,6 +1,5 @@
 import type { CSSProperties, RefObject } from "react";
-import { LogOut, X } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { LogOut, Moon, Sun, X } from "lucide-react";
 
 import { FlyNowMark } from "./flynow-mark";
 import { WORKSPACE_NAV_SECTIONS } from "./nav-config";
@@ -15,7 +14,6 @@ type MobileMoreHubProps = {
   onClose: () => void;
   onToggleTheme: () => void;
   themeActionLabel: string;
-  ThemeIcon: LucideIcon;
   titleId: string;
 };
 
@@ -32,9 +30,10 @@ export function MobileMoreHub({
   onClose,
   onToggleTheme,
   themeActionLabel,
-  ThemeIcon,
   titleId,
 }: MobileMoreHubProps) {
+  const CurrentThemeIcon = isLightTheme ? Sun : Moon;
+
   return (
     <div className="fixed inset-0 z-[60] xl:hidden">
       <button
@@ -53,11 +52,11 @@ export function MobileMoreHub({
         aria-modal="true"
         aria-labelledby={titleId}
         className={[
-          "flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-hidden rounded-t-[24px] border border-b-0 border-white/[0.09] bg-[#08090B]/96 shadow-[0_-28px_80px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl",
+          "flynow-mobile-more-sheet absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-hidden rounded-t-[24px] border border-b-0 border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] shadow-[0_-28px_80px_rgba(0,0,0,0.34),var(--fly-panel-inset)] backdrop-blur-2xl",
           isClosing ? "flynow-mobile-more-sheet--closing" : "",
         ].join(" ")}
       >
-        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-white/[0.16]" />
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-[var(--fly-border-strong)]" />
 
         <div
           className="flynow-mobile-more-reveal flex items-center justify-between gap-3 px-4 pb-3 pt-4"
@@ -98,19 +97,42 @@ export function MobileMoreHub({
           >
             <button
               type="button"
+              role="switch"
+              aria-checked={isLightTheme}
               aria-label={themeActionLabel}
               title={themeActionLabel}
               onClick={onToggleTheme}
-              className="flex h-10 w-full cursor-pointer items-center gap-3 rounded-[10px] px-2 text-left text-sm font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:bg-[var(--fly-control)] hover:text-[var(--fly-text)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+              className="group flex min-h-[58px] w-full cursor-pointer items-center justify-between gap-3 rounded-[14px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 py-2.5 text-left outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-[background-color,border-color,box-shadow,transform] duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
             >
-              <ThemeIcon
-                size={17}
-                strokeWidth={2.05}
-                className="shrink-0 text-[var(--fly-text-muted)]"
-              />
-              <span className="min-w-0 flex-1 truncate">Tema</span>
-              <span className="rounded-full border border-[var(--fly-border)] px-2 py-0.5 text-[11px] font-semibold text-[var(--fly-text-muted)]">
-                {isLightTheme ? "Claro" : "Escuro"}
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-surface)] text-[var(--fly-brand-strong)] transition-colors duration-150 group-hover:border-[var(--fly-brand-border)]">
+                  <CurrentThemeIcon size={17} strokeWidth={2.1} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold leading-none text-[var(--fly-text)]">
+                    Tema
+                  </span>
+                  <span className="mt-1.5 block truncate text-xs font-medium leading-none text-[var(--fly-text-muted)]">
+                    {isLightTheme ? "Modo claro ativo" : "Modo escuro ativo"}
+                  </span>
+                </span>
+              </span>
+
+              <span
+                aria-hidden="true"
+                className={[
+                  "relative h-7 w-12 shrink-0 rounded-full border p-0.5 transition-colors duration-200",
+                  isLightTheme
+                    ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]"
+                    : "border-[var(--fly-border)] bg-[var(--fly-control-solid)]",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "block size-5 rounded-full bg-[var(--fly-text)] shadow-[0_2px_8px_rgba(0,0,0,0.28)] transition-transform duration-200 ease-out",
+                    isLightTheme ? "translate-x-5" : "translate-x-0",
+                  ].join(" ")}
+                />
               </span>
             </button>
           </div>

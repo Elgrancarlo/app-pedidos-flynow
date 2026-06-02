@@ -5,7 +5,7 @@ function SkeletonLine({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block rounded-full bg-white/[0.055] ${className}`}
+      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
     />
   );
 }
@@ -19,7 +19,7 @@ function SkeletonPanel({
 }) {
   return (
     <section
-      className={`flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12] ${className}`}
+      className={`flynow-dashboard-skeleton-panel rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] ${className}`}
     >
       {children}
     </section>
@@ -32,12 +32,12 @@ function DateFilterSkeleton() {
       aria-hidden="true"
       className="hidden rounded-[12px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-1 lg:flex lg:items-center lg:gap-1"
     >
-      <span className="h-7 w-[228px] rounded-[10px] bg-white/[0.055]" />
+      <span className="h-7 w-[228px] rounded-[10px] bg-[var(--fly-skeleton-line)]" />
       <span className="h-5 w-px bg-[var(--fly-border)]" />
       {["Hoje", "7D", "30D", "Mes", "Anterior"].map((item, index) => (
         <span
           key={item}
-          className={`h-7 rounded-[9px] bg-white/[0.055] ${
+          className={`h-7 rounded-[9px] bg-[var(--fly-skeleton-line)] ${
             index === 0 || index === 4 ? "w-16" : "w-10"
           }`}
         />
@@ -79,17 +79,17 @@ function MetricCardsSkeleton() {
 function ChartSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <SkeletonPanel className="overflow-hidden">
-      <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <SkeletonLine className="h-4 w-56 rounded-md" />
         <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
       </div>
       <div className="p-3 sm:p-4">
-        <div className="h-[300px] rounded-[8px] border border-white/[0.045] bg-white/[0.01] p-4 sm:h-[340px]">
+        <div className="h-[300px] rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4 sm:h-[340px]">
           <div className="flex h-full items-end gap-3">
             {Array.from({ length: compact ? 7 : 12 }).map((_, index) => (
               <span
                 key={index}
-                className="min-w-0 flex-1 rounded-t-[6px] bg-white/[0.055]"
+                className="min-w-0 flex-1 rounded-t-[6px] bg-[var(--fly-skeleton-line)]"
                 style={{
                   height: `${24 + ((index * 19) % 64)}%`,
                 }}
@@ -105,7 +105,7 @@ function ChartSkeleton({ compact = false }: { compact?: boolean }) {
 function FormSkeleton() {
   return (
     <SkeletonPanel className="overflow-hidden">
-      <div className="border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <SkeletonLine className="h-4 w-52 rounded-md" />
       </div>
       <div className="grid gap-3 p-3 sm:p-4">
@@ -126,14 +126,14 @@ function FormSkeleton() {
 function TableSkeleton() {
   return (
     <SkeletonPanel className="overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-white/[0.06] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+      <div className="flex flex-col gap-3 border-b border-[var(--fly-divider)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
         <div>
           <SkeletonLine className="h-4 w-56 rounded-md" />
           <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
         </div>
         <SkeletonLine className="h-9 w-40 rounded-[10px]" />
       </div>
-      <div className="divide-y divide-white/[0.055]">
+      <div className="divide-y divide-[var(--fly-divider-subtle)]">
         {Array.from({ length: 8 }).map((_, index) => (
           <div
             key={index}

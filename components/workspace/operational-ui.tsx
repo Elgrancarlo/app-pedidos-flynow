@@ -14,22 +14,22 @@ const toneStyles: Record<
   }
 > = {
   gold: {
-    dot: "bg-[#D6A84F]",
-    bar: "bg-[#D6A84F]",
+    dot: "bg-[var(--fly-chart-revenue)]",
+    bar: "bg-[var(--fly-chart-revenue)]",
     text: "text-[var(--fly-brand-strong)]",
     surface: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
   },
   blue: {
-    dot: "bg-[#60A5FA]",
-    bar: "bg-[#60A5FA]",
-    text: "text-[#93C5FD]",
-    surface: "border-[#60A5FA]/16 bg-[#0A1424]/70",
+    dot: "bg-[var(--fly-chart-investment)]",
+    bar: "bg-[var(--fly-chart-investment)]",
+    text: "text-[var(--fly-info-text)]",
+    surface: "border-[var(--fly-info-border)] bg-[var(--fly-info-bg)]",
   },
   green: {
-    dot: "bg-[#4ADE80]",
-    bar: "bg-[#4ADE80]",
-    text: "text-[#86EFAC]",
-    surface: "border-[#4ADE80]/16 bg-[#0D1F14]/60",
+    dot: "bg-[var(--fly-success)]",
+    bar: "bg-[var(--fly-success)]",
+    text: "text-[var(--fly-success-text)]",
+    surface: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)]",
   },
   red: {
     dot: "bg-[#F87171]",
@@ -38,8 +38,8 @@ const toneStyles: Record<
     surface: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
   },
   neutral: {
-    dot: "bg-white/35",
-    bar: "bg-white/35",
+    dot: "bg-[var(--fly-text-muted)]",
+    bar: "bg-[var(--fly-text-muted)]",
     text: "text-[var(--fly-text-soft)]",
     surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
   },
@@ -87,7 +87,7 @@ export function StatCard({
   const styles = toneStyles[tone];
 
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -116,7 +116,7 @@ export function StatCard({
                 </span>
               </div>
               {typeof row.meter === "number" ? (
-                <div className="mt-1.5 h-px overflow-hidden rounded-full bg-white/[0.08]">
+                <div className="mt-1.5 h-px overflow-hidden rounded-full bg-[var(--fly-divider)]">
                   <span
                     aria-hidden="true"
                     className={cn("block h-full rounded-full", styles.bar)}
@@ -146,12 +146,12 @@ export function Panel({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]">
-      <div className="flex min-w-0 flex-col gap-3 border-b border-white/[0.06] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4">
+    <section className="flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] shadow-[var(--fly-panel-shadow)]">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-[var(--fly-divider)] px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden="true"
-            className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-white/[0.18] via-white/[0.08] to-transparent"
+            className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-divider)] to-transparent"
           />
           <div className="min-w-0">
             <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
@@ -192,7 +192,7 @@ export function DataList({
         return (
           <div
             key={row.label}
-            className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-2.5 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.028]"
+            className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5 transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-row-hover)]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -218,7 +218,7 @@ export function DataList({
               </div>
             </div>
             {typeof row.meter === "number" ? (
-              <div className="mt-2.5 h-px overflow-hidden rounded-full bg-white/[0.08]">
+              <div className="mt-2.5 h-px overflow-hidden rounded-full bg-[var(--fly-divider)]">
                 <span
                   aria-hidden="true"
                   className={cn("block h-full rounded-full", styles.bar)}
@@ -246,7 +246,7 @@ export function SimpleTable({
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] table-fixed text-left text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             {columns.map((column, index) => (
               <th
                 key={column}
@@ -260,9 +260,12 @@ export function SimpleTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.055]">
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
           {rows.map((row, rowIndex) => (
-            <tr key={`${row[0]}-${rowIndex}`} className="hover:bg-white/[0.018]">
+            <tr
+              key={`${row[0]}-${rowIndex}`}
+              className="hover:bg-[var(--fly-row-hover)]"
+            >
               {row.map((cell, index) => (
                 <td
                   key={`${cell}-${index}`}

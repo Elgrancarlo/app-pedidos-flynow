@@ -107,7 +107,7 @@ function getMovementAmount(item: EstoqueMovimentacao) {
 function getStockTone(value: number) {
   if (value < 0) return "text-[var(--fly-danger-strong)]";
   if (value === 0) return "text-[var(--fly-text-muted)]";
-  return "text-[#86EFAC]";
+  return "text-[var(--fly-success)]";
 }
 
 function coverageLabel(grupo: EstoqueProdutoResumo) {
@@ -176,7 +176,7 @@ export default function TabelaEstoque({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[940px] table-fixed text-left text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+              <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
                 <th className="w-[30%] px-3 py-3">Produto</th>
                 <th className="w-[16%] px-3 py-3 text-right">
                   Entradas (período)
@@ -188,7 +188,7 @@ export default function TabelaEstoque({
                 <th className="w-[22%] px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.055]">
+            <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
               {grupos.length === 0 ? (
                 <tr>
                   <td
@@ -206,7 +206,7 @@ export default function TabelaEstoque({
                     <tr
                       key={grupo.id}
                       className={cn(
-                        "transition-colors duration-150 hover:bg-white/[0.018]",
+                        "transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
                         isSelected && "bg-[var(--fly-brand-soft)]"
                       )}
                     >
@@ -232,10 +232,10 @@ export default function TabelaEstoque({
                           </StatusPill>
                         </div>
                       </td>
-                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[#93C5FD]">
+                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-chart-investment-active)]">
                         +{formatNumber(grupo.entradasPeriodo)}
                       </td>
-                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[#FDBA74]">
+                      <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-warning-strong)]">
                         -{formatNumber(grupo.vendasPeriodo)}
                       </td>
                       <td
@@ -327,7 +327,7 @@ export default function TabelaEstoque({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] table-fixed text-left text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
                   <th className="w-[14%] px-3 py-3">Data</th>
                   <th className="w-[26%] px-3 py-3">Produto</th>
                   <th className="w-[15%] px-3 py-3">Tipo</th>
@@ -335,7 +335,7 @@ export default function TabelaEstoque({
                   <th className="w-[30%] px-3 py-3">Obs.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.055]">
+              <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
                 {movimentacoesFiltradas.length === 0 ? (
                   <tr>
                     <td
@@ -353,7 +353,7 @@ export default function TabelaEstoque({
                     return (
                       <tr
                         key={movimentacao.id}
-                        className="transition-colors duration-150 hover:bg-white/[0.018]"
+                        className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
                       >
                         <td className="px-3 py-3.5 font-medium tabular-nums text-[var(--fly-text-soft)]">
                           {formatDate(movimentacao.created_at)}
@@ -372,8 +372,8 @@ export default function TabelaEstoque({
                           className={cn(
                             "px-3 py-3.5 text-right font-semibold tabular-nums",
                             amount >= 0
-                              ? "text-[#93C5FD]"
-                              : "text-[#FDBA74]"
+                              ? "text-[var(--fly-chart-investment-active)]"
+                              : "text-[var(--fly-warning-strong)]"
                           )}
                         >
                           {signedNumber(amount)}

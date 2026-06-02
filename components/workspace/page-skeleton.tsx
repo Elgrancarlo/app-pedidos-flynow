@@ -5,14 +5,14 @@ function SkeletonLine({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block rounded-full bg-white/[0.055] ${className}`}
+      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
     />
   );
 }
 
 function SkeletonPanel({ children }: { children?: React.ReactNode }) {
   return (
-    <section className="flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-4">
+    <section className="flynow-dashboard-skeleton-panel rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-4">
       {children}
     </section>
   );
@@ -57,7 +57,7 @@ export function WorkspacePageSkeleton({
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={index}
-                    className="rounded-[8px] border border-white/[0.045] bg-white/[0.012] p-3"
+                    className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <SkeletonLine className="h-3 w-36 rounded-md" />

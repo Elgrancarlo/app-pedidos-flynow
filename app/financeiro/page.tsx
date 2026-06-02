@@ -46,19 +46,19 @@ function FinanceEventCard({
   tone: "red" | "gold" | "neutral";
 }) {
   const borderClass = {
-    red: "border-l-[#F87171]",
-    gold: "border-l-[#D6A84F]",
-    neutral: "border-l-white/35",
+    red: "border-l-[var(--fly-danger-strong)]",
+    gold: "border-l-[var(--fly-chart-revenue)]",
+    neutral: "border-l-[var(--fly-border-strong)]",
   }[tone];
   const valueClass = {
-    red: "text-[#FCA5A5]",
-    gold: "text-[#F0C76A]",
+    red: "text-[var(--fly-danger-strong)]",
+    gold: "text-[var(--fly-brand-strong)]",
     neutral: "text-[var(--fly-text)]",
   }[tone];
 
   return (
     <section
-      className={`flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] border-l-4 ${borderClass} bg-[#0B0D10] p-4 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]`}
+      className={`flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] border-l-4 ${borderClass} bg-[var(--fly-surface)] p-4 shadow-[var(--fly-panel-shadow)]`}
     >
       <p className={`text-[22px] font-semibold leading-none tabular-nums ${valueClass}`}>
         {value}

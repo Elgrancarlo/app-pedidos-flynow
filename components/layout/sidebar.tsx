@@ -137,7 +137,6 @@ export default function Sidebar() {
           onClose={closeMobileMore}
           onToggleTheme={toggleThemeFromMobileMore}
           themeActionLabel={themeActionLabel}
-          ThemeIcon={ThemeIcon}
           titleId={moreSheetTitleId}
         />
       ) : null}

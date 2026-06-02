@@ -99,8 +99,8 @@ export function DashboardHeader({
         className={cn(
           "sticky top-0 z-40 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b px-4 pb-3 pt-4 transition-[background-color,border-color,box-shadow,backdrop-filter,min-height,row-gap] duration-200 sm:px-5 sm:pb-4 sm:pt-5 lg:flex lg:min-h-[92px] lg:items-end lg:justify-between lg:gap-4 lg:px-6",
           isElevated
-            ? "min-h-[86px] border-white/[0.06] bg-[#050505]/82 shadow-[0_10px_28px_rgba(0,0,0,0.28)] backdrop-blur-md sm:min-h-[112px] lg:min-h-[92px]"
-            : "min-h-[104px] border-transparent bg-[#050505] shadow-none backdrop-blur-0 sm:min-h-[116px] lg:min-h-[92px]"
+            ? "min-h-[86px] border-[var(--fly-divider)] bg-[var(--fly-surface-elevated)] shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-md sm:min-h-[112px] lg:min-h-[92px]"
+            : "min-h-[104px] border-transparent bg-[var(--fly-bg)] shadow-none backdrop-blur-0 sm:min-h-[116px] lg:min-h-[92px]"
         )}
       >
         <div className="min-w-0">
@@ -110,14 +110,14 @@ export function DashboardHeader({
               className="h-7 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-brand-strong)] via-[var(--fly-brand-line)] to-transparent sm:h-10"
             />
             <div className="min-w-0">
-              <h1 className="truncate text-[17px] font-semibold leading-none text-[#F5F2EA] min-[390px]:text-[18px] sm:text-[26px]">
+              <h1 className="truncate text-[17px] font-semibold leading-none text-[var(--fly-text)] min-[390px]:text-[18px] sm:text-[26px]">
                 {title}
               </h1>
 
               {description ? (
                 <p
                   className={cn(
-                    "mt-1.5 hidden max-w-[520px] text-[12px] leading-5 text-[#9B968C] transition-[opacity,transform] duration-200 sm:mt-2 sm:block sm:text-sm lg:block",
+                    "mt-1.5 hidden max-w-[520px] text-[12px] leading-5 text-[var(--fly-text-muted)] transition-[opacity,transform] duration-200 sm:mt-2 sm:block sm:text-sm lg:block",
                     isElevated &&
                       "hidden -translate-y-1 opacity-0 sm:block sm:translate-y-0 sm:opacity-100"
                   )}

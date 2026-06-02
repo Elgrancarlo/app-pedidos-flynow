@@ -17,10 +17,10 @@ export function SidebarLink({
       href={href}
       aria-current={ativo ? "page" : undefined}
       className={[
-        "group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        "group flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
         ativo
-          ? "bg-[#17181B] text-[#F5F2EA]"
-          : "text-[#A3A6AE] hover:bg-[#151619] hover:text-[#E8E9EC]",
+          ? "bg-[var(--fly-control-active)] text-[var(--fly-text)]"
+          : "text-[var(--fly-text-soft)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)]",
       ].join(" ")}
     >
       <Icone
@@ -29,8 +29,8 @@ export function SidebarLink({
         className={[
           "shrink-0 transition-colors duration-150",
           ativo
-            ? "text-[#D6A84F]"
-            : "text-[#747882] group-hover:text-[#AEB2BB]",
+            ? "text-[var(--fly-brand-strong)]"
+            : "text-[var(--fly-text-muted)] group-hover:text-[var(--fly-text-soft)]",
         ].join(" ")}
       />
       <span className="truncate">{label}</span>
@@ -56,18 +56,18 @@ export function MobileNavLink({
       href={href}
       aria-current={ativo ? "page" : undefined}
       className={[
-        "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[#D6A84F]/25",
+        "relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] px-1 text-[10px] font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
         featured ? "h-16 -translate-y-2" : "h-14",
         ativo || featured
-          ? "text-[#F5F2EA]"
-          : "text-[#858A94] hover:bg-[#14161A] hover:text-[#E8E9EC]",
-        ativo && !featured ? "bg-[#17181B]" : "",
+          ? "text-[var(--fly-text)]"
+          : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)]",
+        ativo && !featured ? "bg-[var(--fly-control-active)]" : "",
       ].join(" ")}
     >
       {ativo ? (
         <span
           aria-hidden="true"
-          className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[#D6A84F]"
+          className="absolute left-1/2 top-1 h-0.5 w-5 -translate-x-1/2 rounded-full bg-[var(--fly-brand-strong)]"
         />
       ) : null}
       <span
@@ -77,8 +77,8 @@ export function MobileNavLink({
             ? [
                 "size-10 rounded-[12px] border",
                 ativo
-                  ? "border-[#D6A84F]/38 bg-[#1A1710] shadow-[0_8px_22px_rgba(214,168,79,0.1),inset_0_1px_0_rgba(255,255,255,0.055)]"
-                  : "border-white/[0.08] bg-[#111318] shadow-[0_8px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.035)]",
+                  ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] shadow-[0_8px_22px_rgba(214,168,79,0.1),var(--fly-panel-inset)]"
+                  : "border-[var(--fly-border)] bg-[var(--fly-control-solid)] shadow-[0_8px_20px_rgba(0,0,0,0.18),var(--fly-panel-inset)]",
               ].join(" ")
             : "",
         ].join(" ")}
@@ -88,7 +88,9 @@ export function MobileNavLink({
           strokeWidth={2.1}
           className={[
             "shrink-0 transition-colors duration-150",
-            ativo || featured ? "text-[#D6A84F]" : "text-[#747882]",
+            ativo || featured
+              ? "text-[var(--fly-brand-strong)]"
+              : "text-[var(--fly-text-muted)]",
           ].join(" ")}
         />
       </span>

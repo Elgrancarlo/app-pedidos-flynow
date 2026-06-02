@@ -5,7 +5,7 @@ function SkeletonLine({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block rounded-full bg-white/[0.055] ${className}`}
+      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
     />
   );
 }
@@ -13,7 +13,7 @@ function SkeletonLine({ className = "" }: { className?: string }) {
 function FinanceiroDateFilterSkeleton() {
   return (
     <div className="contents lg:flex lg:w-auto lg:min-w-0 lg:flex-col lg:items-end lg:gap-2">
-      <div className="contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1.5 lg:shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.035)]">
+      <div className="contents lg:flex lg:w-auto lg:max-w-full lg:flex-row lg:items-center lg:gap-1.5 lg:rounded-[14px] lg:border lg:border-[var(--fly-border)] lg:bg-[var(--fly-surface-elevated)] lg:p-1.5 lg:shadow-[var(--fly-panel-shadow)]">
         <div className="col-start-2 row-start-1 flex min-w-0 items-center justify-end self-center lg:col-auto lg:row-auto">
           <div className="flynow-dashboard-skeleton-panel h-10 w-[132px] rounded-xl border border-[var(--fly-border)] bg-[var(--fly-control)] min-[390px]:w-[140px] sm:h-8 sm:w-[236px] sm:rounded-full lg:rounded-xl" />
         </div>
@@ -39,7 +39,7 @@ function MetricCardsSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <section
           key={index}
-          className="flynow-dashboard-skeleton-panel min-w-0 rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-3 sm:p-4"
+          className="flynow-dashboard-skeleton-panel min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 sm:p-4"
         >
           <div className="flex items-center gap-2">
             <SkeletonLine className="size-1.5" />
@@ -60,7 +60,7 @@ function EventCardsSkeleton() {
       {Array.from({ length: 4 }).map((_, index) => (
         <section
           key={index}
-          className="flynow-dashboard-skeleton-panel min-w-0 rounded-[8px] border border-white/[0.06] border-l-4 border-l-white/[0.12] bg-[#0D0F12] p-4"
+          className="flynow-dashboard-skeleton-panel min-w-0 rounded-[8px] border border-[var(--fly-border)] border-l-4 border-l-[var(--fly-border-strong)] bg-[var(--fly-surface)] p-4"
         >
           <SkeletonLine className="h-6 w-20 rounded-md" />
           <SkeletonLine className="mt-4 h-2.5 w-32" />
@@ -72,12 +72,12 @@ function EventCardsSkeleton() {
 
 function FinanceChartSkeleton() {
   return (
-    <section className="flynow-dashboard-skeleton-panel min-w-0 overflow-hidden rounded-[8px] border border-white/[0.06] bg-[#0D0F12]">
-      <div className="flex min-w-0 flex-col gap-3 border-b border-white/[0.06] px-4 py-3 sm:px-5 sm:py-4">
+    <section className="flynow-dashboard-skeleton-panel min-w-0 overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-start gap-3">
           <span
             aria-hidden="true"
-            className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-white/[0.18] via-white/[0.08] to-transparent"
+            className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-border)] to-transparent"
           />
           <div className="min-w-0">
             <SkeletonLine className="h-4 w-40 rounded-md" />
@@ -87,34 +87,34 @@ function FinanceChartSkeleton() {
       </div>
 
       <div className="p-3 sm:p-4">
-        <div className="flynow-chart-stage min-h-[430px] space-y-5 rounded-[8px] border border-white/[0.045] bg-white/[0.01] p-4">
+        <div className="flynow-chart-stage min-h-[430px] space-y-5 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4">
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <div className="min-w-0">
               <SkeletonLine className="h-2.5 w-32" />
               <SkeletonLine className="mt-3 h-8 w-48 rounded-md sm:h-9 sm:w-56" />
               <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
             </div>
-            <div className="min-w-[118px] border-t border-white/[0.07] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+            <div className="min-w-[118px] border-t border-[var(--fly-divider)] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
               <SkeletonLine className="h-2.5 w-16" />
               <SkeletonLine className="mt-2 h-6 w-20 rounded-md" />
             </div>
           </div>
 
-          <div className="flynow-chart-plot h-[330px] min-w-0 rounded-[8px] border border-white/[0.045] bg-white/[0.01] px-4 pb-8 pt-6">
-            <div className="grid h-full grid-cols-4 items-end gap-4 border-b border-white/[0.055]">
+          <div className="flynow-chart-plot h-[330px] min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-4 pb-8 pt-6">
+            <div className="grid h-full grid-cols-4 items-end gap-4 border-b border-[var(--fly-divider-subtle)]">
               {["h-[92%]", "h-[8%]", "h-[5%]", "h-[90%]"].map((height, index) => (
                 <div key={index} className="flex h-full min-w-0 flex-col justify-end gap-3">
                   <SkeletonLine className="mx-auto h-2.5 w-14 rounded-md" />
                   <span
                     aria-hidden="true"
-                    className={`block w-full rounded-t-[6px] bg-white/[0.055] ${height}`}
+                    className={`block w-full rounded-t-[6px] bg-[var(--fly-skeleton-line)] ${height}`}
                   />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3">
+          <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
             <SkeletonLine className="h-2.5 w-full max-w-[520px]" />
           </div>
         </div>

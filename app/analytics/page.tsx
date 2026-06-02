@@ -33,19 +33,19 @@ const metricToneStyles: Record<
   }
 > = {
   gold: {
-    dot: "bg-[#D6A84F]",
+    dot: "bg-[var(--fly-chart-revenue)]",
     value: "text-[var(--fly-brand-strong)]",
   },
   blue: {
-    dot: "bg-[#60A5FA]",
-    value: "text-[#93C5FD]",
+    dot: "bg-[var(--fly-chart-investment)]",
+    value: "text-[var(--fly-chart-investment-active)]",
   },
   green: {
-    dot: "bg-[#4ADE80]",
-    value: "text-[#86EFAC]",
+    dot: "bg-[var(--fly-success)]",
+    value: "text-[var(--fly-success)]",
   },
   neutral: {
-    dot: "bg-white/35",
+    dot: "bg-[var(--fly-text-dim)]",
     value: "text-[var(--fly-text)]",
   },
 };
@@ -93,7 +93,7 @@ function AnalyticsMetricCard({
   const styles = metricToneStyles[tone];
 
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4">
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
       <div className="flex min-w-0 items-center gap-2">
         <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
         <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
@@ -137,18 +137,18 @@ function ChannelsTable({ channels }: { channels: PerformanceChannel[] }) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] table-fixed text-left text-sm">
         <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             <th className="w-[42%] px-3 py-3">Canal</th>
             <th className="w-[24%] px-3 py-3 text-right">Receita</th>
             <th className="w-[18%] px-3 py-3 text-right">Vendas diretas</th>
             <th className="w-[16%] px-3 py-3 text-right">ROAS</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/[0.055]">
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
           {rows.map((channel) => (
             <tr
               key={channel.channel}
-              className="transition-colors duration-150 hover:bg-white/[0.018]"
+              className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
             >
               <td className="px-3 py-3.5 font-medium text-[var(--fly-text)]">
                 <span className="block truncate">{channel.label}</span>

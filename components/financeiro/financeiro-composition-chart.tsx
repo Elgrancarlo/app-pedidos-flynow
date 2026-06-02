@@ -62,7 +62,7 @@ function ChartTooltip({ active, payload }: TooltipProps) {
   const value = Number(point.displayValue ?? amountPayload.value ?? 0);
 
   return (
-    <div className="min-w-[190px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[0_18px_44px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl">
+    <div className="min-w-[190px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[var(--fly-tooltip-shadow)] backdrop-blur-xl">
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-4">
           <span className="inline-flex min-w-0 items-center gap-1.5 text-[var(--fly-text-muted)]">
@@ -99,7 +99,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
   const waterfallData = [
     {
       amount: data.receitaBruta,
-      color: "#D6A84F",
+      color: "var(--fly-chart-revenue)",
       detail: `${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`,
       displayValue: data.receitaBruta,
       label: "Receita bruta",
@@ -123,7 +123,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: data.receitaLiquida,
-      color: "#4ADE80",
+      color: "var(--fly-success)",
       detail: `${formatPercent(retainedRatio)} da receita bruta preservada`,
       displayValue: data.receitaLiquida,
       label: "Receita líquida",
@@ -146,11 +146,11 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
             {formatCurrency(data.ticketMedio)}
           </p>
         </div>
-        <div className="min-w-[118px] border-t border-white/[0.07] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+        <div className="min-w-[118px] border-t border-[var(--fly-divider)] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
           <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
             Retenção
           </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-[#86EFAC]">
+          <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--fly-success)]">
             {formatPercent(retainedRatio)}
           </p>
         </div>
@@ -164,7 +164,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
             margin={{ bottom: 4, left: 2, right: 18, top: 24 }}
           >
             <CartesianGrid
-              stroke="rgba(255,255,255,0.06)"
+              stroke="var(--fly-chart-grid)"
               strokeDasharray="3 3"
               vertical={false}
             />
@@ -172,20 +172,20 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
               axisLine={false}
               dataKey="label"
               interval={0}
-              tick={{ fill: "rgba(245,242,234,0.58)", fontSize: 11 }}
+              tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
               tickLine={false}
             />
             <YAxis
               axisLine={false}
               domain={[0, grossBase]}
-              tick={{ fill: "rgba(245,242,234,0.48)", fontSize: 11 }}
+              tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
               tickFormatter={(value) => compactCurrency(Number(value))}
               tickLine={false}
               width={72}
             />
             <Tooltip
               content={<ChartTooltip />}
-              cursor={{ fill: "rgba(255,255,255,0.025)" }}
+              cursor={{ fill: "var(--fly-row-bg-strong)" }}
               isAnimationActive={false}
               wrapperStyle={{
                 outline: "none",
@@ -214,7 +214,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
               ))}
               <LabelList
                 dataKey="displayValue"
-                fill="rgba(245,242,234,0.82)"
+                fill="var(--fly-text-soft)"
                 fontSize={11}
                 formatter={(value) => signedCompactCurrency(Number(value ?? 0))}
                 position="top"
@@ -224,7 +224,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
         </ResponsiveContainer>
       </div>
 
-      <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3">
+      <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
         <p className="text-xs leading-5 text-[var(--fly-text-muted)] sm:text-sm">
           <span className="font-medium text-[var(--fly-text-soft)]">Perda financeira:</span>{" "}
           <span className="font-semibold text-[var(--fly-text)]">

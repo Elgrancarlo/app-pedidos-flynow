@@ -217,11 +217,11 @@ export default function ConfiguracoesPage() {
 
           <Panel title="Administração" description="Rotinas com impacto no banco">
             <div className="space-y-3">
-              <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] p-3">
+              <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3">
                 <div className="flex items-start gap-3">
                   <span
                     aria-hidden="true"
-                    className="mt-1.5 size-1.5 shrink-0 rounded-full bg-white/35"
+                    className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--fly-text-muted)]"
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-[var(--fly-text)]">
