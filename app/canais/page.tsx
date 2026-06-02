@@ -430,7 +430,7 @@ function CanaisFilters({
     <section className="flynow-dashboard-enter-item rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] px-3 py-2.5 shadow-[var(--fly-panel-inset)] sm:px-3.5">
       <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
         <FunilPeriodFilter
-          calendarTriggerClassName="!w-[162px] min-[390px]:!w-[178px] sm:!h-8 sm:!w-[244px] lg:!w-[244px]"
+          calendarTriggerClassName="!w-[168px] min-[390px]:!w-[186px] sm:!h-8 sm:!w-[260px] lg:!w-[260px]"
           range={range}
         />
 
