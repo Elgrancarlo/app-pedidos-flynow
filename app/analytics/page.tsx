@@ -5,19 +5,11 @@ import {
 } from "@/components/analytics/analytics-charts";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import {
-  PageBody,
-  Panel,
-  StatGrid,
-  StatusPill,
-} from "@/components/workspace/operational-ui";
+import { PageBody, Panel, StatGrid } from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
-  type PerformanceAlert,
-  type PerformanceCampaign,
   type PerformanceChannel,
-  type PerformanceLog,
   type PerformanceRange,
 } from "@/lib/performance-pages";
 import { formatCurrency, formatPercent } from "@/lib/utils";
@@ -67,13 +59,6 @@ function formatDecimal(value: number) {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(value);
-}
-
-function formatDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
 }
 
 function isDateString(value: string | undefined) {
@@ -169,118 +154,6 @@ function ChannelsTable({ channels }: { channels: PerformanceChannel[] }) {
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function CampaignsTable({ campaigns }: { campaigns: PerformanceCampaign[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] table-fixed text-left text-sm">
-        <thead>
-          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[34%] px-3 py-3">Campanha</th>
-            <th className="w-[18%] px-3 py-3">Origem</th>
-            <th className="w-[18%] px-3 py-3">Produto</th>
-            <th className="w-[14%] px-3 py-3 text-right">Cliques</th>
-            <th className="w-[16%] px-3 py-3 text-right">ROAS</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/[0.055]">
-          {campaigns.slice(0, 8).map((campaign) => (
-            <tr
-              key={`${campaign.source}-${campaign.campaign}-${campaign.product}`}
-              className="transition-colors duration-150 hover:bg-white/[0.018]"
-            >
-              <td className="px-3 py-3.5 font-medium text-[var(--fly-text)]">
-                <span className="block truncate">{campaign.campaign}</span>
-              </td>
-              <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
-                <span className="block truncate">{campaign.source}</span>
-              </td>
-              <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
-                <span className="block truncate">{campaign.product}</span>
-              </td>
-              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatNumber(campaign.clicks)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-brand-strong)]">
-                {formatDecimal(campaign.roas)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function SignalList({
-  alerts,
-  logs,
-}: {
-  alerts: PerformanceAlert[];
-  logs: PerformanceLog[];
-}) {
-  const items = [
-    ...alerts.map((alert) => ({
-      key: `alert-${alert.title}`,
-      title: alert.title,
-      detail: alert.detail,
-      meta:
-        alert.level === "danger"
-          ? "Crítico"
-          : alert.level === "warning"
-            ? "Atenção"
-            : alert.level === "ok"
-              ? "OK"
-              : "Info",
-      tone:
-        alert.level === "danger"
-          ? "red"
-          : alert.level === "warning"
-            ? "gold"
-            : alert.level === "ok"
-              ? "green"
-              : "blue",
-    })),
-    ...logs.slice(0, 3).map((log) => ({
-      key: `log-${log.day}-${log.title}`,
-      title: log.title,
-      detail: log.detail,
-      meta: `${formatDate(log.day)} · ${log.owner}`,
-      tone: "neutral",
-    })),
-  ] as Array<{
-    key: string;
-    title: string;
-    detail: string;
-    meta: string;
-    tone: "red" | "gold" | "green" | "blue" | "neutral";
-  }>;
-
-  return (
-    <div className="space-y-2.5">
-      {items.slice(0, 6).map((item) => (
-        <div
-          key={item.key}
-          className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.028]"
-        >
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <StatusPill tone={item.tone}>{item.meta}</StatusPill>
-                <p className="truncate text-sm font-medium text-[var(--fly-text)]">
-                  {item.title}
-                </p>
-              </div>
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-                {item.detail}
-              </p>
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -389,22 +262,6 @@ export default async function AnalyticsPage({
         >
           <ChannelsTable channels={data.channels} />
         </Panel>
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <Panel
-            title="Campanhas"
-            description="Campanhas com gasto, tráfego e retorno"
-          >
-            <CampaignsTable campaigns={data.campaigns} />
-          </Panel>
-
-          <Panel
-            title="Sinais recentes"
-            description="Leituras para priorização do dia"
-          >
-            <SignalList alerts={data.alerts} logs={data.logs} />
-          </Panel>
-        </div>
       </PageBody>
     </Shell>
   );
