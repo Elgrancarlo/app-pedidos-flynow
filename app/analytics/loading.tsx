@@ -128,10 +128,6 @@ export default function AnalyticsLoading() {
         className="flynow-dashboard-skeleton min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
-          <SkeletonPanel className="p-4">
-            <SkeletonLine className="h-4 w-40 rounded-md" />
-            <SkeletonLine className="mt-3 h-2.5 w-72 max-w-full" />
-          </SkeletonPanel>
           <MetricCardsSkeleton />
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,0.9fr)]">
             <ChartSkeleton />

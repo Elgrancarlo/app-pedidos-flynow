@@ -315,20 +315,6 @@ export default async function AnalyticsPage({
       />
 
       <PageBody>
-        <div className="flex flex-col gap-3 rounded-[8px] border border-white/[0.06] bg-[#0B0D10] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-[var(--fly-text)]">
-              {formatDate(range.startDate)} - {formatDate(range.endDate)}
-            </p>
-            <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-              Base consolidada de vendas, mídia, canais e produtos.
-            </p>
-          </div>
-          <StatusPill tone={data.source === "real" ? "green" : "gold"}>
-            {data.source === "real" ? "Dados reais" : "Mock ativo"}
-          </StatusPill>
-        </div>
-
         <StatGrid>
           <AnalyticsMetricCard
             detail={`${formatPercent(attributionRatio)} atribuída`}
