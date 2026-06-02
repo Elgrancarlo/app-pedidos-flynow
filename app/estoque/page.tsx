@@ -1,42 +1,54 @@
-import {
-  Boxes,
-  PackageMinus,
-  PackagePlus,
-  TriangleAlert,
-} from "lucide-react";
-
 import { EstoquePeriodFilter } from "@/components/estoque/estoque-period-filter";
 import FormEntrada from "@/components/estoque/form-entrada";
+import TabelaEstoque from "@/components/estoque/tabela-estoque";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
-  DataList,
   PageBody,
   Panel,
-  SimpleTable,
-  StatCard,
   StatGrid,
   StatusPill,
 } from "@/components/workspace/operational-ui";
-import {
-  getEstoquePageData,
-  type EstoqueProdutoStatus,
-} from "@/lib/estoque";
+import { getEstoquePageData } from "@/lib/estoque";
+import type { EstoqueMovimentacao } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABELS: Record<EstoqueProdutoStatus, string> = {
-  critico: "Critico",
-  baixo: "Baixo",
-  ok: "Saudavel",
-  excesso: "Excesso",
-};
+type MetricTone = "blue" | "orange" | "green" | "gold";
 
-const STATUS_TONES: Record<EstoqueProdutoStatus, "red" | "gold" | "green" | "blue"> = {
-  critico: "red",
-  baixo: "gold",
-  ok: "green",
-  excesso: "blue",
+const metricToneStyles: Record<
+  MetricTone,
+  {
+    dot: string;
+    value: string;
+    border: string;
+    wash: string;
+  }
+> = {
+  blue: {
+    dot: "bg-[#60A5FA]",
+    value: "text-[#93C5FD]",
+    border: "border-[#60A5FA]/14",
+    wash: "bg-[linear-gradient(135deg,rgba(96,165,250,0.07),transparent_46%)]",
+  },
+  orange: {
+    dot: "bg-[#FB923C]",
+    value: "text-[#FDBA74]",
+    border: "border-[#FB923C]/14",
+    wash: "bg-[linear-gradient(135deg,rgba(251,146,60,0.07),transparent_46%)]",
+  },
+  green: {
+    dot: "bg-[#4ADE80]",
+    value: "text-[#86EFAC]",
+    border: "border-[#4ADE80]/14",
+    wash: "bg-[linear-gradient(135deg,rgba(74,222,128,0.07),transparent_46%)]",
+  },
+  gold: {
+    dot: "bg-[#D6A84F]",
+    value: "text-[var(--fly-brand-strong)]",
+    border: "border-[var(--fly-brand-border)]",
+    wash: "bg-[linear-gradient(135deg,rgba(214,168,79,0.08),transparent_46%)]",
+  },
 };
 
 function formatNumber(value: number, maximumFractionDigits = 0) {
@@ -45,17 +57,77 @@ function formatNumber(value: number, maximumFractionDigits = 0) {
   }).format(value);
 }
 
-function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+function formatSignedNumber(value: number) {
+  if (value === 0) return "0";
+
+  return `${value > 0 ? "+" : "-"}${formatNumber(Math.abs(value))}`;
+}
+
+function observationContains(
+  item: EstoqueMovimentacao,
+  ...fragments: string[]
+) {
+  const observation = item.observacao?.toLocaleLowerCase("pt-BR") ?? "";
+  return fragments.some((fragment) => observation.includes(fragment));
+}
+
+function isAutomaticRestock(item: EstoqueMovimentacao) {
+  return observationContains(
+    item,
+    "estorno automatico",
+    "estorno automático"
+  );
+}
+
+function isManualAdjustment(item: EstoqueMovimentacao) {
+  return observationContains(item, "ajuste manual");
+}
+
+function signedMovementQuantity(item: EstoqueMovimentacao) {
+  return item.tipo === "entrada" ? item.qtd_potes : -item.qtd_potes;
+}
+
+function InventoryMetricCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: MetricTone;
+}) {
+  const styles = metricToneStyles[tone];
+
+  return (
+    <section
+      className={`flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] ${styles.border} bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]`}
+    >
+      <div className={`h-full p-3 sm:p-4 ${styles.wash}`}>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
+          <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+            {label}
+          </p>
+        </div>
+        <p
+          className={`mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px] ${styles.value}`}
+        >
+          {value}
+        </p>
+        <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+          {detail}
+        </p>
+      </div>
+    </section>
+  );
 }
 
 function MockEntryForm() {
   return (
-    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px_160px_auto]">
-      {["Produto", "Qtd potes", "Observacao"].map((label, index) => (
+    <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_140px_minmax(220px,1fr)_auto]">
+      {["Produto", "Qtd potes", "Observação"].map((label, index) => (
         <label key={label} className="grid gap-1">
           <span className="text-xs font-medium text-[var(--fly-text-muted)]">
             {label}
@@ -73,9 +145,9 @@ function MockEntryForm() {
         <button
           type="button"
           disabled
-          className="h-10 w-full rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70"
+          className="h-10 w-full rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 lg:w-auto"
         >
-          Registrar
+          Registrar Entrada
         </button>
       </div>
     </div>
@@ -89,182 +161,78 @@ export default async function EstoquePage({
 }) {
   const params = await searchParams;
   const data = await getEstoquePageData(params.dias);
-  const maxSaldo = Math.max(...data.grupos.map((item) => item.estoque_atual), 1);
+  const automaticRestocks = data.movimentacoes.filter(isAutomaticRestock);
+  const manualAdjustments = data.movimentacoes.filter(isManualAdjustment);
+  const automaticRestockTotal = automaticRestocks.reduce(
+    (sum, item) => sum + item.qtd_potes,
+    0
+  );
+  const manualAdjustmentTotal = manualAdjustments.reduce(
+    (sum, item) => sum + signedMovementQuantity(item),
+    0
+  );
 
   return (
     <Shell>
       <DashboardHeader
         title="Estoque"
-        description="Saldo por produto, giro, cobertura e movimentações"
+        description="Controle por grupo de produto"
         actions={<EstoquePeriodFilter active={data.periodo.preset} />}
       />
 
       <PageBody>
         <StatGrid>
-          <StatCard
-            label="Saldo atual"
-            value={formatNumber(data.saldoAtualTotal)}
-            detail={`${data.grupos.length.toLocaleString("pt-BR")} grupos monitorados`}
-            Icon={Boxes}
-            tone="gold"
-          />
-          <StatCard
-            label="Entradas"
+          <InventoryMetricCard
+            label="Potes entrada"
             value={formatNumber(data.totalEntradaPeriodo)}
-            detail={data.periodo.label}
-            Icon={PackagePlus}
+            detail={`${data.periodo.label} · ${data.grupos.length.toLocaleString("pt-BR")} produtos`}
             tone="blue"
           />
-          <StatCard
-            label="Vendas"
+          <InventoryMetricCard
+            label="Potes vendidos"
             value={formatNumber(data.totalVendidoPeriodo)}
-            detail={data.produtoMaiorGiro ? `Maior giro: ${data.produtoMaiorGiro}` : "Sem giro no periodo"}
-            Icon={PackageMinus}
+            detail={
+              data.produtoMaiorGiro
+                ? `Maior giro: ${data.produtoMaiorGiro}`
+                : "Sem vendas no período"
+            }
+            tone="orange"
+          />
+          <InventoryMetricCard
+            label="Estornos automáticos"
+            value={formatNumber(automaticRestockTotal)}
+            detail={`${automaticRestocks.length.toLocaleString("pt-BR")} eventos no período`}
             tone="green"
           />
-          <StatCard
-            label="Atenção"
-            value={formatNumber(data.gruposCriticos + data.gruposBaixos)}
-            detail={`${data.gruposCriticos} criticos · ${data.gruposBaixos} baixos`}
-            Icon={TriangleAlert}
-            tone={data.gruposCriticos > 0 ? "red" : "gold"}
+          <InventoryMetricCard
+            label="Ajustes manuais"
+            value={formatSignedNumber(manualAdjustmentTotal)}
+            detail={`${manualAdjustments.length.toLocaleString("pt-BR")} ajustes registrados`}
+            tone="gold"
           />
         </StatGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
-          <Panel
-            title="Saldo por produto"
-            description="Cobertura calculada pelo giro do período"
-            action={
-              <StatusPill tone={data.source === "real" ? "green" : "gold"}>
-                {data.source === "real" ? "Dados reais" : "Mock ativo"}
-              </StatusPill>
-            }
-          >
-            <div className="space-y-2.5">
-              {data.grupos.map((grupo) => (
-                <div
-                  key={grupo.id}
-                  className="rounded-[8px] border border-white/[0.055] bg-white/[0.018] px-3 py-3"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <StatusPill tone={STATUS_TONES[grupo.statusOperacional]}>
-                          {STATUS_LABELS[grupo.statusOperacional]}
-                        </StatusPill>
-                        <h2 className="truncate text-sm font-semibold text-[var(--fly-text)]">
-                          {grupo.nome_grupo}
-                        </h2>
-                      </div>
-                      <p className="mt-1.5 text-xs text-[var(--fly-text-muted)]">
-                        {grupo.coberturaDias == null
-                          ? "Sem venda no periodo"
-                          : `${grupo.coberturaDias} dias de cobertura`}{" "}
-                        · giro {formatNumber(grupo.giroPeriodo, 1)} potes/dia
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-right sm:w-[300px]">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
-                          Entrada
-                        </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-[#93C5FD]">
-                          +{formatNumber(grupo.entradasPeriodo)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
-                          Venda
-                        </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-[#86EFAC]">
-                          -{formatNumber(grupo.vendasPeriodo)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
-                          Saldo
-                        </p>
-                        <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                          {formatNumber(grupo.estoque_atual)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/[0.07]">
-                    <span
-                      aria-hidden="true"
-                      className="block h-full rounded-full bg-[#D6A84F]"
-                      style={{
-                        width: `${Math.max((grupo.estoque_atual / maxSaldo) * 100, 4)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel
-            title="Registrar entrada"
-            description={
-              data.source === "real"
-                ? "Atualiza estoque via API"
-                : "Visual pronto para conectar no modo real"
-            }
-          >
-            {data.source === "real" ? (
-              <FormEntrada grupos={data.grupos.map((grupo) => grupo.nome_grupo)} />
-            ) : (
-              <MockEntryForm />
-            )}
-          </Panel>
-        </div>
-
         <Panel
-          title="Extrato de movimentações"
-          description={`${data.periodo.label} · ultimos ${Math.min(data.movimentacoes.length, 120)} registros`}
+          title="Registrar entrada de estoque"
+          description="Entrada manual de potes para grupos cadastrados"
+          action={
+            <StatusPill tone={data.source === "real" ? "green" : "gold"}>
+              {data.source === "real" ? "Dados reais" : "Mock ativo"}
+            </StatusPill>
+          }
         >
-          <SimpleTable
-            columns={["Data", "Produto", "Tipo", "Observacao", "Potes"]}
-            rows={data.movimentacoes.slice(0, 120).map((item) => [
-              formatDate(item.created_at),
-              item.produto_grupo,
-              item.tipo === "entrada" ? "Entrada" : "Venda",
-              item.observacao ?? "-",
-              `${item.tipo === "entrada" ? "+" : "-"}${formatNumber(item.qtd_potes)}`,
-            ])}
-          />
+          {data.source === "real" ? (
+            <FormEntrada grupos={data.grupos.map((grupo) => grupo.nome_grupo)} />
+          ) : (
+            <MockEntryForm />
+          )}
         </Panel>
 
-        <Panel
-          title="Contrato da tela"
-          description="A UI consome EstoquePageData no mock e no backend real"
-        >
-          <DataList
-            valueLabel="status"
-            rows={[
-              {
-                label: "Fonte atual",
-                value: data.source === "real" ? "Real" : "Mock",
-                detail: "Controlada por FLYNOW_DATA_MODE",
-                tone: data.source === "real" ? "green" : "gold",
-              },
-              {
-                label: "Movimentações",
-                value: data.movimentacoes.length.toLocaleString("pt-BR"),
-                detail: "Entradas e vendas normalizadas",
-                tone: "blue",
-              },
-              {
-                label: "Ações reais",
-                value: data.source === "real" ? "Ativas" : "Bloqueadas",
-                detail: "Evita POST acidental enquanto o backend não estiver conectado",
-                tone: data.source === "real" ? "green" : "neutral",
-              },
-            ]}
-          />
-        </Panel>
+        <TabelaEstoque
+          grupos={data.grupos}
+          movimentacoes={data.movimentacoes}
+          periodoLabel={data.periodo.label}
+        />
       </PageBody>
     </Shell>
   );
