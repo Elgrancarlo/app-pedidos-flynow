@@ -21,33 +21,23 @@ const metricToneStyles: Record<
   {
     dot: string;
     value: string;
-    border: string;
-    wash: string;
   }
 > = {
   blue: {
     dot: "bg-[#60A5FA]",
     value: "text-[#93C5FD]",
-    border: "border-[#60A5FA]/14",
-    wash: "bg-[linear-gradient(135deg,rgba(96,165,250,0.07),transparent_46%)]",
   },
   orange: {
     dot: "bg-[#FB923C]",
     value: "text-[#FDBA74]",
-    border: "border-[#FB923C]/14",
-    wash: "bg-[linear-gradient(135deg,rgba(251,146,60,0.07),transparent_46%)]",
   },
   green: {
     dot: "bg-[#4ADE80]",
     value: "text-[#86EFAC]",
-    border: "border-[#4ADE80]/14",
-    wash: "bg-[linear-gradient(135deg,rgba(74,222,128,0.07),transparent_46%)]",
   },
   gold: {
     dot: "bg-[#D6A84F]",
     value: "text-[var(--fly-brand-strong)]",
-    border: "border-[var(--fly-brand-border)]",
-    wash: "bg-[linear-gradient(135deg,rgba(214,168,79,0.08),transparent_46%)]",
   },
 };
 
@@ -102,24 +92,22 @@ function InventoryMetricCard({
 
   return (
     <section
-      className={`flynow-dashboard-enter-item min-w-0 overflow-hidden rounded-[8px] border border-white/[0.07] ${styles.border} bg-[#0B0D10] shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)]`}
+      className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4"
     >
-      <div className={`h-full p-3 sm:p-4 ${styles.wash}`}>
-        <div className="flex min-w-0 items-center gap-2">
-          <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
-          <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-            {label}
-          </p>
-        </div>
-        <p
-          className={`mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px] ${styles.value}`}
-        >
-          {value}
-        </p>
-        <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-          {detail}
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
+        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+          {label}
         </p>
       </div>
+      <p
+        className={`mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px] ${styles.value}`}
+      >
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+        {detail}
+      </p>
     </section>
   );
 }
