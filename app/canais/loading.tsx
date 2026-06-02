@@ -54,31 +54,6 @@ function MetricCardsSkeleton() {
   );
 }
 
-function MobileInsightsSkeleton() {
-  return (
-    <SkeletonPanel className="overflow-hidden lg:hidden">
-      <div className="border-b border-[var(--fly-divider)] px-4 py-3">
-        <SkeletonLine className="h-4 w-48 rounded-md" />
-        <SkeletonLine className="mt-3 h-2.5 w-56 max-w-full" />
-      </div>
-      <div className="px-4 py-2">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="border-b border-[var(--fly-divider-subtle)] py-3 last:border-b-0"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <SkeletonLine className="h-3 w-28 rounded-md" />
-              <SkeletonLine className="h-3 w-24 rounded-md" />
-            </div>
-            <SkeletonLine className="mt-2 h-px w-full" />
-          </div>
-        ))}
-      </div>
-    </SkeletonPanel>
-  );
-}
-
 function ChartSkeleton() {
   return (
     <SkeletonPanel className="overflow-hidden">
@@ -87,7 +62,7 @@ function ChartSkeleton() {
         <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
       </div>
       <div className="p-3 sm:p-4">
-        <div className="h-[300px] rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4">
+        <div className="h-[300px] rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4 sm:h-[340px]">
           <div className="flex h-full items-end gap-3">
             {Array.from({ length: 8 }).map((_, index) => (
               <span
@@ -148,8 +123,7 @@ export default function CanaisLoading() {
         <div className="flex flex-col gap-4 sm:gap-5">
           <FilterSkeleton />
           <MetricCardsSkeleton />
-          <MobileInsightsSkeleton />
-          <div className="hidden gap-4 lg:grid xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
             <ChartSkeleton />
             <ChartSkeleton />
           </div>
