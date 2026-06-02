@@ -1861,7 +1861,7 @@ export default function CarrinhosClientView({
   funilInicial,
   referenceDate,
 }: CarrinhosClientViewProps) {
-  const [status, setStatus] = useState<LoadStatus>("initial-loading");
+  const [status, setStatus] = useState<LoadStatus>("success");
   const refreshTimerRef = useRef<number | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
   const [activeRange, setActiveRange] = useState<CarrinhoPeriodoPreset | "custom">(
@@ -1884,15 +1884,11 @@ export default function CarrinhosClientView({
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const hasErrorScenario =
-        new URLSearchParams(window.location.search).get("mockCarrinhos") ===
-        "error";
+    const hasErrorScenario =
+      new URLSearchParams(window.location.search).get("mockCarrinhos") ===
+      "error";
 
-      setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
-    }, 320);
-
-    return () => window.clearTimeout(timer);
+    setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
   }, [clearedInitialError]);
 
   useEffect(() => {
@@ -2115,7 +2111,7 @@ export default function CarrinhosClientView({
 
   const retry = useCallback(() => {
     setClearedInitialError(true);
-    setStatus("initial-loading");
+    setStatus("success");
   }, []);
 
   const clearFilters = useCallback(() => {

@@ -2039,7 +2039,7 @@ export default function PedidosClientView({
   financeiroInicial,
   valorPagoInicial,
 }: PedidosClientViewProps) {
-  const [status, setStatus] = useState<LoadStatus>("initial-loading");
+  const [status, setStatus] = useState<LoadStatus>("success");
   const refreshTimerRef = useRef<number | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
   const [activeRange, setActiveRange] = useState<PedidoPeriodoPreset | "custom">(
@@ -2062,15 +2062,11 @@ export default function PedidosClientView({
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const hasErrorScenario =
-        new URLSearchParams(window.location.search).get("mockPedidos") ===
-        "error";
+    const hasErrorScenario =
+      new URLSearchParams(window.location.search).get("mockPedidos") ===
+      "error";
 
-      setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
-    }, 320);
-
-    return () => window.clearTimeout(timer);
+    setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
   }, [clearedInitialError]);
 
   useEffect(() => {
@@ -2286,7 +2282,7 @@ export default function PedidosClientView({
 
   const retry = useCallback(() => {
     setClearedInitialError(true);
-    setStatus("initial-loading");
+    setStatus("success");
   }, []);
 
   const clearFilters = useCallback(() => {
