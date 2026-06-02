@@ -167,6 +167,13 @@ const FUNNEL_TONES: Record<
   },
 };
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  bank_slip: "boleto",
+  boleto: "boleto",
+  credit_card: "cartao",
+  pix: "pix",
+};
+
 function toCalendarDate(value: string) {
   return new Date(`${value}T12:00:00`);
 }
@@ -232,6 +239,61 @@ function formatTimeAgo(value: string, referenceDate: string) {
   if (diffDays < 7) return `${diffDays}d`;
 
   return formatDateTime(value, { hour: undefined, minute: undefined });
+}
+
+function formatPhone(phone: string | null) {
+  if (!phone) return null;
+
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11) {
+    return `+55 ${digits.slice(0, 2)} ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `+55 ${digits.slice(0, 2)} ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return phone;
+}
+
+function formatIdentifier(value: string | null | undefined) {
+  if (!value) return "-";
+  if (value.length <= 13) return value;
+  return `${value.slice(0, 9)}...`;
+}
+
+function getCartEventCount(carrinho: Carrinho) {
+  return Math.max(carrinho.timeline.length, carrinho.recoveryAttempts.length, 1);
+}
+
+function formatPaymentHint(paymentHint: string | null | undefined) {
+  const cleanedHint = paymentHint?.trim();
+  if (!cleanedHint) return null;
+
+  const normalizedHint = cleanedHint.toLowerCase();
+  if (
+    normalizedHint !== "checkout payt" &&
+    !normalizedHint?.includes("pote")
+  ) {
+    return PAYMENT_METHOD_LABELS[normalizedHint] ?? cleanedHint.replace(/_/g, " ");
+  }
+
+  return null;
+}
+
+function getPaymentDisplay(carrinho: Carrinho) {
+  const paymentHint = formatPaymentHint(carrinho.variation);
+  if (paymentHint) return paymentHint;
+
+  if (carrinho.recoveredValue && carrinho.recoveredValue > 0) {
+    return "pago";
+  }
+
+  if (carrinho.stage === "pagamento" || carrinho.status === "checkout") {
+    return "pendente";
+  }
+
+  return "-";
 }
 
 function clampPage(page: number, totalPages: number) {
@@ -510,18 +572,14 @@ function OverviewPanel({
   resumo: CarrinhosResumo;
   carrinhos: Carrinho[];
 }) {
-  const maiorCarrinho = carrinhos.reduce(
-    (maxValue, carrinho) => Math.max(maxValue, carrinho.potentialValue),
-    0
-  );
   const receitaCheckout = carrinhos
     .filter((carrinho) => carrinho.status === "checkout")
     .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
-  const receitaEmRecuperacao = carrinhos
-    .filter((carrinho) => carrinho.status === "em_recuperacao")
-    .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
   const receitaPerdida = carrinhos
     .filter((carrinho) => carrinho.status === "perdido")
+    .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
+  const receitaAbandonada = carrinhos
+    .filter((carrinho) => carrinho.status === "abandonado")
     .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
   const baseRecuperavel =
     resumo.abandonados + resumo.recuperados + resumo.perdidos;
@@ -529,29 +587,9 @@ function OverviewPanel({
   return (
     <div className="grid grid-cols-2 gap-2.5 md:gap-3 xl:grid-cols-4">
       <MetricPanel
-        label="Receita potencial"
-        value={formatCurrency(resumo.receitaPotencial)}
-        supportingText={`${resumo.total.toLocaleString("pt-BR")} no periodo`}
-        tone="gold"
-        rows={[
-          {
-            label: "Ticket medio",
-            value: Math.round(resumo.ticketMedio),
-            displayValue: formatCurrency(resumo.ticketMedio),
-            total: Math.max(maiorCarrinho, resumo.ticketMedio, 1),
-          },
-          {
-            label: "Maior carrinho",
-            value: Math.round(maiorCarrinho),
-            displayValue: formatCurrency(maiorCarrinho),
-            total: Math.max(maiorCarrinho, 1),
-          },
-        ]}
-      />
-      <MetricPanel
-        label="Checkout quente"
+        label="Checkout abertos"
         value={resumo.checkout.toLocaleString("pt-BR")}
-        supportingText="Perto da compra"
+        supportingText="Aguardando pagamento, pendentes ou em analise"
         tone="blue"
         rows={[
           {
@@ -561,16 +599,55 @@ function OverviewPanel({
             total: Math.max(resumo.receitaPotencial, 1),
           },
           {
-            label: "Abandonados",
-            value: resumo.abandonados,
+            label: "Ticket medio",
+            value: Math.round(resumo.ticketMedio),
+            displayValue: formatCurrency(resumo.ticketMedio),
+            total: Math.max(resumo.ticketMedio, receitaCheckout, 1),
+          },
+        ]}
+      />
+      <MetricPanel
+        label="Abandonos"
+        value={resumo.abandonados.toLocaleString("pt-BR")}
+        supportingText="Eventos que a PayT sinalizou como abandono"
+        tone="gold"
+        rows={[
+          {
+            label: "Valor abandonado",
+            value: Math.round(receitaAbandonada),
+            displayValue: formatCurrency(receitaAbandonada),
+            total: Math.max(resumo.receitaPotencial, 1),
+          },
+          {
+            label: "Base recuperavel",
+            value: baseRecuperavel,
             total: Math.max(resumo.total, 1),
           },
         ]}
       />
       <MetricPanel
-        label="Recuperacao"
-        value={formatPercent(resumo.taxaRecuperacao)}
-        supportingText={`${baseRecuperavel.toLocaleString("pt-BR")} recuperaveis`}
+        label="Perdidos"
+        value={resumo.perdidos.toLocaleString("pt-BR")}
+        supportingText="Cancelados, expirados, recusados ou falhos"
+        tone="red"
+        rows={[
+          {
+            label: "Valor perdido",
+            value: Math.round(receitaPerdida),
+            displayValue: formatCurrency(receitaPerdida),
+            total: Math.max(resumo.receitaPotencial, 1),
+          },
+          {
+            label: "Em recuperacao",
+            value: resumo.emRecuperacao,
+            total: Math.max(baseRecuperavel, 1),
+          },
+        ]}
+      />
+      <MetricPanel
+        label="Recuperados"
+        value={resumo.recuperados.toLocaleString("pt-BR")}
+        supportingText="Checkouts que passaram por evento nao pago antes do paid"
         tone="green"
         rows={[
           {
@@ -580,27 +657,9 @@ function OverviewPanel({
             total: Math.max(resumo.receitaPotencial, 1),
           },
           {
-            label: "Em conversa",
-            value: Math.round(receitaEmRecuperacao),
-            displayValue: formatCurrency(receitaEmRecuperacao),
-            total: Math.max(resumo.receitaPotencial, 1),
-          },
-        ]}
-      />
-      <MetricPanel
-        label="Atencao"
-        value={formatCurrency(receitaPerdida)}
-        supportingText={`${resumo.perdidos.toLocaleString("pt-BR")} perdidos`}
-        tone="red"
-        rows={[
-          {
-            label: "Perdidos",
-            value: resumo.perdidos,
-            total: Math.max(baseRecuperavel, 1),
-          },
-          {
-            label: "Em recuperacao",
-            value: resumo.emRecuperacao,
+            label: "Taxa de recuperacao",
+            value: resumo.recuperados,
+            displayValue: formatPercent(resumo.taxaRecuperacao),
             total: Math.max(baseRecuperavel, 1),
           },
         ]}
@@ -1016,6 +1075,7 @@ function FilterPanel({
 
 function SummaryStrip({
   filteredCount,
+  filteredEventCount,
   totalPeriodCount,
   filteredValue,
   periodoLabel,
@@ -1023,6 +1083,7 @@ function SummaryStrip({
   onViewChange,
 }: {
   filteredCount: number;
+  filteredEventCount: number;
   totalPeriodCount: number;
   filteredValue: number;
   periodoLabel: string;
@@ -1032,9 +1093,19 @@ function SummaryStrip({
   return (
     <div className="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <h2 className="text-sm font-semibold leading-5 text-[var(--fly-text)]">
+          Fila de checkout monitorada
+        </h2>
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--fly-text-muted)]">
+          Ultimo status nao pago por transacao/carrinho recebido no webhook.
+        </p>
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className="font-semibold tabular-nums text-[var(--fly-text)]">
             {filteredCount.toLocaleString("pt-BR")} carrinhos
+          </span>
+          <span className="text-[var(--fly-text-dim)]">·</span>
+          <span className="font-semibold tabular-nums text-[var(--fly-text-soft)]">
+            {filteredEventCount.toLocaleString("pt-BR")} eventos
           </span>
           <span className="text-[var(--fly-text-dim)]">·</span>
           <span className="font-semibold tabular-nums text-[var(--fly-brand-strong)]">
@@ -1131,31 +1202,34 @@ function CartsTable({
 }) {
   return (
     <div className="hidden min-h-[520px] overflow-x-auto lg:block">
-      <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[1220px] table-fixed text-left text-sm">
         <colgroup>
-          <col className="w-[27%]" />
-          <col className="w-[22%]" />
-          <col className="w-[14%]" />
-          <col className="w-[15%]" />
-          <col className="w-[12%]" />
+          <col className="w-[13%]" />
+          <col className="w-[13%]" />
+          <col className="w-[24%]" />
+          <col className="w-[20%]" />
           <col className="w-[10%]" />
+          <col className="w-[9%]" />
+          <col className="w-[11%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+            <th className="px-4 py-3.5">Ultimo evento</th>
+            <th className="px-4 py-3.5">Status</th>
             <th className="px-4 py-3.5">Cliente</th>
             <th className="px-4 py-3.5">Produto</th>
-            <th className="px-4 py-3.5">Valor potencial</th>
-            <th className="px-4 py-3.5">Jornada</th>
-            <th className="px-4 py-3.5">Atividade</th>
-            <th className="py-3.5 pl-3 pr-8 text-right">
-              <span className="sr-only">Detalhes</span>
-            </th>
+            <th className="px-4 py-3.5">Valor</th>
+            <th className="px-4 py-3.5">Pagamento</th>
+            <th className="py-3.5 pl-4 pr-8">IDs</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/[0.055]">
           {carrinhos.map((carrinho) => {
-            const contato =
-              carrinho.customerPhone ?? carrinho.customerEmail ?? "Sem contato";
+            const phone = formatPhone(carrinho.customerPhone);
+            const contato = phone ?? carrinho.customerEmail ?? "Sem contato";
+            const secondaryContact = phone ? carrinho.customerEmail : null;
+            const eventCount = getCartEventCount(carrinho);
+            const paymentDisplay = getPaymentDisplay(carrinho);
 
             return (
               <tr
@@ -1163,19 +1237,38 @@ function CartsTable({
                 className="group transition-colors duration-150 hover:bg-white/[0.018]"
               >
                 <td className="px-4 py-3">
+                  <p className="text-sm font-medium tabular-nums text-[var(--fly-text-soft)]">
+                    {formatDateTime(carrinho.lastActivityAt)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                    ha {formatTimeAgo(carrinho.lastActivityAt, referenceDate)}
+                  </p>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex min-w-0 flex-col items-start gap-1.5">
+                    <StatusBadge
+                      label={CARRINHO_STATUS_LABELS[carrinho.status]}
+                      className={STATUS_BADGE_STYLES[carrinho.status]}
+                      dotClassName={getStatusDotClass(carrinho.status)}
+                    />
+                    <span className="truncate text-xs font-medium text-[var(--fly-text-muted)]">
+                      {CARRINHO_ETAPA_LABELS[carrinho.stage]}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
                       {carrinho.customerName}
                     </p>
-                    <div className="mt-1 flex min-w-0 items-center gap-2">
-                      <span className="truncate text-xs text-[var(--fly-text-muted)]">
-                        {contato}
-                      </span>
-                      <span className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]" />
-                      <span className="shrink-0 font-mono text-[11px] font-semibold text-[var(--fly-brand-strong)]">
-                        {carrinho.externalCartId}
-                      </span>
-                    </div>
+                    <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+                      {contato}
+                    </p>
+                    {secondaryContact ? (
+                      <p className="mt-0.5 truncate text-[11px] text-[var(--fly-text-dim)]">
+                        {secondaryContact}
+                      </p>
+                    ) : null}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -1185,8 +1278,8 @@ function CartsTable({
                   <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--fly-text-muted)]">
                     <span className="truncate">{carrinho.productName}</span>
                     <span className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]" />
-                    <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                      {carrinho.variation}
+                    <span className="shrink-0 tabular-nums">
+                      {eventCount} evento{eventCount === 1 ? "" : "s"} no historico
                     </span>
                   </div>
                 </td>
@@ -1205,32 +1298,31 @@ function CartsTable({
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex min-w-0 flex-col items-start gap-1.5">
-                    <StatusBadge
-                      label={CARRINHO_STATUS_LABELS[carrinho.status]}
-                      className={STATUS_BADGE_STYLES[carrinho.status]}
-                      dotClassName={getStatusDotClass(carrinho.status)}
-                    />
-                    <span className="truncate text-xs font-medium text-[var(--fly-text-muted)]">
-                      {CARRINHO_ETAPA_LABELS[carrinho.stage]}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <p className="text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                    {formatTimeAgo(carrinho.lastActivityAt, referenceDate)}
+                  <p
+                    className={cn(
+                      "truncate text-sm font-medium text-[var(--fly-text-soft)]",
+                      paymentDisplay === "-" && "text-[var(--fly-text-muted)]"
+                    )}
+                  >
+                    {paymentDisplay}
                   </p>
                   <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
-                    {CARRINHO_ORIGEM_LABELS[carrinho.origin]}
+                    {CARRINHO_RECOVERY_STATUS_LABELS[carrinho.recoveryStatus]}
                   </p>
                 </td>
-                <td className="py-3 pl-3 pr-8">
-                  <div className="flex items-center justify-end">
+                <td className="py-3 pl-4 pr-8">
+                  <div className="min-w-0 space-y-1">
+                    <p className="truncate font-mono text-[11px] text-[var(--fly-text-muted)]">
+                      TX: {formatIdentifier(carrinho.id)}
+                    </p>
+                    <p className="truncate font-mono text-[11px] text-[var(--fly-text-muted)]">
+                      Cart: {formatIdentifier(carrinho.externalCartId)}
+                    </p>
                     <button
                       type="button"
                       aria-label={`Ver detalhes de ${carrinho.customerName}`}
                       onClick={() => onDetail(carrinho)}
-                      className="inline-flex whitespace-nowrap p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                      className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
                     >
                       <span>Ver detalhes</span>
                     </button>
@@ -1256,63 +1348,67 @@ function MobileCartsList({
 }) {
   return (
     <div className="min-h-[520px] divide-y divide-white/[0.055] lg:hidden">
-      {carrinhos.map((carrinho) => (
-        <article
-          key={carrinho.id}
-          className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 px-3 py-2.5"
-        >
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold leading-5 text-[var(--fly-text)]">
-              {carrinho.customerName}
-            </p>
-            <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
-              {carrinho.productGroup} · {carrinho.variation}
-            </p>
-          </div>
+      {carrinhos.map((carrinho) => {
+        const phone = formatPhone(carrinho.customerPhone);
+        const contato = phone ?? carrinho.customerEmail ?? "Sem contato";
+        const eventCount = getCartEventCount(carrinho);
+        const paymentDisplay = getPaymentDisplay(carrinho);
 
-          <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5">
-            <span className="shrink-0 text-[13px] font-semibold leading-4 tabular-nums text-[var(--fly-text)]">
-              {formatCurrency(carrinho.potentialValue)}
-            </span>
-            <span className="text-[10px] font-medium leading-none text-[var(--fly-text-muted)]">
-              {formatTimeAgo(carrinho.lastActivityAt, referenceDate)}
-            </span>
-          </div>
-
-          <div className="col-span-2 flex min-w-0 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-[11px] leading-4 text-[var(--fly-text-muted)]">
-              <span className="shrink-0 font-mono font-semibold text-[var(--fly-brand-strong)]">
-                {carrinho.externalCartId}
-              </span>
-              <span
-                aria-hidden="true"
-                className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]"
-              />
-              <span className="truncate">{CARRINHO_ORIGEM_LABELS[carrinho.origin]}</span>
+        return (
+          <article
+            key={carrinho.id}
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-3 py-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold leading-5 text-[var(--fly-text)]">
+                {carrinho.customerName}
+              </p>
+              <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                {contato}
+              </p>
             </div>
-            <div className="flex max-w-[48%] shrink-0 items-center justify-end gap-2">
-              <span className="inline-flex min-w-0 items-center gap-1.5 text-[10px] font-semibold leading-4 text-[var(--fly-text-muted)]">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    getStatusDotClass(carrinho.status)
-                  )}
-                />
-                <span className="truncate">{CARRINHO_STATUS_LABELS[carrinho.status]}</span>
+
+            <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5">
+              <span className="shrink-0 text-[13px] font-semibold leading-4 tabular-nums text-[var(--fly-text)]">
+                {formatCurrency(carrinho.potentialValue)}
               </span>
+              <span className="text-[10px] font-medium leading-none text-[var(--fly-text-muted)]">
+                {formatDateTime(carrinho.lastActivityAt)}
+              </span>
+            </div>
+
+            <div className="col-span-2 flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex min-w-0 items-center gap-2">
+                  <StatusBadge
+                    label={CARRINHO_STATUS_LABELS[carrinho.status]}
+                    className={STATUS_BADGE_STYLES[carrinho.status]}
+                    dotClassName={getStatusDotClass(carrinho.status)}
+                  />
+                  <span className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                    {paymentDisplay === "-" ? "sem pagamento" : paymentDisplay}
+                  </span>
+                </div>
+                <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                  {carrinho.productGroup} · {eventCount} evento
+                  {eventCount === 1 ? "" : "s"} no historico
+                </p>
+                <p className="truncate font-mono text-[10px] text-[var(--fly-text-dim)]">
+                  Cart: {formatIdentifier(carrinho.externalCartId)}
+                </p>
+              </div>
               <button
                 type="button"
                 aria-label={`Ver detalhes de ${carrinho.customerName}`}
                 onClick={() => onDetail(carrinho)}
-                className="shrink-0 text-[10px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                className="shrink-0 pt-0.5 text-[10px] font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
               >
                 Ver
               </button>
             </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -1429,8 +1525,8 @@ function CarrinhosSkeleton() {
           </div>
         </div>
         <div className="hidden lg:block">
-          <div className="grid grid-cols-[16%_13%_15%_8%_11%_10%_11%_10%_12%_4%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
-            {Array.from({ length: 10 }).map((_, index) => (
+          <div className="grid grid-cols-[13%_13%_24%_20%_10%_9%_11%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
+            {Array.from({ length: 7 }).map((_, index) => (
               <span
                 key={index}
                 className="h-2.5 w-20 rounded-full bg-white/[0.055]"
@@ -1441,9 +1537,9 @@ function CarrinhosSkeleton() {
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="grid grid-cols-[16%_13%_15%_8%_11%_10%_11%_10%_12%_4%] items-center py-4"
+                className="grid grid-cols-[13%_13%_24%_20%_10%_9%_11%] items-center py-4"
               >
-                {Array.from({ length: 10 }).map((__, itemIndex) => (
+                {Array.from({ length: 7 }).map((__, itemIndex) => (
                   <span
                     key={itemIndex}
                     className={cn(
@@ -2105,6 +2201,14 @@ export default function CarrinhosClientView({
       ),
     [filteredCarrinhos]
   );
+  const filteredEventCount = useMemo(
+    () =>
+      filteredCarrinhos.reduce(
+        (total, carrinho) => total + getCartEventCount(carrinho),
+        0
+      ),
+    [filteredCarrinhos]
+  );
 
   const totalPages = Math.max(Math.ceil(filteredCarrinhos.length / pageSize), 1);
   const pagination = useMemo<PaginationModel>(
@@ -2209,7 +2313,7 @@ export default function CarrinhosClientView({
     <>
       <DashboardHeader
         title="Carrinhos"
-        description="Abandono, recuperacao e receita potencial em uma fila de performance"
+        description="Eventos PayT de checkout e abandono no periodo"
         actions={
           <HeaderActions
             activeRange={activeRange}
@@ -2269,6 +2373,7 @@ export default function CarrinhosClientView({
               <div className="space-y-4">
                 <SummaryStrip
                   filteredCount={filteredCarrinhos.length}
+                  filteredEventCount={filteredEventCount}
                   totalPeriodCount={periodCarrinhos.length}
                   filteredValue={filteredValue}
                   periodoLabel={periodoLabel}
