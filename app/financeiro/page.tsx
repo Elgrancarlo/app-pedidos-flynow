@@ -87,6 +87,7 @@ function FinanceCompositionRow({
   detail,
   ratio,
   tone,
+  index,
   prefix = "",
 }: {
   label: string;
@@ -94,6 +95,7 @@ function FinanceCompositionRow({
   detail: string;
   ratio: number;
   tone: "gold" | "green" | "red" | "amber" | "neutral";
+  index: number;
   prefix?: string;
 }) {
   const toneClass = {
@@ -142,8 +144,11 @@ function FinanceCompositionRow({
         className="min-w-0 overflow-hidden rounded-full bg-white/[0.055]"
       >
         <span
-          className={`block h-1.5 rounded-full ${toneClass}`}
-          style={{ width: chartWidth(safeRatio) }}
+          className={`flynow-conversion-bar block h-1.5 rounded-full ${toneClass}`}
+          style={{
+            animationDelay: `${360 + index * 70}ms`,
+            width: chartWidth(safeRatio),
+          }}
         />
       </div>
 
@@ -183,8 +188,8 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
   ];
 
   return (
-    <div className="min-h-[430px] space-y-5">
-      <div className="space-y-5">
+    <div className="flynow-chart-stage min-h-[430px]">
+      <div className="flynow-chart-plot space-y-5">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
             <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
@@ -210,12 +215,13 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
 
         <div>
           <div className="flex h-8 overflow-hidden rounded-[6px] bg-white/[0.045]">
-            {stackedSegments.map((segment) => (
+            {stackedSegments.map((segment, index) => (
               <span
                 key={segment.label}
                 title={`${segment.label}: ${formatCurrency(segment.value)}`}
-                className={`h-full shrink-0 ${segment.className}`}
+                className={`flynow-conversion-bar h-full shrink-0 ${segment.className}`}
                 style={{
+                  animationDelay: `${260 + index * 85}ms`,
                   flexBasis: `${clampRatio(segment.ratio) * 100}%`,
                   minWidth: segment.value > 0 ? "4px" : "0",
                 }}
@@ -237,62 +243,67 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
             ))}
           </div>
         </div>
-      </div>
 
-      <div>
-        <FinanceCompositionRow
-          label="Receita bruta"
-          value={data.receitaBruta}
-          detail={`${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
-          ratio={1}
-          tone="gold"
-        />
-        <FinanceCompositionRow
-          label="Chargebacks"
-          value={data.valorChargebacks}
-          detail={`${data.chargebacks.toLocaleString("pt-BR")} eventos · taxa CB ${formatPercent(data.taxaChargeback)}`}
-          ratio={chargebackRatio}
-          tone="red"
-          prefix="-"
-        />
-        <FinanceCompositionRow
-          label="Reembolsos"
-          value={data.valorReembolsos}
-          detail={`${data.reembolsos.toLocaleString("pt-BR")} eventos`}
-          ratio={refundRatio}
-          tone="amber"
-          prefix="-"
-        />
-        <FinanceCompositionRow
-          label="Total revertido"
-          value={data.totalRevertido}
-          detail={`${formatPercent(revertedRatio)} da receita bruta do período`}
-          ratio={revertedRatio}
-          tone="neutral"
-          prefix="-"
-        />
-        <FinanceCompositionRow
-          label="Receita líquida"
-          value={data.receitaLiquida}
-          detail={`${formatPercent(retainedRatio)} da receita bruta preservada`}
-          ratio={retainedRatio}
-          tone="green"
-        />
-      </div>
+        <div>
+          <FinanceCompositionRow
+            label="Receita bruta"
+            value={data.receitaBruta}
+            detail={`${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
+            index={0}
+            ratio={1}
+            tone="gold"
+          />
+          <FinanceCompositionRow
+            label="Chargebacks"
+            value={data.valorChargebacks}
+            detail={`${data.chargebacks.toLocaleString("pt-BR")} eventos · taxa CB ${formatPercent(data.taxaChargeback)}`}
+            index={1}
+            ratio={chargebackRatio}
+            tone="red"
+            prefix="-"
+          />
+          <FinanceCompositionRow
+            label="Reembolsos"
+            value={data.valorReembolsos}
+            detail={`${data.reembolsos.toLocaleString("pt-BR")} eventos`}
+            index={2}
+            ratio={refundRatio}
+            tone="amber"
+            prefix="-"
+          />
+          <FinanceCompositionRow
+            label="Total revertido"
+            value={data.totalRevertido}
+            detail={`${formatPercent(revertedRatio)} da receita bruta do período`}
+            index={3}
+            ratio={revertedRatio}
+            tone="neutral"
+            prefix="-"
+          />
+          <FinanceCompositionRow
+            label="Receita líquida"
+            value={data.receitaLiquida}
+            detail={`${formatPercent(retainedRatio)} da receita bruta preservada`}
+            index={4}
+            ratio={retainedRatio}
+            tone="green"
+          />
+        </div>
 
-      <div className="border-t border-white/[0.055] pt-3">
-        <p className="text-xs leading-5 text-[var(--fly-text-muted)]">
-          <span className="font-medium text-[var(--fly-text-soft)]">
-            Leitura:
-          </span>{" "}
-          {formatCurrency(data.receitaBruta)} brutos menos{" "}
-          {formatCurrency(data.valorChargebacks)} em chargebacks e{" "}
-          {formatCurrency(data.valorReembolsos)} em reembolsos resultam em{" "}
-          <span className="font-semibold text-[var(--fly-text)]">
-            {formatCurrency(data.receitaLiquida)}
-          </span>
-          {" "}líquidos.
-        </p>
+        <div className="border-t border-white/[0.055] pt-3">
+          <p className="text-xs leading-5 text-[var(--fly-text-muted)]">
+            <span className="font-medium text-[var(--fly-text-soft)]">
+              Leitura:
+            </span>{" "}
+            {formatCurrency(data.receitaBruta)} brutos menos{" "}
+            {formatCurrency(data.valorChargebacks)} em chargebacks e{" "}
+            {formatCurrency(data.valorReembolsos)} em reembolsos resultam em{" "}
+            <span className="font-semibold text-[var(--fly-text)]">
+              {formatCurrency(data.receitaLiquida)}
+            </span>
+            {" "}líquidos.
+          </p>
+        </div>
       </div>
     </div>
   );
