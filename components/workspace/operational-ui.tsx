@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { RouteRefreshFrame } from "@/components/workspace/route-refresh-frame";
 
 type Tone = "gold" | "blue" | "green" | "red" | "neutral";
 
@@ -48,9 +49,7 @@ const toneStyles: Record<
 export function PageBody({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
-      <div className="flynow-dashboard-content flex flex-col gap-4 sm:gap-5">
-        {children}
-      </div>
+      <RouteRefreshFrame>{children}</RouteRefreshFrame>
     </div>
   );
 }
