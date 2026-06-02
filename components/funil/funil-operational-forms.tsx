@@ -204,7 +204,7 @@ export function FunilOperationalForms({ products }: FunilOperationalFormsProps) 
           <div className="flex justify-end">
             <button
               type="submit"
-              className="inline-flex h-10 w-full min-w-[156px] cursor-pointer items-center justify-center rounded-[10px] border border-[var(--fly-border-strong)] bg-[var(--fly-text)] px-4 text-sm font-semibold text-[var(--fly-bg)] shadow-[var(--fly-panel-inset)] outline-none transition-[background-color,border-color,box-shadow,transform] duration-150 hover:border-[var(--fly-text-soft)] hover:bg-[var(--fly-text-soft)] active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-[var(--fly-border-strong)] sm:w-auto"
+              className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[var(--fly-on-brand)] shadow-[0_10px_24px_rgba(214,168,79,0.12)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:w-auto"
             >
               Salvar alteracao
             </button>
