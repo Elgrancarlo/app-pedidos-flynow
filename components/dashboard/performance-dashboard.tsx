@@ -1264,7 +1264,7 @@ export function PerformanceDashboard() {
               style={{ "--flynow-enter-delay": "210ms" } as CSSProperties}
             >
               <SectionGroup title="Análise de pedidos">
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
                   <OrdersFunnelCard rows={dashboardData.funnelRows} />
                   <TrendChart data={dashboardData.trend} />
                 </div>
