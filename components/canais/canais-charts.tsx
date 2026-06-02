@@ -119,7 +119,7 @@ function ChartTooltip({ active, payload, variant }: ChartTooltipProps) {
 
 function EmptyChart() {
   return (
-    <div className="flex h-[300px] items-center justify-center rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-sm text-[var(--fly-text-muted)] sm:h-[340px]">
+    <div className="flex h-[300px] items-center justify-center rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-sm text-[var(--fly-text-muted)]">
       Sem dados para o recorte selecionado.
     </div>
   );
@@ -133,7 +133,7 @@ export function ChannelRevenueChart({
   if (!channels.length) return <EmptyChart />;
 
   return (
-    <div className="h-[300px] min-w-0 sm:h-[340px]">
+    <div className="h-[300px] min-w-0">
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
           data={channels}
@@ -184,7 +184,7 @@ export function SourceSpendChart({ sources }: { sources: SourceSpendDatum[] }) {
   if (!sources.length) return <EmptyChart />;
 
   return (
-    <div className="h-[300px] min-w-0 sm:h-[340px]">
+    <div className="h-[300px] min-w-0">
       <ResponsiveContainer height="100%" width="100%">
         <BarChart
           data={sources}

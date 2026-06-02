@@ -3,8 +3,8 @@ import Link from "next/link";
 import {
   ChannelRevenueChart,
   SourceSpendChart,
-  type ChannelRevenueDatum,
-  type SourceSpendDatum,
+  ChannelRevenueDatum,
+  SourceSpendDatum,
 } from "@/components/canais/canais-charts";
 import {
   FunilPeriodFilter,
@@ -402,6 +402,132 @@ function MetricCard({
   );
 }
 
+function InsightRow({
+  detail,
+  label,
+  meter,
+  tone,
+  value,
+}: {
+  detail: string;
+  label: string;
+  meter: number;
+  tone: "gold" | "blue";
+  value: string;
+}) {
+  const barClassName =
+    tone === "gold"
+      ? "bg-[var(--fly-chart-revenue)]"
+      : "bg-[var(--fly-chart-investment)]";
+
+  return (
+    <div className="py-2.5">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+            {label}
+          </p>
+          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">{detail}</p>
+        </div>
+        <p className="shrink-0 text-right text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+          {value}
+        </p>
+      </div>
+      <div className="mt-2 h-px overflow-hidden rounded-full bg-[var(--fly-divider)]">
+        <span
+          aria-hidden="true"
+          className={cn("block h-full rounded-full", barClassName)}
+          style={{ width: `${Math.min(Math.max(meter * 100, 4), 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CanaisMobileInsights({
+  channels,
+  sources,
+}: {
+  channels: ChannelRevenueDatum[];
+  sources: SourceSpendDatum[];
+}) {
+  const visibleChannels = channels.slice(0, 3);
+  const visibleSources = sources.slice(0, 3);
+  const maxRevenue = Math.max(1, ...visibleChannels.map((item) => item.revenue));
+  const maxSpend = Math.max(1, ...visibleSources.map((item) => item.spend));
+
+  return (
+    <section className="flynow-dashboard-enter-item overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] shadow-[var(--fly-panel-inset)] lg:hidden">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-divider)] to-transparent"
+          />
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
+              Leitura rápida de canais
+            </h2>
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--fly-text-muted)]">
+              Ranking resumido para navegação mobile
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-2">
+        <div>
+          <p className="pt-1 text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            Receita por canal
+          </p>
+          <div className="mt-1 divide-y divide-[var(--fly-divider-subtle)]">
+            {visibleChannels.length ? (
+              visibleChannels.map((item) => (
+                <InsightRow
+                  key={item.name}
+                  detail={`${formatNumber(item.directSales)} vendas · ROAS ${formatDecimal(item.roas)}`}
+                  label={item.name}
+                  meter={item.revenue / maxRevenue}
+                  tone="gold"
+                  value={formatCurrency(item.revenue)}
+                />
+              ))
+            ) : (
+              <p className="py-3 text-sm text-[var(--fly-text-muted)]">
+                Sem receita para o recorte selecionado.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 border-t border-[var(--fly-divider)] pt-3">
+          <p className="text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            Spend por source
+          </p>
+          <div className="mt-1 divide-y divide-[var(--fly-divider-subtle)]">
+            {visibleSources.length ? (
+              visibleSources.map((item) => (
+                <InsightRow
+                  key={item.name}
+                  detail={`${formatNumber(item.clicks)} clicks · ${formatNumber(item.conversions)} conv.`}
+                  label={item.name}
+                  meter={item.spend / maxSpend}
+                  tone="blue"
+                  value={formatCurrency(item.spend)}
+                />
+              ))
+            ) : (
+              <p className="py-3 text-sm text-[var(--fly-text-muted)]">
+                Sem spend para o recorte selecionado.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function SourceBadge({ source }: { source: "mock" | "real" }) {
   return (
     <StatusPill tone={source === "real" ? "green" : "gold"}>
@@ -672,7 +798,11 @@ export default async function CanaisPage({
           />
         </StatGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <CanaisMobileInsights
+          channels={channelRevenueRows}
+          sources={sourceSpendRows}
+        />
+        <div className="hidden gap-4 lg:grid xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
           <Panel
             title="Receita por canal"
             description="Origem PayT ordenada por faturamento"
