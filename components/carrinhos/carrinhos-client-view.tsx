@@ -167,13 +167,6 @@ const FUNNEL_TONES: Record<
   },
 };
 
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  bank_slip: "boleto",
-  boleto: "boleto",
-  credit_card: "cartao",
-  pix: "pix",
-};
-
 function toCalendarDate(value: string) {
   return new Date(`${value}T12:00:00`);
 }
@@ -264,36 +257,6 @@ function formatIdentifier(value: string | null | undefined) {
 
 function getCartEventCount(carrinho: Carrinho) {
   return Math.max(carrinho.timeline.length, carrinho.recoveryAttempts.length, 1);
-}
-
-function formatPaymentHint(paymentHint: string | null | undefined) {
-  const cleanedHint = paymentHint?.trim();
-  if (!cleanedHint) return null;
-
-  const normalizedHint = cleanedHint.toLowerCase();
-  if (
-    normalizedHint !== "checkout payt" &&
-    !normalizedHint?.includes("pote")
-  ) {
-    return PAYMENT_METHOD_LABELS[normalizedHint] ?? cleanedHint.replace(/_/g, " ");
-  }
-
-  return null;
-}
-
-function getPaymentDisplay(carrinho: Carrinho) {
-  const paymentHint = formatPaymentHint(carrinho.variation);
-  if (paymentHint) return paymentHint;
-
-  if (carrinho.recoveredValue && carrinho.recoveredValue > 0) {
-    return "pago";
-  }
-
-  if (carrinho.stage === "pagamento" || carrinho.status === "checkout") {
-    return "pendente";
-  }
-
-  return "-";
 }
 
 function clampPage(page: number, totalPages: number) {
@@ -493,18 +456,11 @@ function MetricPanel({
   value,
   supportingText,
   tone,
-  rows,
 }: {
   label: string;
   value: string;
   supportingText: string;
   tone: "gold" | "blue" | "green" | "red";
-  rows: Array<{
-    label: string;
-    value: number;
-    displayValue?: string;
-    total?: number;
-  }>;
 }) {
   const dotClass = {
     gold: "bg-[#D6A84F]",
@@ -514,7 +470,7 @@ function MetricPanel({
   }[tone];
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
+    <section className="min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3.5 shadow-[0_1px_0_rgba(255,255,255,0.03),inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -531,59 +487,15 @@ function MetricPanel({
           </p>
         </div>
       </div>
-
-      <div className="mt-3 hidden space-y-2.5 sm:block">
-        {rows.map((row) => {
-          const total = row.total ?? Math.max(...rows.map((item) => item.value), 1);
-          const width =
-            total > 0
-              ? Math.max((row.value / total) * 100, row.value > 0 ? 5 : 0)
-              : 0;
-
-          return (
-            <div key={row.label} className="min-w-0">
-              <div className="mb-1.5 flex items-center justify-between gap-3">
-                <span className="truncate text-xs font-medium text-[var(--fly-text-soft)]">
-                  {row.label}
-                </span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--fly-text)]">
-                  {row.displayValue ?? row.value.toLocaleString("pt-BR")}
-                </span>
-              </div>
-              <div className="h-px overflow-hidden rounded-full bg-white/[0.08]">
-                <span
-                  aria-hidden="true"
-                  className={cn("block h-full rounded-full", dotClass)}
-                  style={{ width: `${width}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </section>
   );
 }
 
 function OverviewPanel({
   resumo,
-  carrinhos,
 }: {
   resumo: CarrinhosResumo;
-  carrinhos: Carrinho[];
 }) {
-  const receitaCheckout = carrinhos
-    .filter((carrinho) => carrinho.status === "checkout")
-    .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
-  const receitaPerdida = carrinhos
-    .filter((carrinho) => carrinho.status === "perdido")
-    .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
-  const receitaAbandonada = carrinhos
-    .filter((carrinho) => carrinho.status === "abandonado")
-    .reduce((total, carrinho) => total + carrinho.potentialValue, 0);
-  const baseRecuperavel =
-    resumo.abandonados + resumo.recuperados + resumo.perdidos;
-
   return (
     <div className="grid grid-cols-2 gap-2.5 md:gap-3 xl:grid-cols-4">
       <MetricPanel
@@ -591,78 +503,24 @@ function OverviewPanel({
         value={resumo.checkout.toLocaleString("pt-BR")}
         supportingText="Aguardando pagamento, pendentes ou em analise"
         tone="blue"
-        rows={[
-          {
-            label: "Valor em checkout",
-            value: Math.round(receitaCheckout),
-            displayValue: formatCurrency(receitaCheckout),
-            total: Math.max(resumo.receitaPotencial, 1),
-          },
-          {
-            label: "Ticket medio",
-            value: Math.round(resumo.ticketMedio),
-            displayValue: formatCurrency(resumo.ticketMedio),
-            total: Math.max(resumo.ticketMedio, receitaCheckout, 1),
-          },
-        ]}
       />
       <MetricPanel
         label="Abandonos"
         value={resumo.abandonados.toLocaleString("pt-BR")}
         supportingText="Eventos que a PayT sinalizou como abandono"
         tone="gold"
-        rows={[
-          {
-            label: "Valor abandonado",
-            value: Math.round(receitaAbandonada),
-            displayValue: formatCurrency(receitaAbandonada),
-            total: Math.max(resumo.receitaPotencial, 1),
-          },
-          {
-            label: "Base recuperavel",
-            value: baseRecuperavel,
-            total: Math.max(resumo.total, 1),
-          },
-        ]}
       />
       <MetricPanel
         label="Perdidos"
         value={resumo.perdidos.toLocaleString("pt-BR")}
         supportingText="Cancelados, expirados, recusados ou falhos"
         tone="red"
-        rows={[
-          {
-            label: "Valor perdido",
-            value: Math.round(receitaPerdida),
-            displayValue: formatCurrency(receitaPerdida),
-            total: Math.max(resumo.receitaPotencial, 1),
-          },
-          {
-            label: "Em recuperacao",
-            value: resumo.emRecuperacao,
-            total: Math.max(baseRecuperavel, 1),
-          },
-        ]}
       />
       <MetricPanel
         label="Recuperados"
         value={resumo.recuperados.toLocaleString("pt-BR")}
         supportingText="Checkouts que passaram por evento nao pago antes do paid"
         tone="green"
-        rows={[
-          {
-            label: "Receita recuperada",
-            value: Math.round(resumo.receitaRecuperada),
-            displayValue: formatCurrency(resumo.receitaRecuperada),
-            total: Math.max(resumo.receitaPotencial, 1),
-          },
-          {
-            label: "Taxa de recuperacao",
-            value: resumo.recuperados,
-            displayValue: formatPercent(resumo.taxaRecuperacao),
-            total: Math.max(baseRecuperavel, 1),
-          },
-        ]}
       />
     </div>
   );
@@ -1076,16 +934,12 @@ function FilterPanel({
 function SummaryStrip({
   filteredCount,
   filteredEventCount,
-  totalPeriodCount,
-  filteredValue,
   periodoLabel,
   view,
   onViewChange,
 }: {
   filteredCount: number;
   filteredEventCount: number;
-  totalPeriodCount: number;
-  filteredValue: number;
   periodoLabel: string;
   view: ViewMode;
   onViewChange: (view: ViewMode) => void;
@@ -1096,10 +950,7 @@ function SummaryStrip({
         <h2 className="text-sm font-semibold leading-5 text-[var(--fly-text)]">
           Fila de checkout monitorada
         </h2>
-        <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--fly-text-muted)]">
-          Ultimo status nao pago por transacao/carrinho recebido no webhook.
-        </p>
-        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--fly-text-muted)]">
           <span className="font-semibold tabular-nums text-[var(--fly-text)]">
             {filteredCount.toLocaleString("pt-BR")} carrinhos
           </span>
@@ -1108,17 +959,8 @@ function SummaryStrip({
             {filteredEventCount.toLocaleString("pt-BR")} eventos
           </span>
           <span className="text-[var(--fly-text-dim)]">·</span>
-          <span className="font-semibold tabular-nums text-[var(--fly-brand-strong)]">
-            {formatCurrency(filteredValue)}
-          </span>
-          <span className="text-xs font-medium text-[var(--fly-text-muted)]">
-            potencial filtrado
-          </span>
+          <span>{periodoLabel}</span>
         </div>
-        <p className="mt-1 text-xs text-[var(--fly-text-dim)]">
-          {periodoLabel} · base do periodo:{" "}
-          {totalPeriodCount.toLocaleString("pt-BR")}
-        </p>
       </div>
       <ViewToggle view={view} onChange={onViewChange} />
     </div>
@@ -1193,24 +1035,21 @@ function PaginationControls({
 
 function CartsTable({
   carrinhos,
-  referenceDate,
   onDetail,
 }: {
   carrinhos: Carrinho[];
-  referenceDate: string;
   onDetail: (carrinho: Carrinho) => void;
 }) {
   return (
     <div className="hidden min-h-[520px] overflow-x-auto lg:block">
-      <table className="w-full min-w-[1220px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
         <colgroup>
+          <col className="w-[14%]" />
           <col className="w-[13%]" />
-          <col className="w-[13%]" />
-          <col className="w-[24%]" />
-          <col className="w-[20%]" />
-          <col className="w-[10%]" />
-          <col className="w-[9%]" />
+          <col className="w-[27%]" />
+          <col className="w-[22%]" />
           <col className="w-[11%]" />
+          <col className="w-[13%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
@@ -1219,7 +1058,6 @@ function CartsTable({
             <th className="px-4 py-3.5">Cliente</th>
             <th className="px-4 py-3.5">Produto</th>
             <th className="px-4 py-3.5">Valor</th>
-            <th className="px-4 py-3.5">Pagamento</th>
             <th className="py-3.5 pl-4 pr-8">IDs</th>
           </tr>
         </thead>
@@ -1227,9 +1065,7 @@ function CartsTable({
           {carrinhos.map((carrinho) => {
             const phone = formatPhone(carrinho.customerPhone);
             const contato = phone ?? carrinho.customerEmail ?? "Sem contato";
-            const secondaryContact = phone ? carrinho.customerEmail : null;
             const eventCount = getCartEventCount(carrinho);
-            const paymentDisplay = getPaymentDisplay(carrinho);
 
             return (
               <tr
@@ -1240,21 +1076,13 @@ function CartsTable({
                   <p className="text-sm font-medium tabular-nums text-[var(--fly-text-soft)]">
                     {formatDateTime(carrinho.lastActivityAt)}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                    ha {formatTimeAgo(carrinho.lastActivityAt, referenceDate)}
-                  </p>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex min-w-0 flex-col items-start gap-1.5">
-                    <StatusBadge
-                      label={CARRINHO_STATUS_LABELS[carrinho.status]}
-                      className={STATUS_BADGE_STYLES[carrinho.status]}
-                      dotClassName={getStatusDotClass(carrinho.status)}
-                    />
-                    <span className="truncate text-xs font-medium text-[var(--fly-text-muted)]">
-                      {CARRINHO_ETAPA_LABELS[carrinho.stage]}
-                    </span>
-                  </div>
+                  <StatusBadge
+                    label={CARRINHO_STATUS_LABELS[carrinho.status]}
+                    className={STATUS_BADGE_STYLES[carrinho.status]}
+                    dotClassName={getStatusDotClass(carrinho.status)}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <div className="min-w-0">
@@ -1264,24 +1092,15 @@ function CartsTable({
                     <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
                       {contato}
                     </p>
-                    {secondaryContact ? (
-                      <p className="mt-0.5 truncate text-[11px] text-[var(--fly-text-dim)]">
-                        {secondaryContact}
-                      </p>
-                    ) : null}
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
                     {carrinho.productGroup}
                   </p>
-                  <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-[var(--fly-text-muted)]">
-                    <span className="truncate">{carrinho.productName}</span>
-                    <span className="size-1 shrink-0 rounded-full bg-[var(--fly-border-strong)]" />
-                    <span className="shrink-0 tabular-nums">
-                      {eventCount} evento{eventCount === 1 ? "" : "s"} no historico
-                    </span>
-                  </div>
+                  <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+                    {eventCount} evento{eventCount === 1 ? "" : "s"} no historico
+                  </p>
                 </td>
                 <td className="px-4 py-3">
                   <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
@@ -1289,42 +1108,22 @@ function CartsTable({
                   </p>
                   {carrinho.recoveredValue ? (
                     <p className="mt-1 text-xs font-medium text-[var(--fly-success)]">
-                      {formatCurrency(carrinho.recoveredValue)} recuperado
+                      recuperado
                     </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-[var(--fly-text-dim)]">
-                      potencial
-                    </p>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <p
-                    className={cn(
-                      "truncate text-sm font-medium text-[var(--fly-text-soft)]",
-                      paymentDisplay === "-" && "text-[var(--fly-text-muted)]"
-                    )}
-                  >
-                    {paymentDisplay}
-                  </p>
-                  <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
-                    {CARRINHO_RECOVERY_STATUS_LABELS[carrinho.recoveryStatus]}
-                  </p>
+                  ) : null}
                 </td>
                 <td className="py-3 pl-4 pr-8">
-                  <div className="min-w-0 space-y-1">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
                     <p className="truncate font-mono text-[11px] text-[var(--fly-text-muted)]">
-                      TX: {formatIdentifier(carrinho.id)}
-                    </p>
-                    <p className="truncate font-mono text-[11px] text-[var(--fly-text-muted)]">
-                      Cart: {formatIdentifier(carrinho.externalCartId)}
+                      {formatIdentifier(carrinho.externalCartId)}
                     </p>
                     <button
                       type="button"
                       aria-label={`Ver detalhes de ${carrinho.customerName}`}
                       onClick={() => onDetail(carrinho)}
-                      className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                      className="shrink-0 p-0 text-[11px] font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
                     >
-                      <span>Ver detalhes</span>
+                      Detalhes
                     </button>
                   </div>
                 </td>
@@ -1352,7 +1151,6 @@ function MobileCartsList({
         const phone = formatPhone(carrinho.customerPhone);
         const contato = phone ?? carrinho.customerEmail ?? "Sem contato";
         const eventCount = getCartEventCount(carrinho);
-        const paymentDisplay = getPaymentDisplay(carrinho);
 
         return (
           <article
@@ -1385,9 +1183,6 @@ function MobileCartsList({
                     className={STATUS_BADGE_STYLES[carrinho.status]}
                     dotClassName={getStatusDotClass(carrinho.status)}
                   />
-                  <span className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
-                    {paymentDisplay === "-" ? "sem pagamento" : paymentDisplay}
-                  </span>
                 </div>
                 <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
                   {carrinho.productGroup} · {eventCount} evento
@@ -1487,18 +1282,12 @@ function CarrinhosSkeleton() {
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="flynow-dashboard-skeleton-panel h-[176px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-4"
+            className="flynow-dashboard-skeleton-panel h-[126px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-4"
           >
-            <div className="flex h-full flex-col justify-between">
-              <div className="space-y-3">
-                <span className="block h-2.5 w-24 rounded-full bg-white/[0.055]" />
-                <span className="block h-8 w-32 rounded-md bg-white/[0.07]" />
-                <span className="block h-2.5 w-40 rounded-full bg-white/[0.05]" />
-              </div>
-              <div className="space-y-2">
-                <span className="block h-1.5 w-full rounded-full bg-white/[0.055]" />
-                <span className="block h-1.5 w-3/4 rounded-full bg-white/[0.05]" />
-              </div>
+            <div className="space-y-3">
+              <span className="block h-2.5 w-24 rounded-full bg-white/[0.055]" />
+              <span className="block h-8 w-24 rounded-md bg-white/[0.07]" />
+              <span className="block h-2.5 w-40 rounded-full bg-white/[0.05]" />
             </div>
           </div>
         ))}
@@ -1525,8 +1314,8 @@ function CarrinhosSkeleton() {
           </div>
         </div>
         <div className="hidden lg:block">
-          <div className="grid grid-cols-[13%_13%_24%_20%_10%_9%_11%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
-            {Array.from({ length: 7 }).map((_, index) => (
+          <div className="grid grid-cols-[14%_13%_27%_22%_11%_13%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
+            {Array.from({ length: 6 }).map((_, index) => (
               <span
                 key={index}
                 className="h-2.5 w-20 rounded-full bg-white/[0.055]"
@@ -1537,9 +1326,9 @@ function CarrinhosSkeleton() {
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="grid grid-cols-[13%_13%_24%_20%_10%_9%_11%] items-center py-4"
+                className="grid grid-cols-[14%_13%_27%_22%_11%_13%] items-center py-4"
               >
-                {Array.from({ length: 7 }).map((__, itemIndex) => (
+                {Array.from({ length: 6 }).map((__, itemIndex) => (
                   <span
                     key={itemIndex}
                     className={cn(
@@ -2193,14 +1982,6 @@ export default function CarrinhosClientView({
     statusFilter,
   ]);
 
-  const filteredValue = useMemo(
-    () =>
-      filteredCarrinhos.reduce(
-        (total, carrinho) => total + carrinho.potentialValue,
-        0
-      ),
-    [filteredCarrinhos]
-  );
   const filteredEventCount = useMemo(
     () =>
       filteredCarrinhos.reduce(
@@ -2355,7 +2136,6 @@ export default function CarrinhosClientView({
             >
               <OverviewPanel
                 resumo={periodMetrics.resumo}
-                carrinhos={periodCarrinhos}
               />
             </div>
 
@@ -2374,8 +2154,6 @@ export default function CarrinhosClientView({
                 <SummaryStrip
                   filteredCount={filteredCarrinhos.length}
                   filteredEventCount={filteredEventCount}
-                  totalPeriodCount={periodCarrinhos.length}
-                  filteredValue={filteredValue}
                   periodoLabel={periodoLabel}
                   view={view}
                   onViewChange={setView}
@@ -2418,7 +2196,6 @@ export default function CarrinhosClientView({
                       {isCompactLayout !== true ? (
                         <CartsTable
                           carrinhos={visibleCarrinhos}
-                          referenceDate={referenceDate}
                           onDetail={setSelectedCarrinho}
                         />
                       ) : null}
