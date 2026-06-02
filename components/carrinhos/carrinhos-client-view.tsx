@@ -1862,6 +1862,7 @@ export default function CarrinhosClientView({
   referenceDate,
 }: CarrinhosClientViewProps) {
   const [status, setStatus] = useState<LoadStatus>("initial-loading");
+  const refreshTimerRef = useRef<number | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
   const [activeRange, setActiveRange] = useState<CarrinhoPeriodoPreset | "custom">(
     "7d"
@@ -1893,6 +1894,14 @@ export default function CarrinhosClientView({
 
     return () => window.clearTimeout(timer);
   }, [clearedInitialError]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current !== null) {
+        window.clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, []);
 
   const periodCarrinhos = useMemo(() => {
     return carrinhos.filter((carrinho) => {
@@ -2017,6 +2026,7 @@ export default function CarrinhosClientView({
 
   const periodoLabel = formatCarrinhosRange(range.startDate, range.endDate);
   const isRefreshing = status === "refreshing";
+  const contentVersion = `${range.startDate}:${range.endDate}`;
   const calendarValue = useMemo<RangeValue>(
     () => ({
       start: toCalendarDate(range.startDate),
@@ -2035,11 +2045,31 @@ export default function CarrinhosClientView({
     }
   }, [page, totalPages]);
 
+  const startDateRefresh = useCallback(() => {
+    setStatus("refreshing");
+
+    if (refreshTimerRef.current !== null) {
+      window.clearTimeout(refreshTimerRef.current);
+    }
+
+    refreshTimerRef.current = window.setTimeout(() => {
+      setStatus("success");
+      refreshTimerRef.current = null;
+    }, 760);
+  }, []);
+
   const applyPreset = useCallback((preset: CarrinhoPeriodoPreset) => {
     const nextRange = getPresetCarrinhosRange(preset);
+    const didChange =
+      nextRange.startDate !== range.startDate ||
+      nextRange.endDate !== range.endDate;
+
     setActiveRange(preset);
+    if (didChange) {
+      startDateRefresh();
+    }
     setRange(nextRange);
-  }, []);
+  }, [range.endDate, range.startDate, startDateRefresh]);
 
   const selectCalendarRange = useCallback((value: RangeValue | null) => {
     if (!value?.start || !value.end) return;
@@ -2048,9 +2078,16 @@ export default function CarrinhosClientView({
       toCarrinhoDateString(value.start),
       toCarrinhoDateString(value.end)
     );
+    const didChange =
+      normalizedRange.startDate !== range.startDate ||
+      normalizedRange.endDate !== range.endDate;
+
     setActiveRange("custom");
+    if (didChange) {
+      startDateRefresh();
+    }
     setRange(normalizedRange);
-  }, []);
+  }, [range.endDate, range.startDate, startDateRefresh]);
 
   const simulateSync = useCallback(() => {
     setStatus("refreshing");
@@ -2117,6 +2154,7 @@ export default function CarrinhosClientView({
 
         {status !== "initial-loading" && status !== "error" ? (
           <div
+            key={contentVersion}
             aria-busy={isRefreshing}
             className={cn(
               "flynow-dashboard-content relative flex flex-col gap-4 sm:gap-5",
