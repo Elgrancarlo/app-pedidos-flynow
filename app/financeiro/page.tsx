@@ -97,23 +97,30 @@ function FinanceCompositionRow({
   prefix?: string;
 }) {
   const toneClass = {
-    gold: "bg-[#D6A84F]",
-    green: "bg-[#4ADE80]",
-    red: "bg-[#F87171]",
-    amber: "bg-[#F0C76A]",
-    neutral: "bg-white/45",
+    gold: "bg-[#D6A84F]/80",
+    green: "bg-[#4ADE80]/80",
+    red: "bg-[#F87171]/80",
+    amber: "bg-[#F0C76A]/80",
+    neutral: "bg-white/35",
   }[tone];
   const dotClass = {
     gold: "bg-[#D6A84F]",
     green: "bg-[#4ADE80]",
     red: "bg-[#F87171]",
     amber: "bg-[#F0C76A]",
-    neutral: "bg-white/45",
+    neutral: "bg-white/35",
+  }[tone];
+  const valueClass = {
+    gold: "text-[var(--fly-text)]",
+    green: "text-[var(--fly-text)]",
+    red: "text-[#FCA5A5]",
+    amber: "text-[#F0C76A]",
+    neutral: "text-[var(--fly-text-soft)]",
   }[tone];
   const safeRatio = clampRatio(ratio);
 
   return (
-    <div className="grid gap-3 rounded-[8px] border border-white/[0.055] bg-white/[0.012] p-3 sm:grid-cols-[minmax(150px,0.56fr)_minmax(0,1fr)_88px] sm:items-center">
+    <div className="grid gap-2 border-t border-white/[0.055] py-3 sm:grid-cols-[minmax(150px,0.45fr)_minmax(0,1fr)_74px] sm:items-center sm:gap-4">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <span className={`size-1.5 shrink-0 rounded-full ${dotClass}`} />
@@ -121,7 +128,7 @@ function FinanceCompositionRow({
             {label}
           </p>
         </div>
-        <p className="mt-2 text-[18px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
+        <p className={`mt-2 text-[17px] font-semibold leading-none tabular-nums ${valueClass}`}>
           {prefix}
           {formatCurrency(value)}
         </p>
@@ -132,15 +139,15 @@ function FinanceCompositionRow({
 
       <div
         aria-label={`${label}: ${formatPercent(safeRatio)} da receita bruta`}
-        className="min-w-0 rounded-full bg-white/[0.055] p-1"
+        className="min-w-0 overflow-hidden rounded-full bg-white/[0.055]"
       >
         <span
-          className={`block h-6 rounded-full ${toneClass}`}
+          className={`block h-1.5 rounded-full ${toneClass}`}
           style={{ width: chartWidth(safeRatio) }}
         />
       </div>
 
-      <p className="text-left text-xs font-semibold tabular-nums text-[var(--fly-text-soft)] sm:text-right">
+      <p className="text-left text-[11px] font-semibold tabular-nums text-[var(--fly-text-muted)] sm:text-right">
         {formatPercent(safeRatio)}
       </p>
     </div>
@@ -159,31 +166,31 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
       label: "Receita líquida",
       value: data.receitaLiquida,
       ratio: retainedRatio,
-      className: "bg-[#4ADE80]",
+      className: "bg-[#4ADE80]/80",
     },
     {
       label: "Chargebacks",
       value: data.valorChargebacks,
       ratio: chargebackRatio,
-      className: "bg-[#F87171]",
+      className: "bg-[#F87171]/80",
     },
     {
       label: "Reembolsos",
       value: data.valorReembolsos,
       ratio: refundRatio,
-      className: "bg-[#F0C76A]",
+      className: "bg-[#F0C76A]/80",
     },
   ];
 
   return (
-    <div className="min-h-[500px] space-y-4 sm:min-h-[560px]">
-      <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="min-h-[430px] space-y-5">
+      <div className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="min-w-0">
             <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
               Receita do período
             </p>
-            <p className="mt-2 text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[30px]">
+            <p className="mt-2 text-[26px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[32px]">
               {formatCurrency(data.receitaBruta)}
             </p>
             <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
@@ -191,18 +198,18 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
               {formatCurrency(data.ticketMedio)}
             </p>
           </div>
-          <div className="rounded-[8px] border border-white/[0.055] bg-[#0B0D10] px-3 py-2">
-            <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+          <div className="min-w-[118px] border-t border-white/[0.07] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+            <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
               Retenção
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#4ADE80]">
+            <p className="mt-1 text-xl font-semibold tabular-nums text-[#86EFAC]">
               {formatPercent(retainedRatio)}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-[8px] border border-white/[0.055] bg-[#0B0D10] p-2">
-          <div className="flex h-12 overflow-hidden rounded-md bg-white/[0.045]">
+        <div>
+          <div className="flex h-8 overflow-hidden rounded-[6px] bg-white/[0.045]">
             {stackedSegments.map((segment) => (
               <span
                 key={segment.label}
@@ -215,19 +222,24 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
               />
             ))}
           </div>
-        </div>
 
-        <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[var(--fly-text-muted)]">
-          {stackedSegments.map((segment) => (
-            <span key={segment.label} className="inline-flex items-center gap-1.5">
-              <span className={`size-1.5 rounded-full ${segment.className}`} />
-              {segment.label}
-            </span>
-          ))}
+          <div className="mt-3 grid gap-2 text-[11px] text-[var(--fly-text-muted)] sm:grid-cols-3">
+            {stackedSegments.map((segment) => (
+              <div key={segment.label} className="flex min-w-0 items-center justify-between gap-2">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <span className={`size-1.5 shrink-0 rounded-full ${segment.className}`} />
+                  <span className="truncate">{segment.label}</span>
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatPercent(segment.ratio)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-3">
+      <div>
         <FinanceCompositionRow
           label="Receita bruta"
           value={data.receitaBruta}
@@ -268,7 +280,7 @@ function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
         />
       </div>
 
-      <div className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-4 py-3">
+      <div className="border-t border-white/[0.055] pt-3">
         <p className="text-xs leading-5 text-[var(--fly-text-muted)]">
           <span className="font-medium text-[var(--fly-text-soft)]">
             Leitura:
