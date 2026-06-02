@@ -17,31 +17,31 @@ const toneStyles: Record<
     dot: "bg-[var(--fly-chart-revenue)]",
     bar: "bg-[var(--fly-chart-revenue)]",
     text: "text-[var(--fly-brand-strong)]",
-    surface: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
+    surface: "border-transparent bg-transparent shadow-none",
   },
   blue: {
     dot: "bg-[var(--fly-chart-investment)]",
     bar: "bg-[var(--fly-chart-investment)]",
     text: "text-[var(--fly-info-text)]",
-    surface: "border-[var(--fly-info-border)] bg-[var(--fly-info-bg)]",
+    surface: "border-transparent bg-transparent shadow-none",
   },
   green: {
     dot: "bg-[var(--fly-success)]",
     bar: "bg-[var(--fly-success)]",
     text: "text-[var(--fly-success-text)]",
-    surface: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)]",
+    surface: "border-transparent bg-transparent shadow-none",
   },
   red: {
     dot: "bg-[#F87171]",
     bar: "bg-[#F87171]",
     text: "text-[var(--fly-danger-strong)]",
-    surface: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
+    surface: "border-transparent bg-transparent shadow-none",
   },
   neutral: {
     dot: "bg-[var(--fly-text-muted)]",
     bar: "bg-[var(--fly-text-muted)]",
     text: "text-[var(--fly-text-soft)]",
-    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
+    surface: "border-transparent bg-transparent shadow-none",
   },
 };
 

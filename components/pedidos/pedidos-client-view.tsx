@@ -699,8 +699,8 @@ function LogisticsStatusStrip({
               className={cn(
                 "group min-w-0 rounded-[8px] border p-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
                 isSelected
-                  ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]"
-                  : "border-[var(--fly-border)] bg-[var(--fly-control)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)]"
+                  ? "border-[var(--fly-brand-border)] bg-transparent"
+                  : "border-transparent bg-transparent hover:border-[var(--fly-border)] hover:bg-transparent"
               )}
             >
               <div className="flex min-w-0 items-center justify-between gap-2">
