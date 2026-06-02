@@ -445,10 +445,10 @@ function ProductMetricItem({
       <dt className="truncate text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
         {label}
       </dt>
-      <dd className="mt-1.5 truncate text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+      <dd className="mt-1.5 truncate text-base font-semibold leading-5 tabular-nums text-[var(--fly-text)]">
         {value}
       </dd>
-      <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+      <p className="mt-1 text-[13px] leading-5 text-[var(--fly-text-muted)]">
         {detail}
       </p>
     </div>
@@ -512,16 +512,16 @@ function CompactDailyHistory({ rows }: { rows: UpsellDailyRow[] }) {
           visibleRows.map((row) => (
             <div
               key={row.day}
-              className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 py-2.5 text-sm"
+              className="grid grid-cols-[58px_minmax(0,1fr)_auto] items-center gap-3 py-2.5"
             >
-              <span className="font-medium tabular-nums text-[var(--fly-text)]">
+              <span className="text-[15px] font-medium tabular-nums text-[var(--fly-text)]">
                 {formatDateShort(row.day)}
               </span>
-              <span className="min-w-0 truncate text-[var(--fly-text-muted)]">
+              <span className="min-w-0 truncate text-[13px] text-[var(--fly-text-muted)] sm:text-sm">
                 {formatNumber(row.directSales)} vendas ·{" "}
                 {formatNumber(row.totalApproved)} aprovados
               </span>
-              <span className="shrink-0 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+              <span className="shrink-0 text-right text-base font-semibold tabular-nums text-[var(--fly-text)]">
                 {formatPercent(row.takeRateTotal)}
               </span>
             </div>
@@ -551,16 +551,16 @@ function UpsellProductCard({
     <article className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold uppercase text-[var(--fly-text)]">
+          <h2 className="truncate text-[15px] font-semibold uppercase text-[var(--fly-text)]">
             {item.product}
           </h2>
-          <p className="mt-1 text-sm text-[var(--fly-text-muted)]">
+          <p className="mt-1 text-[15px] text-[var(--fly-text-muted)]">
             {formatNumber(item.directSales)} vendas diretas no período
           </p>
         </div>
 
         <div className="shrink-0 text-left sm:text-right">
-          <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+          <p className="text-base font-semibold tabular-nums text-[var(--fly-text)]">
             {formatCurrency(item.upsellRevenue)}
           </p>
           <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
