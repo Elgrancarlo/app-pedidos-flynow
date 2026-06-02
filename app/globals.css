@@ -886,15 +886,21 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-status-badge--success {
-  color: var(--fly-text-soft);
+  background-color: rgba(13, 31, 20, 0.62);
+  border-color: rgba(74, 222, 128, 0.16);
+  color: #86efac;
 }
 
 .flynow-status-badge--warning {
-  color: var(--fly-text-soft);
+  background-color: rgba(21, 18, 8, 0.72);
+  border-color: rgba(214, 168, 79, 0.2);
+  color: #f0c76a;
 }
 
 .flynow-status-badge--orange {
-  color: var(--fly-text-soft);
+  background-color: rgba(29, 18, 9, 0.52);
+  border-color: rgba(251, 146, 60, 0.14);
+  color: #fdba74;
 }
 
 .flynow-status-badge--danger {
@@ -903,19 +909,27 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-status-badge--blue {
-  color: var(--fly-text-soft);
+  background-color: rgba(11, 22, 38, 0.58);
+  border-color: rgba(96, 165, 250, 0.14);
+  color: #93c5fd;
 }
 
 .flynow-status-badge--cyan {
-  color: var(--fly-text-soft);
+  background-color: rgba(7, 23, 35, 0.52);
+  border-color: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
 }
 
 .flynow-status-badge--violet {
-  color: var(--fly-text-soft);
+  background-color: rgba(23, 18, 37, 0.52);
+  border-color: rgba(167, 139, 250, 0.14);
+  color: #c4b5fd;
 }
 
 .flynow-status-badge--indigo {
-  color: var(--fly-text-soft);
+  background-color: rgba(16, 18, 37, 0.52);
+  border-color: rgba(129, 140, 248, 0.14);
+  color: #a5b4fc;
 }
 
 .flynow-status-badge--neutral {
@@ -952,15 +966,21 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--success {
-  color: var(--fly-text-soft);
+  background-color: #ecfdf3;
+  border-color: rgba(22, 163, 74, 0.16);
+  color: #067647;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--warning {
-  color: var(--fly-text-soft);
+  background-color: var(--fly-brand-surface);
+  border-color: var(--fly-brand-border);
+  color: var(--fly-brand-strong);
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--orange {
-  color: var(--fly-text-soft);
+  background-color: #fff4ed;
+  border-color: rgba(194, 65, 12, 0.16);
+  color: #b45309;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--danger {
@@ -969,19 +989,27 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--blue {
-  color: var(--fly-text-soft);
+  background-color: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.14);
+  color: #175cd3;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--cyan {
-  color: var(--fly-text-soft);
+  background-color: #ecfeff;
+  border-color: rgba(8, 145, 178, 0.14);
+  color: #0e7490;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--violet {
-  color: var(--fly-text-soft);
+  background-color: #f5f3ff;
+  border-color: rgba(124, 58, 237, 0.14);
+  color: #6d28d9;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--indigo {
-  color: var(--fly-text-soft);
+  background-color: #eef2ff;
+  border-color: rgba(79, 70, 229, 0.14);
+  color: #4338ca;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--neutral {

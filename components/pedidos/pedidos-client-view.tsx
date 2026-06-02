@@ -616,8 +616,8 @@ function MetricPanel({
 }) {
   const dotClass = {
     gold: "bg-[#D6A84F]",
-    blue: "bg-white/35",
-    green: "bg-white/35",
+    blue: "bg-[#60A5FA]",
+    green: "bg-[#4ADE80]",
     red: "bg-[#F87171]",
   }[tone];
 

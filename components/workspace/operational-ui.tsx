@@ -15,27 +15,27 @@ const toneStyles: Record<
 > = {
   gold: {
     dot: "bg-[#D6A84F]",
-    bar: "bg-white/55",
-    text: "text-[var(--fly-text-soft)]",
-    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
+    bar: "bg-[#D6A84F]",
+    text: "text-[var(--fly-brand-strong)]",
+    surface: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
   },
   blue: {
-    dot: "bg-white/35",
-    bar: "bg-white/40",
-    text: "text-[var(--fly-text-soft)]",
-    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
+    dot: "bg-[#60A5FA]",
+    bar: "bg-[#60A5FA]",
+    text: "text-[#93C5FD]",
+    surface: "border-[#60A5FA]/16 bg-[#0A1424]/70",
   },
   green: {
     dot: "bg-[#4ADE80]",
-    bar: "bg-white/50",
+    bar: "bg-[#4ADE80]",
     text: "text-[#86EFAC]",
-    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
+    surface: "border-[#4ADE80]/16 bg-[#0D1F14]/60",
   },
   red: {
     dot: "bg-[#F87171]",
-    bar: "bg-white/45",
+    bar: "bg-[#F87171]",
     text: "text-[var(--fly-danger-strong)]",
-    surface: "border-[var(--fly-border)] bg-[var(--fly-control)]",
+    surface: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
   },
   neutral: {
     dot: "bg-white/35",

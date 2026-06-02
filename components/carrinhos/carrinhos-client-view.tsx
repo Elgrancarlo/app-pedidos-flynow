@@ -139,27 +139,27 @@ const FUNNEL_TONES: Record<
 > = {
   iniciado: {
     dot: "bg-[#D6A84F]",
-    bar: "bg-white/45",
+    bar: "bg-[#D6A84F]",
     badge: "flynow-status-badge--neutral",
   },
   checkout: {
-    dot: "bg-white/35",
-    bar: "bg-white/35",
+    dot: "bg-[#60A5FA]",
+    bar: "bg-[#60A5FA]",
     badge: "flynow-status-badge--neutral",
   },
   abandonado: {
     dot: "bg-[#D6A84F]",
-    bar: "bg-white/40",
+    bar: "bg-[#D6A84F]",
     badge: "flynow-status-badge--warning",
   },
   recuperado: {
     dot: "bg-[#4ADE80]",
-    bar: "bg-white/50",
+    bar: "bg-[#4ADE80]",
     badge: "flynow-status-badge--success",
   },
   perdido: {
     dot: "bg-[#F87171]",
-    bar: "bg-white/45",
+    bar: "bg-[#F87171]",
     badge: "flynow-status-badge--danger",
   },
 };
@@ -594,8 +594,8 @@ function MetricPanel({
 }) {
   const dotClass = {
     gold: "bg-[#D6A84F]",
-    blue: "bg-white/35",
-    green: "bg-white/35",
+    blue: "bg-[#60A5FA]",
+    green: "bg-[#4ADE80]",
     red: "bg-[#F87171]",
   }[tone];
 
