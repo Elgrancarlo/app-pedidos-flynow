@@ -143,10 +143,10 @@ function roundCurrency(value: number) {
 }
 
 function methodLabel(method: FinanceiroPaymentMix["method"]) {
-  if (method === "credit_card") return "Cartao";
+  if (method === "credit_card") return "Cartão";
   if (method === "pix") return "Pix";
   if (method === "boleto") return "Boleto";
-  return "Sem metodo";
+  return "Sem método";
 }
 
 function statusAmount(pedidos: Pedido[], status: PedidoStatusPagamento) {
