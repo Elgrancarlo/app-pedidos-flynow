@@ -183,7 +183,16 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
               tickLine={false}
               width={72}
             />
-            <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.025)" }} />
+            <Tooltip
+              content={<ChartTooltip />}
+              cursor={{ fill: "rgba(255,255,255,0.025)" }}
+              isAnimationActive={false}
+              wrapperStyle={{
+                outline: "none",
+                pointerEvents: "none",
+                transition: "none",
+              }}
+            />
             <Bar
               dataKey="offset"
               fill="transparent"
