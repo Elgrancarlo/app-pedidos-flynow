@@ -38,10 +38,18 @@ function FilterSkeleton() {
 }
 
 function MetricCardsSkeleton() {
+  const itemClasses = [
+    "xl:col-span-2 min-[1400px]:!col-span-1",
+    "xl:col-span-2 min-[1400px]:!col-span-1",
+    "xl:col-span-2 min-[1400px]:!col-span-1",
+    "xl:col-span-3 min-[1400px]:!col-span-1",
+    "xl:col-span-3 min-[1400px]:!col-span-1",
+  ];
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 min-[1400px]:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <SkeletonPanel key={index} className="p-3 sm:p-4">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6 min-[1400px]:!grid-cols-5">
+      {itemClasses.map((className, index) => (
+        <SkeletonPanel key={index} className={`p-3 sm:p-4 ${className}`}>
           <div className="flex items-center gap-2">
             <SkeletonLine className="size-1.5" />
             <SkeletonLine className="h-2.5 w-28" />

@@ -367,11 +367,13 @@ function buildCanaisHref({
 }
 
 function MetricCard({
+  className,
   detail,
   label,
   tone,
   value,
 }: {
+  className?: string;
   detail: string;
   label: string;
   tone: MetricTone;
@@ -380,7 +382,12 @@ function MetricCard({
   const styles = metricToneStyles[tone];
 
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
+    <section
+      className={cn(
+        "flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4",
+        className
+      )}
+    >
       <div className="flex min-w-0 items-center gap-2">
         <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
         <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
@@ -639,32 +646,37 @@ export default async function CanaisPage({
           selectedChannel={selectedChannel}
         />
 
-        <StatGrid columns="xl:grid-cols-3 min-[1400px]:grid-cols-5">
+        <StatGrid columns="xl:grid-cols-6 min-[1400px]:!grid-cols-5">
           <MetricCard
+            className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="PayT + receita atribuída"
             label="Receita total"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
           <MetricCard
+            className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="Receita adicional no período"
             label="Receita upsells"
             tone="green"
             value={formatCurrency(summary.upsellRevenue)}
           />
           <MetricCard
+            className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="Investimento RedTrack"
             label="Spend"
             tone="blue"
             value={formatCurrency(summary.spendTotal)}
           />
           <MetricCard
+            className="xl:col-span-3 min-[1400px]:!col-span-1"
             detail={`${formatNumber(summary.conversionsTotal)} conversões`}
             label="Clicks"
             tone="neutral"
             value={formatNumber(summary.clicksTotal)}
           />
           <MetricCard
+            className="xl:col-span-3 min-[1400px]:!col-span-1"
             detail="Receita / spend"
             label="ROAS RT"
             tone={summary.roas >= 4 ? "green" : "gold"}
