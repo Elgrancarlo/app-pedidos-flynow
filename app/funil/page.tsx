@@ -1,35 +1,385 @@
-import {
-  Activity,
-  Funnel,
-  ReceiptText,
-  TrendingUp,
-} from "lucide-react";
+import Link from "next/link";
 
+import {
+  FunnelRevenueChart,
+  FunnelTakeRateChart,
+  type FunilChartPoint,
+} from "@/components/funil/funil-charts";
+import {
+  FunilFilterStrip,
+  FunilPeriodFilter,
+  FunilQuerySelect,
+} from "@/components/funil/funil-filters";
+import { FunilOperationalForms } from "@/components/funil/funil-operational-forms";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { PageBody, Panel, StatGrid, StatusPill } from "@/components/workspace/operational-ui";
+import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
-  DataList,
-  PageBody,
-  Panel,
-  SimpleTable,
-  StatCard,
-  StatGrid,
-  StatusPill,
-} from "@/components/workspace/operational-ui";
-import { getPerformancePageData } from "@/lib/performance-pages";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+  getPerformancePageData,
+  type PerformanceAlert,
+  type PerformanceCampaign,
+  type PerformanceFunnelDay,
+  type PerformanceLog,
+  type PerformanceRange,
+} from "@/lib/performance-pages";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("pt-BR").format(value);
+type FunilPageParams = {
+  channel?: string;
+  endDate?: string;
+  page?: string;
+  pageSize?: string;
+  product?: string;
+  startDate?: string;
+};
+
+type MetricTone = "gold" | "blue" | "green" | "neutral";
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+type FunnelSummary = {
+  aov: number;
+  directSales: number;
+  revenueTotal: number;
+  takeRateUs1: number;
+  takeRateUs2: number;
+  upsellRatio: number;
+  upsellRevenue: number;
+};
+
+type SourceSummaryRow = {
+  campaign: string;
+  channel: string;
+  directSales: number;
+  id: string;
+  revenueTotal: number;
+  source: string;
+  upsellRatio: number;
+  upsellRevenue: number;
+};
+
+const metricToneStyles: Record<
+  MetricTone,
+  {
+    dot: string;
+    value: string;
+  }
+> = {
+  gold: {
+    dot: "bg-[#D6A84F]",
+    value: "text-[var(--fly-brand-strong)]",
+  },
+  blue: {
+    dot: "bg-[#60A5FA]",
+    value: "text-[#93C5FD]",
+  },
+  green: {
+    dot: "bg-[#4ADE80]",
+    value: "text-[#86EFAC]",
+  },
+  neutral: {
+    dot: "bg-white/35",
+    value: "text-[var(--fly-text)]",
+  },
+};
+
+const pageSizeOptions = [10, 25, 50, 100];
+
+function formatNumber(value: number, maximumFractionDigits = 0) {
+  return new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits,
+  }).format(value);
 }
 
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
+    year: "numeric",
   });
+}
+
+function isDateString(value: string | undefined) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function resolveRange(params: FunilPageParams): PerformanceRange {
+  const defaults = defaultAnalyticsDates();
+  const startDate = isDateString(params.startDate)
+    ? params.startDate!
+    : defaults.startDate;
+  const endDate = isDateString(params.endDate) ? params.endDate! : defaults.endDate;
+
+  return startDate <= endDate
+    ? { startDate, endDate }
+    : { startDate: endDate, endDate: startDate };
+}
+
+function resolvePageSize(value: string | undefined) {
+  const parsed = Number(value);
+
+  return pageSizeOptions.includes(parsed) ? parsed : 25;
+}
+
+function resolvePage(value: string | undefined) {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+}
+
+function formatChannelLabel(channel: string) {
+  const labels: Record<string, string> = {
+    CALLCENTER: "Call Center",
+    EMAIL_MAUTIC: "Email / Mautic",
+    IA_WHATSAPP: "IA / WhatsApp",
+    SMS: "SMS",
+  };
+
+  return labels[channel] ?? channel.replace(/_/g, " ");
+}
+
+function uniqueOptions(values: string[], allLabel: string): SelectOption[] {
+  const uniqueValues = Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+
+  return [
+    { value: "all", label: allLabel },
+    ...uniqueValues.map((value) => ({
+      value,
+      label: allLabel === "Todos os canais" ? formatChannelLabel(value) : value,
+    })),
+  ];
+}
+
+function resolveFilter(value: string | undefined, options: SelectOption[]) {
+  if (!value) return "all";
+
+  return options.some((option) => option.value === value) ? value : "all";
+}
+
+function filterFunnelDays(
+  rows: PerformanceFunnelDay[],
+  selectedProduct: string,
+  selectedChannel: string
+) {
+  return rows.filter((row) => {
+    const matchesProduct =
+      selectedProduct === "all" || row.product === selectedProduct;
+    const matchesChannel =
+      selectedChannel === "all" || row.channel === selectedChannel;
+
+    return matchesProduct && matchesChannel;
+  });
+}
+
+function summarizeFunnel(rows: PerformanceFunnelDay[]): FunnelSummary {
+  const directSales = rows.reduce((total, item) => total + item.directSales, 0);
+  const revenueTotal = rows.reduce((total, item) => total + item.revenueTotal, 0);
+  const upsellRevenue = rows.reduce((total, item) => total + item.upsellRevenue, 0);
+  const takeRateUs1Base = rows.reduce(
+    (total, item) => total + item.directSales * item.takeRateUs1,
+    0
+  );
+  const takeRateUs2Base = rows.reduce(
+    (total, item) => total + item.directSales * item.takeRateUs2,
+    0
+  );
+
+  return {
+    aov: directSales > 0 ? revenueTotal / directSales : 0,
+    directSales,
+    revenueTotal,
+    takeRateUs1: directSales > 0 ? takeRateUs1Base / directSales : 0,
+    takeRateUs2: directSales > 0 ? takeRateUs2Base / directSales : 0,
+    upsellRatio: revenueTotal > 0 ? upsellRevenue / revenueTotal : 0,
+    upsellRevenue,
+  };
+}
+
+function buildDailySeries(rows: PerformanceFunnelDay[]): FunilChartPoint[] {
+  const grouped = new Map<
+    string,
+    FunilChartPoint & {
+      takeRateUs1Base: number;
+      takeRateUs2Base: number;
+    }
+  >();
+
+  rows.forEach((row) => {
+    const current =
+      grouped.get(row.day) ??
+      ({
+        aov: 0,
+        day: row.day,
+        directSales: 0,
+        revenueTotal: 0,
+        takeRateUs1: 0,
+        takeRateUs1Base: 0,
+        takeRateUs2: 0,
+        takeRateUs2Base: 0,
+        upsellRevenue: 0,
+      } satisfies FunilChartPoint & {
+        takeRateUs1Base: number;
+        takeRateUs2Base: number;
+      });
+
+    current.directSales += row.directSales;
+    current.revenueTotal += row.revenueTotal;
+    current.upsellRevenue += row.upsellRevenue;
+    current.takeRateUs1Base += row.directSales * row.takeRateUs1;
+    current.takeRateUs2Base += row.directSales * row.takeRateUs2;
+
+    grouped.set(row.day, current);
+  });
+
+  return Array.from(grouped.values())
+    .map((item) => ({
+      aov: item.directSales > 0 ? item.revenueTotal / item.directSales : 0,
+      day: item.day,
+      directSales: item.directSales,
+      revenueTotal: item.revenueTotal,
+      takeRateUs1:
+        item.directSales > 0 ? item.takeRateUs1Base / item.directSales : 0,
+      takeRateUs2:
+        item.directSales > 0 ? item.takeRateUs2Base / item.directSales : 0,
+      upsellRevenue: item.upsellRevenue,
+    }))
+    .sort((first, second) => first.day.localeCompare(second.day));
+}
+
+function fallbackCampaignName(product: string, channel: string) {
+  const productSlug = product
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `${channel.toLowerCase()}-${productSlug || "campanha"}`;
+}
+
+function buildSourceRows(
+  rows: PerformanceFunnelDay[],
+  campaigns: PerformanceCampaign[]
+): SourceSummaryRow[] {
+  const grouped = new Map<
+    string,
+    SourceSummaryRow & {
+      takeRateBase: number;
+    }
+  >();
+
+  rows.forEach((row, index) => {
+    const matchingCampaign =
+      campaigns.find((campaign) => campaign.product === row.product) ??
+      campaigns[index % Math.max(campaigns.length, 1)];
+    const campaign =
+      matchingCampaign?.campaign ?? fallbackCampaignName(row.product, row.channel);
+    const source = matchingCampaign?.source ?? formatChannelLabel(row.channel);
+    const id = `${row.channel}-${campaign}-${source}`;
+    const current =
+      grouped.get(id) ??
+      ({
+        campaign,
+        channel: row.channel,
+        directSales: 0,
+        id,
+        revenueTotal: 0,
+        source,
+        takeRateBase: 0,
+        upsellRatio: 0,
+        upsellRevenue: 0,
+      } satisfies SourceSummaryRow & { takeRateBase: number });
+
+    current.directSales += row.directSales;
+    current.revenueTotal += row.revenueTotal;
+    current.upsellRevenue += row.upsellRevenue;
+    current.takeRateBase += row.directSales * (row.takeRateUs1 + row.takeRateUs2);
+
+    grouped.set(id, current);
+  });
+
+  return Array.from(grouped.values())
+    .map((item) => ({
+      campaign: item.campaign,
+      channel: item.channel,
+      directSales: item.directSales,
+      id: item.id,
+      revenueTotal: item.revenueTotal,
+      source: item.source,
+      upsellRatio:
+        item.directSales > 0 ? item.takeRateBase / item.directSales : 0,
+      upsellRevenue: item.upsellRevenue,
+    }))
+    .sort((first, second) => second.revenueTotal - first.revenueTotal);
+}
+
+function buildFunilHref({
+  page,
+  pageSize,
+  range,
+  selectedChannel,
+  selectedProduct,
+}: {
+  page: number;
+  pageSize: number;
+  range: PerformanceRange;
+  selectedChannel: string;
+  selectedProduct: string;
+}) {
+  const params = new URLSearchParams();
+  params.set("startDate", range.startDate);
+  params.set("endDate", range.endDate);
+
+  if (selectedProduct !== "all") params.set("product", selectedProduct);
+  if (selectedChannel !== "all") params.set("channel", selectedChannel);
+  if (page > 1) params.set("page", String(page));
+  if (pageSize !== 25) params.set("pageSize", String(pageSize));
+
+  return `/funil?${params.toString()}`;
+}
+
+function MetricCard({
+  detail,
+  label,
+  tone,
+  value,
+}: {
+  detail: string;
+  label: string;
+  tone: MetricTone;
+  value: string;
+}) {
+  const styles = metricToneStyles[tone];
+
+  return (
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-white/[0.07] bg-[#0B0D10] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-4">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
+        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+          {label}
+        </p>
+      </div>
+      <p
+        className={cn(
+          "mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px]",
+          styles.value
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+        {detail}
+      </p>
+    </section>
+  );
 }
 
 function SourceBadge({ source }: { source: "mock" | "real" }) {
@@ -40,141 +390,395 @@ function SourceBadge({ source }: { source: "mock" | "real" }) {
   );
 }
 
-export default async function FunilPage() {
-  const data = await getPerformancePageData();
-  const maxRevenue = Math.max(
-    1,
-    ...data.funnelDays.map((item) => item.revenueTotal)
+function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
+  const toneByLevel: Record<PerformanceAlert["level"], string> = {
+    danger: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
+    info: "border-[#60A5FA]/16 bg-[#0A1424]/45",
+    ok: "border-[#4ADE80]/16 bg-[#0D1F14]/42",
+    warning: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
+  };
+
+  return (
+    <div className="grid gap-2">
+      {alerts.length ? (
+        alerts.map((alert) => (
+          <article
+            key={`${alert.level}-${alert.title}`}
+            className={cn(
+              "rounded-[8px] border px-3 py-3",
+              toneByLevel[alert.level]
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="size-1.5 shrink-0 rounded-full bg-[var(--fly-brand-strong)]" />
+              <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+                {alert.title}
+              </p>
+            </div>
+            <p className="mt-1.5 text-sm leading-5 text-[var(--fly-text-muted)]">
+              {alert.detail}
+            </p>
+          </article>
+        ))
+      ) : (
+        <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+          Nenhum alerta registrado no periodo.
+        </p>
+      )}
+    </div>
   );
-  const recentDays = data.funnelDays.slice(-18);
+}
+
+function SourceTableControls({
+  end,
+  pageSize,
+  start,
+  totalItems,
+}: {
+  end: number;
+  pageSize: number;
+  start: number;
+  totalItems: number;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 text-xs text-[var(--fly-text-muted)] sm:flex-row sm:items-center">
+      <span className="shrink-0 tabular-nums">
+        {formatNumber(start)}-{formatNumber(end)} de {formatNumber(totalItems)}
+      </span>
+      <FunilQuerySelect
+        className="sm:w-[150px]"
+        displayLabel="Linhas"
+        label="linhas por pagina"
+        options={pageSizeOptions.map((option) => ({
+          value: String(option),
+          label: String(option),
+        }))}
+        param="pageSize"
+        value={String(pageSize)}
+      />
+    </div>
+  );
+}
+
+function SourceSummaryTable({ rows }: { rows: SourceSummaryRow[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+        <thead>
+          <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            <th className="w-[18%] px-3 py-3">Canal</th>
+            <th className="w-[25%] px-3 py-3">UTM campaign</th>
+            <th className="w-[17%] px-3 py-3">UTM source</th>
+            <th className="w-[10%] px-3 py-3 text-right">Vendas</th>
+            <th className="w-[13%] px-3 py-3 text-right">Receita</th>
+            <th className="w-[13%] px-3 py-3 text-right">Receita upsells</th>
+            <th className="w-[9%] px-3 py-3 text-right">Upsell ratio</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/[0.055]">
+          {rows.length ? (
+            rows.map((row) => (
+              <tr
+                key={row.id}
+                className="transition-colors duration-150 hover:bg-white/[0.018]"
+              >
+                <td className="px-3 py-3.5 font-medium text-[var(--fly-text)]">
+                  <span className="block truncate">
+                    {formatChannelLabel(row.channel)}
+                  </span>
+                </td>
+                <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
+                  <span className="block truncate">{row.campaign}</span>
+                </td>
+                <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
+                  <span className="block truncate">{row.source}</span>
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatNumber(row.directSales)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                  {formatCurrency(row.revenueTotal)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatCurrency(row.upsellRevenue)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-brand-strong)]">
+                  {formatPercent(row.upsellRatio)}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td
+                className="px-3 py-8 text-center text-sm text-[var(--fly-text-muted)]"
+                colSpan={7}
+              >
+                Nenhum dado encontrado para o recorte selecionado.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function PaginationFooter({
+  currentPage,
+  pageSize,
+  range,
+  selectedChannel,
+  selectedProduct,
+  totalPages,
+}: {
+  currentPage: number;
+  pageSize: number;
+  range: PerformanceRange;
+  selectedChannel: string;
+  selectedProduct: string;
+  totalPages: number;
+}) {
+  const previousHref = buildFunilHref({
+    page: Math.max(currentPage - 1, 1),
+    pageSize,
+    range,
+    selectedChannel,
+    selectedProduct,
+  });
+  const nextHref = buildFunilHref({
+    page: Math.min(currentPage + 1, totalPages),
+    pageSize,
+    range,
+    selectedChannel,
+    selectedProduct,
+  });
+  const controlClassName =
+    "inline-flex h-8 items-center justify-center rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]";
+  const disabledClassName =
+    "inline-flex h-8 items-center justify-center rounded-[7px] border border-white/[0.045] bg-white/[0.015] px-3 text-xs font-semibold text-[var(--fly-text-dim)]";
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-white/[0.06] bg-white/[0.012] px-3 py-3 text-xs text-[var(--fly-text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <span className="font-medium tabular-nums text-[var(--fly-text-soft)]">
+        Pagina {currentPage} de {totalPages}
+      </span>
+      <div className="flex items-center gap-2">
+        {currentPage <= 1 ? (
+          <span className={disabledClassName}>Anterior</span>
+        ) : (
+          <Link className={controlClassName} href={previousHref}>
+            Anterior
+          </Link>
+        )}
+        {currentPage >= totalPages ? (
+          <span className={disabledClassName}>Proxima</span>
+        ) : (
+          <Link className={controlClassName} href={nextHref}>
+            Proxima
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LogsTable({ logs }: { logs: PerformanceLog[] }) {
+  return (
+    <div className="grid gap-2">
+      {logs.length ? (
+        logs.map((log) => (
+          <article
+            key={`${log.day}-${log.title}-${log.owner}`}
+            className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 transition-colors duration-150 hover:border-white/[0.1] hover:bg-white/[0.028]"
+          >
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+                  {log.title}
+                </p>
+                <p className="mt-1 text-sm leading-5 text-[var(--fly-text-muted)]">
+                  {log.detail}
+                </p>
+              </div>
+              <div className="shrink-0 text-left sm:text-right">
+                <p className="text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatDate(log.day)}
+                </p>
+                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                  {log.owner}
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs font-medium text-[var(--fly-brand-strong)]">
+              {log.impact}
+            </p>
+          </article>
+        ))
+      ) : (
+        <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+          Nenhuma alteracao registrada no periodo.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default async function FunilPage({
+  searchParams,
+}: {
+  searchParams: Promise<FunilPageParams>;
+}) {
+  const params = await searchParams;
+  const range = resolveRange(params);
+  const data = await getPerformancePageData(range);
+  const productOptions = uniqueOptions(
+    data.funnelDays.map((item) => item.product),
+    "Todos os produtos"
+  );
+  const channelOptions = uniqueOptions(
+    data.funnelDays.map((item) => item.channel),
+    "Todos os canais"
+  );
+  const selectedProduct = resolveFilter(params.product, productOptions);
+  const selectedChannel = resolveFilter(params.channel, channelOptions);
+  const pageSize = resolvePageSize(params.pageSize);
+  const filteredFunnelDays = filterFunnelDays(
+    data.funnelDays,
+    selectedProduct,
+    selectedChannel
+  );
+  const summary = summarizeFunnel(filteredFunnelDays);
+  const chartSeries = buildDailySeries(filteredFunnelDays);
+  const sourceRows = buildSourceRows(filteredFunnelDays, data.campaigns);
+  const totalPages = Math.max(Math.ceil(sourceRows.length / pageSize), 1);
+  const currentPage = Math.min(resolvePage(params.page), totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedSourceRows = sourceRows.slice(startIndex, startIndex + pageSize);
+  const tableStart = sourceRows.length === 0 ? 0 : startIndex + 1;
+  const tableEnd = Math.min(startIndex + pageSize, sourceRows.length);
 
   return (
     <Shell>
       <DashboardHeader
-        title="Funil"
-        description="Vendas diretas, upsells, AOV e impactos por alteração"
-        actions={<SourceBadge source={data.source} />}
+        title="Analytics / Funil"
+        description="Funil diario por produto, canal e take rate de upsells"
+        actions={<FunilPeriodFilter range={range} />}
       />
 
       <PageBody>
-        <StatGrid>
-          <StatCard
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <FunilFilterStrip
+            channels={channelOptions}
+            products={productOptions}
+            selectedChannel={selectedChannel}
+            selectedProduct={selectedProduct}
+          />
+          <div className="flynow-dashboard-enter-item flex items-center justify-start lg:justify-end">
+            <SourceBadge source={data.source} />
+          </div>
+        </div>
+
+        <StatGrid columns="xl:grid-cols-3">
+          <MetricCard
+            detail="Pedidos principais no recorte"
             label="Vendas diretas"
-            value={formatNumber(data.summary.directSales)}
-            detail="Base de entrada no funil"
-            Icon={Funnel}
-            tone="gold"
-          />
-          <StatCard
-            label="Receita total"
-            value={formatCurrency(data.summary.revenueTotal)}
-            detail="Direta + upsells"
-            Icon={ReceiptText}
-            tone="green"
-            rows={[
-              {
-                label: "Direta",
-                value: formatCurrency(data.summary.directRevenueTotal),
-                meter:
-                  data.summary.revenueTotal > 0
-                    ? data.summary.directRevenueTotal / data.summary.revenueTotal
-                    : 0,
-              },
-            ]}
-          />
-          <StatCard
-            label="Receita upsell"
-            value={formatCurrency(data.summary.upsellRevenue)}
-            detail={`${formatNumber(data.summary.upsellApproved)} aprovações`}
-            Icon={TrendingUp}
-            tone="blue"
-            rows={[
-              {
-                label: "Peso no total",
-                value: formatPercent(
-                  data.summary.revenueTotal > 0
-                    ? data.summary.upsellRevenue / data.summary.revenueTotal
-                    : 0
-                ),
-                meter:
-                  data.summary.revenueTotal > 0
-                    ? data.summary.upsellRevenue / data.summary.revenueTotal
-                    : 0,
-              },
-            ]}
-          />
-          <StatCard
-            label="AOV"
-            value={formatCurrency(data.summary.aov)}
-            detail="Receita direta por pedido"
-            Icon={Activity}
             tone="neutral"
+            value={formatNumber(summary.directSales)}
+          />
+          <MetricCard
+            detail="Direta + upsells no periodo"
+            label="Receita total"
+            tone="gold"
+            value={formatCurrency(summary.revenueTotal)}
+          />
+          <MetricCard
+            detail={`${formatPercent(summary.upsellRatio)} da receita total`}
+            label="Receita upsells"
+            tone="green"
+            value={formatCurrency(summary.upsellRevenue)}
+          />
+          <MetricCard
+            detail="Receita media por venda direta"
+            label="AOV medio"
+            tone="blue"
+            value={formatCurrency(summary.aov)}
+          />
+          <MetricCard
+            detail="Media ponderada por vendas"
+            label="Take rate US1"
+            tone="neutral"
+            value={formatPercent(summary.takeRateUs1)}
+          />
+          <MetricCard
+            detail="Media ponderada por vendas"
+            label="Take rate US2"
+            tone="neutral"
+            value={formatPercent(summary.takeRateUs2)}
           />
         </StatGrid>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.85fr)]">
           <Panel
-            title="Produtos no funil"
-            description="Take rate e receita por produto"
+            title="Faturamento vs receita de upsell"
+            description="Evolucao diaria do recorte selecionado"
           >
-            <DataList
-              valueLabel="take"
-              rows={data.products.map((item) => ({
-                label: item.product,
-                value: formatPercent(item.takeRate),
-                detail: `${formatCurrency(item.revenue)} · ${formatCurrency(item.upsellRevenue)} em upsell`,
-                meter: item.takeRate,
-                tone: item.takeRate >= 0.35 ? "green" : "gold",
-              }))}
-            />
+            <FunnelRevenueChart series={chartSeries} />
           </Panel>
 
-          <Panel title="Logs de alteração" description="Eventos com leitura de impacto">
-            <DataList
-              valueLabel="dono"
-              rows={data.logs.map((item) => ({
-                label: item.title,
-                value: item.owner,
-                detail: `${formatDate(item.day)} · ${item.impact}`,
-                tone:
-                  item.impact.toLowerCase().includes("+") ||
-                  item.impact.toLowerCase().includes("positivo")
-                    ? "green"
-                    : "neutral",
-              }))}
-            />
+          <Panel
+            title="Take rate de upsells"
+            description="US1 e US2 ponderados por vendas diretas"
+          >
+            <FunnelTakeRateChart series={chartSeries} />
           </Panel>
         </div>
 
         <Panel
-          title="Dias do funil"
-          description="Visão diária por produto e canal"
+          title="Alertas automaticos do funil"
+          description={`${data.alerts.length} sinais na janela`}
         >
-          <SimpleTable
-            columns={["Data", "Produto", "Canal", "Vendas", "Receita"]}
-            rows={recentDays.map((item) => [
-              formatDate(item.day),
-              item.product,
-              item.channel.replace(/_/g, " "),
-              formatNumber(item.directSales),
-              formatCurrency(item.revenueTotal),
-            ])}
+          <AlertList alerts={data.alerts} />
+        </Panel>
+
+        <FunilOperationalForms products={productOptions} />
+
+        <Panel
+          title="Resumo por fonte no periodo"
+          description="Canal, UTM, vendas, receita e take de upsell"
+          action={
+            <SourceTableControls
+              end={tableEnd}
+              pageSize={pageSize}
+              start={tableStart}
+              totalItems={sourceRows.length}
+            />
+          }
+        >
+          <SourceSummaryTable rows={paginatedSourceRows} />
+          <PaginationFooter
+            currentPage={currentPage}
+            pageSize={pageSize}
+            range={range}
+            selectedChannel={selectedChannel}
+            selectedProduct={selectedProduct}
+            totalPages={totalPages}
           />
         </Panel>
 
-        <Panel title="AOV por recorte" description="Comparação dos últimos registros">
-          <DataList
-            valueLabel="AOV"
-            rows={recentDays.slice(-8).map((item) => ({
-              label: `${formatDate(item.day)} · ${item.product}`,
-              value: formatCurrency(item.aov),
-              detail: `${formatPercent(item.takeRateUs1)} US1 · ${formatPercent(item.takeRateUs2)} US2`,
-              meter: item.revenueTotal / maxRevenue,
-              tone:
-                item.takeRateUs1 + item.takeRateUs2 >= 0.42 ? "green" : "gold",
-            }))}
-          />
-        </Panel>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Panel title="Log de alteracoes" description="Eventos com leitura de impacto">
+            <LogsTable logs={data.logs} />
+          </Panel>
+
+          <Panel
+            title="Transcricoes operacionais"
+            description="Registro operacional do periodo"
+          >
+            <p className="rounded-[8px] border border-white/[0.055] bg-white/[0.012] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
+              Nenhuma transcricao encontrada no periodo.
+            </p>
+          </Panel>
+        </div>
       </PageBody>
     </Shell>
   );
