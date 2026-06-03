@@ -1,14 +1,6 @@
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-
-function SkeletonLine({ className = "" }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
-    />
-  );
-}
+import { SkeletonLine } from "@/components/workspace/page-skeleton";
 
 function FinanceiroDateFilterSkeleton() {
   return (

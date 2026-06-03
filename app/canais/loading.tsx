@@ -1,30 +1,9 @@
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-
-function SkeletonLine({ className = "" }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`block rounded-full bg-[var(--fly-skeleton-line)] ${className}`}
-    />
-  );
-}
-
-function SkeletonPanel({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`flynow-dashboard-skeleton-panel rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] ${className}`}
-    >
-      {children}
-    </section>
-  );
-}
+import {
+  SkeletonLine,
+  SkeletonPanel,
+} from "@/components/workspace/page-skeleton";
 
 function FilterSkeleton() {
   return (
