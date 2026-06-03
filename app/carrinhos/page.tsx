@@ -8,7 +8,7 @@ import {
 } from "@/lib/carrinhos";
 import {
   getCarrinhosDatasetRange,
-  getCarrinhosForFrontend,
+  getCarrinhosForFrontendData,
 } from "@/lib/carrinhos-data";
 import { shouldUseMockData } from "@/lib/data-mode";
 
@@ -17,14 +17,21 @@ export const dynamic = "force-dynamic";
 export default async function CarrinhosPage() {
   const periodo = getDefaultCarrinhosRange();
   const datasetRange = getCarrinhosDatasetRange(30);
-  const carrinhos = shouldUseMockData()
-    ? createMockCarrinhos()
-    : await getCarrinhosForFrontend(datasetRange);
+  const data = shouldUseMockData()
+    ? {
+        carrinhos: createMockCarrinhos(),
+        source: "mock" as const,
+        warning: "Modo mock ativo; carrinhos simulados para revisão visual.",
+      }
+    : await getCarrinhosForFrontendData(datasetRange);
+  const { carrinhos } = data;
 
   return (
     <Shell>
       <CarrinhosClientView
         carrinhos={carrinhos}
+        dataSource={data.source}
+        dataWarning={data.warning}
         periodoInicial={periodo}
         resumoInicial={getCarrinhosResumo(carrinhos)}
         funilInicial={getCarrinhosFunil(carrinhos)}

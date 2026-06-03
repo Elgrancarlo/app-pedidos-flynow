@@ -46,6 +46,12 @@ type CarrinhosDataRange = {
   endDate: string;
 };
 
+export type CarrinhosFrontendData = {
+  carrinhos: Carrinho[];
+  source: "mock" | "real";
+  warning?: string;
+};
+
 function toISODate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -370,51 +376,73 @@ function isMissingEventStream(error: unknown) {
   );
 }
 
-export async function getCarrinhosForFrontend({
+async function fetchCarrinhosFromPaytEvents({
   startDate,
   endDate,
-}: CarrinhosDataRange): Promise<Carrinho[]> {
+}: CarrinhosDataRange) {
+  const supabase = createServiceClient();
+  const rows: PaytEventRow[] = [];
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("payt_event_stream")
+      .select(CARRINHOS_SELECT)
+      .gte("event_at", `${startDate}T00:00:00Z`)
+      .lte("event_at", `${endDate}T23:59:59Z`)
+      .order("event_at", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as PaytEventRow[]));
+
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  const grouped = rows.reduce((map, row) => {
+    const key = row.cart_id ?? row.transaction_id ?? row.event_key;
+    const current = map.get(key) ?? [];
+    current.push(row);
+    map.set(key, current);
+    return map;
+  }, new Map<string, PaytEventRow[]>());
+
+  return Array.from(grouped.values())
+    .map(mapEventsToCarrinho)
+    .sort(
+      (first, second) =>
+        new Date(second.lastActivityAt).getTime() -
+        new Date(first.lastActivityAt).getTime()
+    );
+}
+
+export async function getCarrinhosForFrontendData(
+  range: CarrinhosDataRange
+): Promise<CarrinhosFrontendData> {
   try {
-    const supabase = createServiceClient();
-    const rows: PaytEventRow[] = [];
-
-    for (let offset = 0; ; offset += PAGE_SIZE) {
-      const { data, error } = await supabase
-        .from("payt_event_stream")
-        .select(CARRINHOS_SELECT)
-        .gte("event_at", `${startDate}T00:00:00Z`)
-        .lte("event_at", `${endDate}T23:59:59Z`)
-        .order("event_at", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
-
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-
-      rows.push(...(data as PaytEventRow[]));
-
-      if (data.length < PAGE_SIZE) break;
-    }
-
-    const grouped = rows.reduce((map, row) => {
-      const key = row.cart_id ?? row.transaction_id ?? row.event_key;
-      const current = map.get(key) ?? [];
-      current.push(row);
-      map.set(key, current);
-      return map;
-    }, new Map<string, PaytEventRow[]>());
-
-    return Array.from(grouped.values())
-      .map(mapEventsToCarrinho)
-      .sort(
-        (first, second) =>
-          new Date(second.lastActivityAt).getTime() -
-          new Date(first.lastActivityAt).getTime()
-      );
+    return {
+      carrinhos: await fetchCarrinhosFromPaytEvents(range),
+      source: "real",
+    };
   } catch (error) {
     if (!isMissingEventStream(error)) {
       console.error("[carrinhos] Erro ao buscar eventos Payt:", error);
     }
 
-    return createMockCarrinhos();
+    return {
+      carrinhos: createMockCarrinhos(),
+      source: "mock",
+      warning:
+        "Carrinhos reais indisponíveis; exibindo mock de fallback para revisão visual.",
+    };
   }
+}
+
+export async function getCarrinhosForFrontend(
+  range: CarrinhosDataRange
+): Promise<Carrinho[]> {
+  const data = await getCarrinhosForFrontendData(range);
+
+  return data.carrinhos;
 }

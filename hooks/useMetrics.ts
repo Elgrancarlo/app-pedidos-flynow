@@ -14,6 +14,7 @@ import {
 
 type UseMetricsState = {
   data: MetricsData | null;
+  source: "mock" | "real" | null;
   status: MetricsStatus;
   error: Error | null;
   requestKey: string | null;
@@ -40,6 +41,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
   const [retryCount, setRetryCount] = useState(0);
   const [state, setState] = useState<UseMetricsState>({
     data: null,
+    source: null,
     status: "initial-loading",
     error: null,
     requestKey: null,
@@ -57,6 +59,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
 
     setState((currentState) => ({
       data: currentState.data,
+      source: currentState.source,
       status: hasMetricsContent(currentState.data)
         ? "refreshing"
         : "initial-loading",
@@ -82,6 +85,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
           : adaptAnalyticsOverviewToMetrics(
               await fetchAnalyticsOverview(fromParam, toParam, controller.signal)
             );
+        const nextSource = useMockData ? "mock" : "real";
 
         if (didCancel) {
           return;
@@ -89,6 +93,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
 
         setState({
           data: nextData,
+          source: nextSource,
           status: hasMetricsContent(nextData) ? "success" : "empty",
           error: null,
           requestKey,
@@ -101,6 +106,7 @@ export function useMetrics(from: Date, to: Date): UseMetricsResult {
 
         setState((currentState) => ({
           data: currentState.data,
+          source: currentState.source,
           status: "error",
           error: normalizeMetricsError(error),
           requestKey,

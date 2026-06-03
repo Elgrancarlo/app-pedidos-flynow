@@ -655,6 +655,32 @@ function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+function DataSourceNotice({
+  metricsSource,
+}: {
+  metricsSource: "mock" | "real" | null;
+}) {
+  if (!metricsSource) return null;
+
+  const message =
+    metricsSource === "real"
+      ? "Métricas carregadas do backend; blocos operacionais de pedidos e carrinhos ainda usam mock controlado."
+      : "Modo mock ativo; métricas e blocos operacionais usam dados simulados para revisão visual.";
+
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2 rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-2 text-[13px] leading-5 text-[var(--fly-brand-strong)] shadow-[var(--fly-panel-inset)]"
+    >
+      <span
+        aria-hidden="true"
+        className="size-1.5 shrink-0 rounded-full bg-[var(--fly-chart-revenue)]"
+      />
+      <span className="min-w-0">{message}</span>
+    </div>
+  );
+}
+
 function EmptyState({
   title,
   description,
@@ -1074,6 +1100,7 @@ export function PerformanceDashboard() {
     isRefreshing,
     isEmpty,
     retry,
+    source: metricsSource,
   } = useMetrics(range.from, range.to);
   const rangeKey = useMemo(
     () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
@@ -1166,6 +1193,7 @@ export function PerformanceDashboard() {
             )}
           >
             {error ? <RefreshErrorNotice onRetry={retry} /> : null}
+            <DataSourceNotice metricsSource={metricsSource} />
 
             <div
               className="flynow-dashboard-enter-item"

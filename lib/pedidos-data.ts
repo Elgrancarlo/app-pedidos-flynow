@@ -17,6 +17,10 @@ const PEDIDOS_SELECT =
 
 const PAGE_SIZE = 1000;
 
+// Frontend contract: the current real-data view is scoped by payment date.
+// Pending-payment rows should be added through the adapter before enabling that UI slice.
+export const PEDIDOS_REAL_DATE_FIELD = "data_pagamento";
+
 type PedidosDataRange = {
   startDate: string;
   endDate: string;
@@ -170,8 +174,8 @@ export async function getPedidosForFrontend({
     const { data, error } = await supabase
       .from("pedidos")
       .select(PEDIDOS_SELECT)
-      .gte("data_pagamento", `${startDate}T00:00:00Z`)
-      .lte("data_pagamento", `${endDate}T23:59:59Z`)
+      .gte(PEDIDOS_REAL_DATE_FIELD, `${startDate}T00:00:00Z`)
+      .lte(PEDIDOS_REAL_DATE_FIELD, `${endDate}T23:59:59Z`)
       .order("ordem_pedido", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);

@@ -62,6 +62,8 @@ type LoadStatus = "initial-loading" | "success" | "error" | "refreshing";
 
 type CarrinhosClientViewProps = {
   carrinhos: Carrinho[];
+  dataSource: "mock" | "real";
+  dataWarning?: string;
   periodoInicial: {
     startDate: string;
     endDate: string;
@@ -1856,6 +1858,8 @@ function NextStepsSection({ carrinho }: { carrinho: Carrinho }) {
 
 export default function CarrinhosClientView({
   carrinhos,
+  dataSource,
+  dataWarning,
   periodoInicial,
   resumoInicial,
   funilInicial,
@@ -1878,7 +1882,9 @@ export default function CarrinhosClientView({
   const [pageSize, setPageSize] = useState<number>(25);
   const [page, setPage] = useState(1);
   const [selectedCarrinho, setSelectedCarrinho] = useState<Carrinho | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(
+    dataWarning ?? null
+  );
   const [clearedInitialError, setClearedInitialError] = useState(false);
   const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
@@ -2127,7 +2133,11 @@ export default function CarrinhosClientView({
     <>
       <DashboardHeader
         title="Carrinhos"
-        description="Eventos PayT de checkout e abandono no periodo"
+        description={
+          dataSource === "real"
+            ? "Eventos PayT de checkout e abandono no periodo"
+            : "Mock visual de checkout e abandono no periodo"
+        }
         actions={
           <HeaderActions
             activeRange={activeRange}
