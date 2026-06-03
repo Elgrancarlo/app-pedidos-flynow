@@ -151,7 +151,7 @@ export default function TabelaEstoque({
                 <th className="w-[8%] px-3 py-3 text-right">Conv.</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+            <tbody>
               {grupos.length === 0 ? (
                 <tr>
                   <td
@@ -164,6 +164,7 @@ export default function TabelaEstoque({
               ) : (
                 grupos.map((grupo) => {
                   const isSelected = grupoSelecionado === grupo.nome_grupo;
+                  const expansionId = `estoque-ofertas-${grupo.id}`;
                   const pedidosPeriodo = sumPedidos(grupo);
                   const receitaBruta = estimateRevenue(
                     grupo.vendasPeriodo,
@@ -186,7 +187,7 @@ export default function TabelaEstoque({
                       <tr
                         onClick={() => toggleGrupo(grupo.nome_grupo)}
                         className={cn(
-                          "cursor-pointer transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                          "cursor-pointer border-t border-[var(--fly-divider-subtle)] transition-colors duration-150 first:border-t-0 hover:bg-[var(--fly-row-hover)]",
                           isSelected && "bg-[var(--fly-brand-soft)]"
                         )}
                       >
@@ -194,6 +195,7 @@ export default function TabelaEstoque({
                           <div className="flex min-w-0 items-start gap-3">
                             <button
                               type="button"
+                              aria-controls={expansionId}
                               aria-expanded={isSelected}
                               aria-label={
                                 isSelected
@@ -289,57 +291,92 @@ export default function TabelaEstoque({
                         </td>
                       </tr>
 
-                      {isSelected
-                        ? grupo.ofertas.map((oferta) => {
-                            const receitaOferta = estimateRevenue(
-                              oferta.potesVendidosPeriodo,
-                              grupo.nome_grupo
-                            );
-                            const ticketOferta =
-                              oferta.pedidosPeriodo > 0
-                                ? receitaOferta / oferta.pedidosPeriodo
-                                : 0;
+                      <tr aria-hidden={!isSelected} className="bg-[var(--fly-row-bg)]">
+                        <td colSpan={7} className="p-0">
+                          <div
+                            id={expansionId}
+                            className={cn(
+                              "grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none",
+                              isSelected
+                                ? "grid-rows-[1fr] opacity-100 ease-out"
+                                : "grid-rows-[0fr] opacity-0 ease-in"
+                            )}
+                          >
+                            <div className="overflow-hidden">
+                              <table className="w-full table-fixed text-left text-sm">
+                                <tbody>
+                                  {grupo.ofertas.map((oferta, ofertaIndex) => {
+                                    const receitaOferta = estimateRevenue(
+                                      oferta.potesVendidosPeriodo,
+                                      grupo.nome_grupo
+                                    );
+                                    const ticketOferta =
+                                      oferta.pedidosPeriodo > 0
+                                        ? receitaOferta / oferta.pedidosPeriodo
+                                        : 0;
 
-                            return (
-                              <tr
-                                key={oferta.id}
-                                className="bg-[var(--fly-row-bg)] transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
-                              >
-                                <td className="px-3 py-3 align-middle">
-                                  <div className="ml-9 min-w-0 border-l border-[var(--fly-divider)] pl-4">
-                                    <span className="block truncate font-medium text-[var(--fly-text-soft)]">
-                                      {oferta.nome}
-                                    </span>
-                                    <span className="mt-1 block truncate text-xs text-[var(--fly-text-muted)]">
-                                      {oferta.canal} · Última venda{" "}
-                                      {oferta.ultimaVenda
-                                        ? formatDate(oferta.ultimaVenda)
-                                        : "-"}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                  {formatNumber(oferta.pedidosPeriodo)}
-                                </td>
-                                <td className="px-3 py-3 text-right font-semibold tabular-nums text-[var(--fly-success)]">
-                                  {formatNumber(oferta.potesVendidosPeriodo)}
-                                </td>
-                                <td className="px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                  {formatCurrency(receitaOferta)}
-                                </td>
-                                <td className="px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
-                                  {formatNumber(oferta.potesPorPedido, 1)}
-                                </td>
-                                <td className="px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                  {formatCurrency(ticketOferta)}
-                                </td>
-                                <td className="px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
-                                  {formatPercent(oferta.participacaoPeriodo)}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        : null}
+                                    return (
+                                      <tr
+                                        key={oferta.id}
+                                        className={cn(
+                                          "border-t border-[var(--fly-divider-subtle)] transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                                          ofertaIndex === 0 && "border-t-0"
+                                        )}
+                                      >
+                                        <td className="w-[36%] px-3 py-3 align-middle">
+                                          <div
+                                            className={cn(
+                                              "ml-9 min-w-0 border-l border-[var(--fly-divider)] pl-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+                                              isSelected
+                                                ? "translate-y-0 opacity-100"
+                                                : "-translate-y-1 opacity-0"
+                                            )}
+                                          >
+                                            <span className="block truncate font-medium text-[var(--fly-text-soft)]">
+                                              {oferta.nome}
+                                            </span>
+                                            <span className="mt-1 block truncate text-xs text-[var(--fly-text-muted)]">
+                                              {oferta.canal} · Última venda{" "}
+                                              {oferta.ultimaVenda
+                                                ? formatDate(oferta.ultimaVenda)
+                                                : "-"}
+                                            </span>
+                                          </div>
+                                        </td>
+                                        <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                          {formatNumber(oferta.pedidosPeriodo)}
+                                        </td>
+                                        <td className="w-[9%] px-3 py-3 text-right font-semibold tabular-nums text-[var(--fly-success)]">
+                                          {formatNumber(
+                                            oferta.potesVendidosPeriodo
+                                          )}
+                                        </td>
+                                        <td className="w-[15%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                          {formatCurrency(receitaOferta)}
+                                        </td>
+                                        <td className="w-[10%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
+                                          {formatNumber(
+                                            oferta.potesPorPedido,
+                                            1
+                                          )}
+                                        </td>
+                                        <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                          {formatCurrency(ticketOferta)}
+                                        </td>
+                                        <td className="w-[8%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
+                                          {formatPercent(
+                                            oferta.participacaoPeriodo
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     </Fragment>
                   );
                 })
