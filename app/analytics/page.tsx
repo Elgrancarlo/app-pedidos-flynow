@@ -7,7 +7,12 @@ import {
 } from "@/components/analytics/analytics-charts";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { PageBody, Panel, StatGrid } from "@/components/workspace/operational-ui";
+import {
+  PageBody,
+  Panel,
+  StatCard,
+  StatGrid,
+} from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
@@ -21,33 +26,6 @@ export const dynamic = "force-dynamic";
 type AnalyticsPageParams = {
   startDate?: string;
   endDate?: string;
-};
-
-type MetricTone = "gold" | "blue" | "green" | "neutral";
-
-const metricToneStyles: Record<
-  MetricTone,
-  {
-    dot: string;
-    value: string;
-  }
-> = {
-  gold: {
-    dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-text)]",
-  },
-  blue: {
-    dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-text)]",
-  },
-  green: {
-    dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-text)]",
-  },
-  neutral: {
-    dot: "bg-[var(--fly-text-dim)]",
-    value: "text-[var(--fly-text)]",
-  },
 };
 
 function formatNumber(value: number, maximumFractionDigits = 0) {
@@ -77,39 +55,6 @@ function resolveRange(params: AnalyticsPageParams): PerformanceRange {
   return startDate <= endDate
     ? { startDate, endDate }
     : { startDate: endDate, endDate: startDate };
-}
-
-function AnalyticsMetricCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: MetricTone;
-}) {
-  const styles = metricToneStyles[tone];
-
-  return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p
-        className={`mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px] ${styles.value}`}
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
 }
 
 function ActionText({
@@ -201,49 +146,49 @@ export default async function AnalyticsPage({
 
       <PageBody>
         <StatGrid>
-          <AnalyticsMetricCard
+          <StatCard
             detail={`${formatPercent(attributionRatio)} atribuída`}
             label="Faturamento total"
             tone="gold"
             value={formatCurrency(data.summary.revenueTotal)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail="Mídia e canais pagos"
             label="Investimento"
             tone="blue"
             value={formatCurrency(data.summary.spendTotal)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail="Receita total / investimento"
             label="ROAS RT"
             tone="green"
             value={formatDecimal(data.summary.roas)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail="Pedidos principais pagos"
             label="Vendas diretas"
             tone="neutral"
             value={formatNumber(data.summary.directSales)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail="Receita direta por venda"
             label="Ticket venda direta"
             tone="neutral"
             value={formatCurrency(data.summary.aov)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail={`${formatPercent(upsellRatio)} do faturamento`}
             label="Receita upsells"
             tone="gold"
             value={formatCurrency(data.summary.upsellRevenue)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail={`${formatPercent(cvr)} conversão RT`}
             label="Clicks"
             tone="blue"
             value={formatNumber(data.summary.clicksTotal)}
           />
-          <AnalyticsMetricCard
+          <StatCard
             detail="Conversões reportadas pela mídia"
             label="Conversões RT"
             tone="green"

@@ -6,7 +6,11 @@ import {
 } from "@/components/funil/funil-filters";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { PageBody, StatGrid } from "@/components/workspace/operational-ui";
+import {
+  PageBody,
+  StatCard,
+  StatGrid,
+} from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
@@ -15,7 +19,7 @@ import {
   type PerformanceRange,
   type PerformanceUpsellProduct,
 } from "@/lib/performance-pages";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +29,6 @@ type UpsellsPageParams = {
   product?: string;
   startDate?: string;
 };
-
-type MetricTone = "gold" | "blue" | "green" | "neutral";
 
 type SelectOption = {
   value: string;
@@ -52,31 +54,6 @@ type UpsellProductCardData = PerformanceUpsellProduct & {
   sevenDayDirectSales: number;
   sevenDayRevenue: number;
   sevenDayTakeRate: number;
-};
-
-const metricToneStyles: Record<
-  MetricTone,
-  {
-    dot: string;
-    value: string;
-  }
-> = {
-  gold: {
-    dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-text)]",
-  },
-  blue: {
-    dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-text)]",
-  },
-  green: {
-    dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-text)]",
-  },
-  neutral: {
-    dot: "bg-[var(--fly-text-dim)]",
-    value: "text-[var(--fly-text)]",
-  },
 };
 
 function formatNumber(value: number, maximumFractionDigits = 0) {
@@ -344,42 +321,6 @@ function buildFunilHistoryHref({
   }
 
   return `/funil?${params.toString()}`;
-}
-
-function UpsellsMetricCard({
-  detail,
-  label,
-  tone,
-  value,
-}: {
-  detail: string;
-  label: string;
-  tone: MetricTone;
-  value: string;
-}) {
-  const styles = metricToneStyles[tone];
-
-  return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p
-        className={cn(
-          "mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px]",
-          styles.value
-        )}
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
 }
 
 function UpsellsFilters({
@@ -669,25 +610,25 @@ export default async function UpsellsPage({
         />
 
         <StatGrid>
-          <UpsellsMetricCard
+          <StatCard
             label="Vendas diretas"
             value={formatNumber(directSales)}
             detail="base do funil no período"
             tone="neutral"
           />
-          <UpsellsMetricCard
+          <StatCard
             label="Upsells aprovados"
             value={formatNumber(approved)}
             detail="US1 + US2 aprovados"
             tone="green"
           />
-          <UpsellsMetricCard
+          <StatCard
             label="Taxa de conversão"
             value={formatPercent(conversionRate)}
             detail="aprovados sobre vendas diretas"
             tone="blue"
           />
-          <UpsellsMetricCard
+          <StatCard
             label="Receita upsells"
             value={formatCurrency(upsellRevenue)}
             detail="receita incremental aprovada"

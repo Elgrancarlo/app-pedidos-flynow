@@ -15,6 +15,7 @@ import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   PageBody,
   Panel,
+  StatCard,
   StatGrid,
 } from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
@@ -36,8 +37,6 @@ type CanaisPageParams = {
   pageSize?: string;
   startDate?: string;
 };
-
-type MetricTone = "gold" | "blue" | "green" | "neutral";
 
 type SelectOption = {
   value: string;
@@ -63,31 +62,6 @@ type RedtrackProductRow = {
   product: string;
   roas: number;
   spend: number;
-};
-
-const metricToneStyles: Record<
-  MetricTone,
-  {
-    dot: string;
-    value: string;
-  }
-> = {
-  gold: {
-    dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-text)]",
-  },
-  blue: {
-    dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-text)]",
-  },
-  green: {
-    dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-text)]",
-  },
-  neutral: {
-    dot: "bg-[var(--fly-text-dim)]",
-    value: "text-[var(--fly-text)]",
-  },
 };
 
 const pageSizeOptions = [10, 25, 50, 100];
@@ -365,49 +339,6 @@ function buildCanaisHref({
   return `/canais?${params.toString()}`;
 }
 
-function MetricCard({
-  className,
-  detail,
-  label,
-  tone,
-  value,
-}: {
-  className?: string;
-  detail: string;
-  label: string;
-  tone: MetricTone;
-  value: string;
-}) {
-  const styles = metricToneStyles[tone];
-
-  return (
-    <section
-      className={cn(
-        "flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4",
-        className
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p
-        className={cn(
-          "mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px]",
-          styles.value
-        )}
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
-}
-
 function CanaisFilters({
   channelOptions,
   range,
@@ -637,35 +568,35 @@ export default async function CanaisPage({
         />
 
         <StatGrid columns="xl:grid-cols-6 min-[1400px]:!grid-cols-5">
-          <MetricCard
+          <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="PayT + receita atribuída"
             label="Receita total"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
-          <MetricCard
+          <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="Receita adicional no período"
             label="Receita upsells"
             tone="green"
             value={formatCurrency(summary.upsellRevenue)}
           />
-          <MetricCard
+          <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
             detail="Investimento RedTrack"
             label="Spend"
             tone="blue"
             value={formatCurrency(summary.spendTotal)}
           />
-          <MetricCard
+          <StatCard
             className="xl:col-span-3 min-[1400px]:!col-span-1"
             detail={`${formatNumber(summary.conversionsTotal)} conversões`}
             label="Clicks"
             tone="neutral"
             value={formatNumber(summary.clicksTotal)}
           />
-          <MetricCard
+          <StatCard
             className="xl:col-span-3 min-[1400px]:!col-span-1"
             detail="Receita / spend"
             label="ROAS RT"

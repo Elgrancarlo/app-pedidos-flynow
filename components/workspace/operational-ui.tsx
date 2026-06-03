@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RouteRefreshFrame } from "@/components/workspace/route-refresh-frame";
 
-type Tone = "gold" | "blue" | "green" | "red" | "neutral";
+type Tone = "gold" | "blue" | "green" | "red" | "neutral" | "orange";
 
 const toneStyles: Record<
   Tone,
@@ -38,6 +38,12 @@ const toneStyles: Record<
     text: "text-[var(--fly-danger-strong)]",
     surface: "border-transparent bg-transparent shadow-none",
   },
+  orange: {
+    dot: "bg-[var(--fly-warning-strong)]",
+    bar: "bg-[var(--fly-warning-strong)]",
+    text: "text-[var(--fly-warning-text)]",
+    surface: "border-transparent bg-transparent shadow-none",
+  },
   neutral: {
     dot: "bg-[var(--fly-text-muted)]",
     bar: "bg-[var(--fly-text-muted)]",
@@ -65,6 +71,7 @@ export function StatGrid({
 }
 
 export function StatCard({
+  className,
   label,
   value,
   detail,
@@ -72,6 +79,7 @@ export function StatCard({
   tone = "neutral",
   rows,
 }: {
+  className?: string;
   label: string;
   value: string;
   detail: string;
@@ -86,7 +94,12 @@ export function StatCard({
   const styles = toneStyles[tone];
 
   return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
+    <section
+      className={cn(
+        "flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4",
+        className
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">

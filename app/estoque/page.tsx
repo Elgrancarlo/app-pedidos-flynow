@@ -6,39 +6,13 @@ import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
   PageBody,
   Panel,
+  StatCard,
   StatGrid,
 } from "@/components/workspace/operational-ui";
 import { getEstoquePageData } from "@/lib/estoque";
 import type { EstoqueMovimentacao } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
-
-type MetricTone = "blue" | "orange" | "green" | "gold";
-
-const metricToneStyles: Record<
-  MetricTone,
-  {
-    dot: string;
-    value: string;
-  }
-> = {
-  blue: {
-    dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-text)]",
-  },
-  orange: {
-    dot: "bg-[var(--fly-warning-strong)]",
-    value: "text-[var(--fly-text)]",
-  },
-  green: {
-    dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-text)]",
-  },
-  gold: {
-    dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-text)]",
-  },
-};
 
 function formatNumber(value: number, maximumFractionDigits = 0) {
   return new Intl.NumberFormat("pt-BR", {
@@ -74,41 +48,6 @@ function isManualAdjustment(item: EstoqueMovimentacao) {
 
 function signedMovementQuantity(item: EstoqueMovimentacao) {
   return item.tipo === "entrada" ? item.qtd_potes : -item.qtd_potes;
-}
-
-function InventoryMetricCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: MetricTone;
-}) {
-  const styles = metricToneStyles[tone];
-
-  return (
-    <section
-      className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4"
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p
-        className={`mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px] ${styles.value}`}
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
 }
 
 function MockEntryForm() {
@@ -169,13 +108,13 @@ export default async function EstoquePage({
 
       <PageBody>
         <StatGrid>
-          <InventoryMetricCard
+          <StatCard
             label="Potes entrada"
             value={formatNumber(data.totalEntradaPeriodo)}
             detail={`${data.periodo.label} · ${data.grupos.length.toLocaleString("pt-BR")} produtos`}
             tone="blue"
           />
-          <InventoryMetricCard
+          <StatCard
             label="Potes vendidos"
             value={formatNumber(data.totalVendidoPeriodo)}
             detail={
@@ -185,13 +124,13 @@ export default async function EstoquePage({
             }
             tone="orange"
           />
-          <InventoryMetricCard
+          <StatCard
             label="Estornos automáticos"
             value={formatNumber(automaticRestockTotal)}
             detail={`${automaticRestocks.length.toLocaleString("pt-BR")} eventos no período`}
             tone="green"
           />
-          <InventoryMetricCard
+          <StatCard
             label="Ajustes manuais"
             value={formatSignedNumber(manualAdjustmentTotal)}
             detail={`${manualAdjustments.length.toLocaleString("pt-BR")} ajustes registrados`}

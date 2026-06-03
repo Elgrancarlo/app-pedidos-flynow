@@ -13,7 +13,12 @@ import {
 import { FunilOperationalForms } from "@/components/funil/funil-operational-forms";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import { PageBody, Panel, StatGrid } from "@/components/workspace/operational-ui";
+import {
+  PageBody,
+  Panel,
+  StatCard,
+  StatGrid,
+} from "@/components/workspace/operational-ui";
 import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
@@ -35,8 +40,6 @@ type FunilPageParams = {
   product?: string;
   startDate?: string;
 };
-
-type MetricTone = "gold" | "blue" | "green" | "neutral";
 
 type SelectOption = {
   value: string;
@@ -62,31 +65,6 @@ type SourceSummaryRow = {
   source: string;
   upsellRatio: number;
   upsellRevenue: number;
-};
-
-const metricToneStyles: Record<
-  MetricTone,
-  {
-    dot: string;
-    value: string;
-  }
-> = {
-  gold: {
-    dot: "bg-[var(--fly-chart-revenue)]",
-    value: "text-[var(--fly-text)]",
-  },
-  blue: {
-    dot: "bg-[var(--fly-chart-investment)]",
-    value: "text-[var(--fly-text)]",
-  },
-  green: {
-    dot: "bg-[var(--fly-success)]",
-    value: "text-[var(--fly-text)]",
-  },
-  neutral: {
-    dot: "bg-[var(--fly-text-dim)]",
-    value: "text-[var(--fly-text)]",
-  },
 };
 
 const pageSizeOptions = [10, 25, 50, 100];
@@ -344,42 +322,6 @@ function buildFunilHref({
   if (pageSize !== 25) params.set("pageSize", String(pageSize));
 
   return `/funil?${params.toString()}`;
-}
-
-function MetricCard({
-  detail,
-  label,
-  tone,
-  value,
-}: {
-  detail: string;
-  label: string;
-  tone: MetricTone;
-  value: string;
-}) {
-  const styles = metricToneStyles[tone];
-
-  return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-inset)] sm:p-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className={cn("size-1.5 shrink-0 rounded-full", styles.dot)} />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p
-        className={cn(
-          "mt-3 whitespace-nowrap text-[24px] font-semibold leading-none tabular-nums sm:text-[26px] 2xl:text-[30px]",
-          styles.value
-        )}
-      >
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
 }
 
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
@@ -668,37 +610,37 @@ export default async function FunilPage({
         </div>
 
         <StatGrid columns="xl:grid-cols-3">
-          <MetricCard
+          <StatCard
             detail="Pedidos principais no recorte"
             label="Vendas diretas"
             tone="neutral"
             value={formatNumber(summary.directSales)}
           />
-          <MetricCard
+          <StatCard
             detail="Direta + upsells no periodo"
             label="Receita total"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
-          <MetricCard
+          <StatCard
             detail={`${formatPercent(summary.upsellRatio)} da receita total`}
             label="Receita upsells"
             tone="green"
             value={formatCurrency(summary.upsellRevenue)}
           />
-          <MetricCard
+          <StatCard
             detail="Receita media por venda direta"
             label="AOV medio"
             tone="blue"
             value={formatCurrency(summary.aov)}
           />
-          <MetricCard
+          <StatCard
             detail="Media ponderada por vendas"
             label="Take rate US1"
             tone="neutral"
             value={formatPercent(summary.takeRateUs1)}
           />
-          <MetricCard
+          <StatCard
             detail="Media ponderada por vendas"
             label="Take rate US2"
             tone="neutral"
