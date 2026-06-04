@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
+import { Inbox } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -12,101 +12,18 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  differenceInCalendarDays,
-  format,
-} from "date-fns";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
-import {
-  SystemDateRangeFilter,
-  type RangeValue,
-} from "@/components/workspace/system-date-range-filter";
-import { useMetrics } from "@/hooks/useMetrics";
-import {
-  getCarrinhosResumo,
-  type Carrinho,
-} from "@/lib/carrinhos";
-import {
-  APP_UTC_OFFSET,
-  getTodayInAppTimezone,
-  shiftDateString,
-} from "@/lib/app-dates";
-import type { DashboardRange } from "@/lib/dashboard-range";
-import type { MetricsData } from "@/lib/metrics";
-import {
-  getPedidosContagemPorStatus,
-  getPedidosFinanceiroResumo,
-  getPedidosValorPago,
-  PEDIDO_STATUS_LOGISTICO_LABELS,
-  type Pedido,
-  type PedidoStatusLogistico,
-} from "@/lib/pedidos";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
-
-type RangePreset = {
-  key: string;
-  label: string;
-  displayLabel: string;
-  getRange: () => { from: Date; to: Date };
-};
-
-type DashboardTone = "blue" | "gold" | "green" | "red" | "neutral";
-
-type KpiMetricProps = {
-  detail: string;
-  label: string;
-  tone?: DashboardTone;
-  value: string;
-};
-
-type PedidoFunnelRow = {
-  amount: number;
-  count: number;
-  label: string;
-  tone: DashboardTone;
-};
-
-type DashboardAlert = {
-  customerName: string;
-  delayDays: number;
-  id: string;
-  orderNumber: number | null;
-  productGroup: string;
-  statusLabel: string;
-  trackingCode: string | null;
-};
-
-type FunnelAlert = {
-  detail: string;
-  source: string;
-  title: string;
-};
-
-type TrendPoint = {
-  data: string;
-  receita: number;
-  reembolsos: number;
-};
-
-type DashboardData = {
-  activeAlerts: DashboardAlert[];
-  alertasAtivos: number;
-  alertasFunil: FunnelAlert[];
-  carrinhosPeriodo: number;
-  checkoutMonitorado: number;
-  emTransito: number;
-  funnelRows: PedidoFunnelRow[];
-  pedidosPeriodo: number;
-  receitaLiquida: number;
-  reembolsosPeriodoEventos: number;
-  reembolsosPeriodo: number;
-  salesValue: number;
-  taxaPerda: number;
-  taxaRecuperacao: number;
-  taxaReembolso: number;
-  trend: TrendPoint[];
-};
+import type {
+  DashboardAlert,
+  DashboardFunnelAlert,
+  DashboardFunnelRow,
+  DashboardKpi,
+  DashboardPageData,
+  DashboardTone,
+  DashboardTrendPoint,
+} from "@/lib/dashboard-data";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type TrendChartTooltipPayload = {
   color?: string;
@@ -123,67 +40,8 @@ type TrendChartTooltipProps = {
 };
 
 type PerformanceDashboardProps = {
-  initialCarrinhos: Carrinho[];
-  initialPedidos: Pedido[];
-  initialRange: DashboardRange;
+  data: DashboardPageData;
 };
-
-const RANGE_PRESETS: RangePreset[] = [
-  {
-    key: "today",
-    label: "Hoje",
-    displayLabel: "Hoje",
-    getRange: () => {
-      const today = getTodayInAppTimezone();
-      return rangeFromDateKeyPair(today, today);
-    },
-  },
-  {
-    key: "7d",
-    label: "7 dias",
-    displayLabel: "7D",
-    getRange: () => {
-      const today = getTodayInAppTimezone();
-      return rangeFromDateKeyPair(shiftDateString(today, -6), today);
-    },
-  },
-  {
-    key: "30d",
-    label: "30 dias",
-    displayLabel: "30D",
-    getRange: () => {
-      const today = getTodayInAppTimezone();
-      return rangeFromDateKeyPair(shiftDateString(today, -29), today);
-    },
-  },
-  {
-    key: "month",
-    label: "Este mês",
-    displayLabel: "Este mês",
-    getRange: () => {
-      const today = getTodayInAppTimezone();
-      return rangeFromDateKeyPair(`${today.slice(0, 8)}01`, today);
-    },
-  },
-  {
-    key: "last-month",
-    label: "Mês anterior",
-    displayLabel: "Mês anterior",
-    getRange: () => {
-      return previousMonthRangeFromToday(getTodayInAppTimezone());
-    },
-  },
-];
-
-const OPEN_LOGISTICS_STATUSES: PedidoStatusLogistico[] = [
-  "pago",
-  "nota_fiscal",
-  "separacao",
-  "aguardando_postagem",
-  "postado",
-  "em_transporte",
-  "aguardando_retirada",
-];
 
 const toneDotClass: Record<DashboardTone, string> = {
   blue: "bg-[var(--fly-chart-investment)]",
@@ -199,6 +57,14 @@ const toneBarClass: Record<DashboardTone, string> = {
   green: "bg-[var(--fly-success)]",
   neutral: "bg-[var(--fly-text-soft)]",
   red: "bg-[var(--fly-danger-strong)]",
+};
+
+const toneBadgeClass: Record<DashboardTone, string> = {
+  blue: "border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-[var(--fly-chart-investment)]",
+  gold: "border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] text-[var(--fly-warning-strong)]",
+  green: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)] text-[var(--fly-success-strong)]",
+  neutral: "border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-[var(--fly-text-muted)]",
+  red: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] text-[var(--fly-danger-strong)]",
 };
 
 function compactCurrency(value: number) {
@@ -239,48 +105,7 @@ function formatDateLabel(value: string) {
   });
 }
 
-function rangeDateFromKey(value: string, boundary: "start" | "end") {
-  const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
-
-  return new Date(`${value}T${time}${APP_UTC_OFFSET}`);
-}
-
-function rangeFromDateKeys(range: DashboardRange) {
-  return {
-    from: rangeDateFromKey(range.startDate, "start"),
-    to: rangeDateFromKey(range.endDate, "end"),
-  };
-}
-
-function rangeFromDateKeyPair(startDate: string, endDate: string) {
-  return rangeFromDateKeys({ startDate, endDate });
-}
-
-function previousMonthRangeFromToday(today: string) {
-  const thisMonthStart = `${today.slice(0, 8)}01`;
-  const previousMonthEnd = shiftDateString(thisMonthStart, -1);
-
-  return rangeFromDateKeyPair(
-    `${previousMonthEnd.slice(0, 8)}01`,
-    previousMonthEnd
-  );
-}
-
-function getDateFromIso(value: string | null | undefined) {
-  if (!value) return null;
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function isWithinRange(value: string | null | undefined, range: { from: Date; to: Date }) {
-  const date = getDateFromIso(value);
-  if (!date) return false;
-
-  return date.getTime() >= range.from.getTime() && date.getTime() <= range.to.getTime();
-}
-
-function getCompactChartTicks(data: TrendPoint[]) {
+function getCompactChartTicks(data: DashboardTrendPoint[]) {
   if (data.length <= 5) {
     return data.map((item) => item.data);
   }
@@ -299,192 +124,6 @@ function getCompactChartTicks(data: TrendPoint[]) {
     .filter((tick): tick is string => Boolean(tick));
 }
 
-function isOpenLogisticsStatus(status: PedidoStatusLogistico) {
-  return OPEN_LOGISTICS_STATUSES.includes(status);
-}
-
-function getDelayDays(pedido: Pedido, index: number) {
-  const promisedAt = getDateFromIso(pedido.promisedAt);
-  const naturalDelay = promisedAt
-    ? differenceInCalendarDays(new Date(), promisedAt)
-    : 0;
-
-  if (naturalDelay > 0) return naturalDelay;
-  if (pedido.issue === "atrasado") return 1 + ((pedido.orderNumber ?? index) % 70);
-
-  return 0;
-}
-
-function getAverageTicket(data: MetricsData, pedidos: Pedido[]) {
-  const frontend = data.conversoes_etapa.frontend;
-  if (frontend.quantidade > 0 && frontend.receita > 0) {
-    return frontend.receita / frontend.quantidade;
-  }
-
-  const paidValue = getPedidosValorPago(pedidos);
-  const paidCount = pedidos.filter((pedido) => pedido.paymentStatus === "paid").length;
-
-  return paidCount > 0 ? paidValue / paidCount : 192;
-}
-
-function buildTrend(data: MetricsData, financeiroRate: number): TrendPoint[] {
-  return data.serie_temporal.map((item, index) => {
-    const refundPulse = index % 6 === 2 ? 1.45 : index % 7 === 4 ? 0.62 : 1;
-
-    return {
-      data: item.data,
-      receita: item.faturamento,
-      reembolsos: Math.round(item.faturamento * financeiroRate * refundPulse * 100) / 100,
-    };
-  });
-}
-
-function buildFunnelAlerts({
-  dashboardData,
-  data,
-}: {
-  dashboardData: Pick<DashboardData, "pedidosPeriodo" | "taxaPerda">;
-  data: MetricsData;
-}): FunnelAlert[] {
-  const trend = data.serie_temporal;
-  const latest = trend.at(-1);
-  const previousWindow = trend.slice(Math.max(trend.length - 4, 0), -1);
-  const previousAverage =
-    previousWindow.length > 0
-      ? previousWindow.reduce((total, item) => total + item.faturamento, 0) /
-        previousWindow.length
-      : latest?.faturamento ?? 0;
-  const revenueDrop =
-    latest && previousAverage > 0
-      ? Math.max(1 - latest.faturamento / previousAverage, 0)
-      : 0;
-
-  return [
-    {
-      title: "Queda de receita no funil",
-      detail: `${latest ? latest.data : getTodayInAppTimezone()}: receita ficou ${formatPercent(revenueDrop)} abaixo da média dos 3 dias anteriores.`,
-      source: "IA",
-    },
-    {
-      title: "Diminuição de vendas diretas",
-      detail: `${latest ? latest.data : getTodayInAppTimezone()}: ${dashboardData.pedidosPeriodo} vendas diretas no recorte monitorado.`,
-      source: "IA",
-    },
-    {
-      title: "Impacto de novo produto no funil",
-      detail: `A taxa de perda está em ${formatPercent(dashboardData.taxaPerda)}; vale monitorar mudanças de oferta e recuperação.`,
-      source: "IA",
-    },
-  ];
-}
-
-function buildDashboardData({
-  carrinhos,
-  data,
-  pedidos,
-  range,
-}: {
-  carrinhos: Carrinho[];
-  data: MetricsData;
-  pedidos: Pedido[];
-  range: { from: Date; to: Date };
-}): DashboardData {
-  const periodPedidos = pedidos.filter((pedido) =>
-    isWithinRange(pedido.paidAt ?? pedido.createdAt, range)
-  );
-  const periodCarrinhos = carrinhos.filter((carrinho) =>
-    isWithinRange(carrinho.lastActivityAt ?? carrinho.createdAt, range)
-  );
-  const financeiroPeriodo = getPedidosFinanceiroResumo(periodPedidos);
-  const statusCounts = getPedidosContagemPorStatus(periodPedidos);
-  const carrinhosResumo = getCarrinhosResumo(periodCarrinhos);
-  const averageTicket = getAverageTicket(data, periodPedidos);
-  const analyticsDirectSales = data.conversoes_etapa.frontend.quantidade;
-  const salesValue =
-    data.faturamento_total > 0 ? data.faturamento_total : getPedidosValorPago(periodPedidos);
-  const reembolsosPeriodo = financeiroPeriodo.valorReembolsos;
-  const receitaLiquida = Math.max(salesValue - reembolsosPeriodo, 0);
-  const pedidosPeriodo =
-    analyticsDirectSales ||
-    periodPedidos.filter((pedido) => pedido.paymentStatus === "paid").length ||
-    Math.round(salesValue / Math.max(averageTicket, 1));
-  const activeAlerts = periodPedidos
-    .filter((pedido, index) => {
-      const delayDays = getDelayDays(pedido, index);
-
-      return (
-        isOpenLogisticsStatus(pedido.logisticsStatus) &&
-        (pedido.issue === "atrasado" || delayDays > 0)
-      );
-    })
-    .map((pedido, index) => ({
-      customerName: pedido.customerName,
-      delayDays: getDelayDays(pedido, index),
-      id: pedido.id,
-      orderNumber: pedido.orderNumber,
-      productGroup: pedido.productGroup ?? pedido.productName ?? "Produto sem grupo",
-      statusLabel: PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus],
-      trackingCode: pedido.trackingCode,
-    }))
-    .sort((first, second) => second.delayDays - first.delayDays);
-  const emTransito =
-    statusCounts.postado +
-    statusCounts.em_transporte +
-    statusCounts.aguardando_retirada;
-  const checkoutMonitorado =
-    periodCarrinhos.length > 0
-      ? periodCarrinhos.length
-      : carrinhosResumo.total;
-  const perdaBase =
-    carrinhosResumo.abandonados + carrinhosResumo.perdidos + carrinhosResumo.recuperados;
-  const taxaPerda =
-    perdaBase > 0
-      ? (carrinhosResumo.abandonados + carrinhosResumo.perdidos) / perdaBase
-      : 0;
-  const refundRate = salesValue > 0 ? reembolsosPeriodo / salesValue : 0;
-  const financeiroRate =
-    data.faturamento_total > 0
-      ? Math.max(refundRate, 0.006)
-      : 0.006;
-  const dashboardDataBase = {
-    pedidosPeriodo,
-    taxaPerda,
-  };
-  const funnelRows: PedidoFunnelRow[] = [
-    {
-      amount: statusCounts.aguardando_postagem * averageTicket,
-      count: statusCounts.aguardando_postagem,
-      label: "Aguard. postagem",
-      tone: "gold",
-    },
-    {
-      amount: statusCounts.postado * averageTicket,
-      count: statusCounts.postado,
-      label: "Postado",
-      tone: "blue",
-    },
-  ];
-
-  return {
-    activeAlerts,
-    alertasAtivos: activeAlerts.length,
-    alertasFunil: buildFunnelAlerts({ dashboardData: dashboardDataBase, data }),
-    carrinhosPeriodo: periodCarrinhos.length,
-    checkoutMonitorado,
-    emTransito,
-    funnelRows,
-    pedidosPeriodo,
-    receitaLiquida,
-    reembolsosPeriodoEventos: financeiroPeriodo.reembolsos,
-    reembolsosPeriodo,
-    salesValue,
-    taxaPerda,
-    taxaRecuperacao: carrinhosResumo.taxaRecuperacao,
-    taxaReembolso: refundRate,
-    trend: buildTrend(data, financeiroRate),
-  };
-}
-
 function useCompactViewport() {
   const [isCompact, setIsCompact] = useState(false);
 
@@ -501,183 +140,14 @@ function useCompactViewport() {
   return isCompact;
 }
 
-function SectionHeader({
-  title,
-  description,
-}: {
-  title: string;
-  description?: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-start gap-3">
-      <span
-        aria-hidden="true"
-        className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-border)] to-transparent"
-      />
-      <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
-          {title}
-        </h2>
-        {description ? (
-          <p className="mt-1.5 text-[13px] leading-5 text-[var(--fly-text-muted)] sm:text-sm">
-            {description}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function KpiCard({ detail, label, tone = "neutral", value }: KpiMetricProps) {
-  return (
-    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
-      <div className="flex min-w-0 items-center gap-2">
-        <span
-          aria-hidden="true"
-          className={cn("size-1.5 shrink-0 rounded-full", toneDotClass[tone])}
-        />
-        <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-          {label}
-        </p>
-      </div>
-      <p className="mt-3 text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[28px] 2xl:text-[30px]">
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {detail}
-      </p>
-    </section>
-  );
-}
-
-function SectionGroup({
-  children,
-  title,
-}: {
-  children: React.ReactNode;
-  title: string;
-}) {
-  return (
-    <section className="space-y-3">
-      <h2 className="px-1 text-sm font-semibold text-[var(--fly-text-soft)]">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Carregando métricas"
-      className="flynow-dashboard-skeleton space-y-5"
-    >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className="flynow-dashboard-skeleton-panel h-[134px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
-          />
-        ))}
-      </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div
-            key={index}
-            className="flynow-dashboard-skeleton-panel h-[126px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
-          />
-        ))}
-      </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className="flynow-dashboard-skeleton-panel h-[126px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]"
-          />
-        ))}
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <div className="flynow-dashboard-skeleton-panel h-[320px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
-        <div className="flynow-dashboard-skeleton-panel h-[320px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
-      </div>
-      <div className="flynow-dashboard-skeleton-panel h-[430px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]" />
-      <span className="sr-only">Carregando métricas do dashboard.</span>
-    </div>
-  );
-}
-
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div
-      role="alert"
-      className="flynow-dashboard-error-state flex flex-col gap-4 rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-surface)] p-4 text-sm text-[var(--fly-danger-text)] shadow-[var(--fly-panel-inset)] sm:flex-row sm:items-center sm:justify-between sm:p-5"
-    >
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="flynow-dashboard-error-icon flex size-9 shrink-0 items-center justify-center rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-surface)] text-[var(--fly-danger-text)]">
-          <AlertTriangle aria-hidden="true" className="size-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="flynow-dashboard-error-title font-semibold text-[var(--fly-danger-strong)]">
-            Métricas indisponíveis
-          </p>
-          <p className="flynow-dashboard-error-message mt-1 leading-5 text-[var(--fly-danger-text)]">
-            {message}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="flynow-dashboard-error-action inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-surface)] px-3 text-xs font-semibold text-[var(--fly-danger-strong)] outline-none transition-colors duration-150 hover:border-[var(--fly-danger-border-hover)] hover:bg-[var(--fly-danger-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-danger-border-hover)]"
-      >
-        <RefreshCw aria-hidden="true" className="size-3.5" />
-        Tentar novamente
-      </button>
-    </div>
-  );
-}
-
-function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div
-      role="status"
-      className="flynow-dashboard-warning-state flex flex-col gap-3 rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-warning-surface)] p-3 text-sm text-[var(--fly-warning-text)] shadow-[var(--fly-panel-inset)] sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div className="flex min-w-0 items-center gap-2.5">
-        <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-        <p className="flynow-dashboard-warning-message min-w-0 text-[13px] leading-5 text-[var(--fly-warning-text)]">
-          Não foi possível atualizar as métricas. Os últimos dados carregados
-          continuam visíveis.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="flynow-dashboard-warning-action inline-flex h-8 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[7px] border border-[var(--fly-warning-border)] bg-[var(--fly-warning-surface)] px-3 text-xs font-semibold text-[var(--fly-warning-text)] outline-none transition-colors duration-150 hover:border-[var(--fly-warning-border-hover)] hover:bg-[var(--fly-warning-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-warning-border-hover)]"
-      >
-        <RefreshCw aria-hidden="true" className="size-3.5" />
-        Recarregar
-      </button>
-    </div>
-  );
-}
-
 function EmptyState({
-  title,
-  description,
   compact = false,
+  description,
+  title,
 }: {
-  title: string;
-  description: string;
   compact?: boolean;
+  description: string;
+  title: string;
 }) {
   return (
     <div
@@ -698,6 +168,109 @@ function EmptyState({
           {description}
         </p>
       </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  description,
+  period,
+  title,
+}: {
+  description?: string;
+  period?: string;
+  title: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-border)] to-transparent"
+        />
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold leading-none text-[var(--fly-text)]">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-1.5 text-[13px] leading-5 text-[var(--fly-text-muted)] sm:text-sm">
+              {description}
+            </p>
+          ) : null}
+        </div>
+      </div>
+      {period ? (
+        <span className="ml-3 inline-flex h-7 w-fit shrink-0 items-center rounded-full border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-2.5 text-[11px] font-medium text-[var(--fly-text-muted)]">
+          {period}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SectionGroup({
+  children,
+  description,
+  period,
+  title,
+}: {
+  children: React.ReactNode;
+  description?: string;
+  period?: string;
+  title: string;
+}) {
+  return (
+    <section className="space-y-3">
+      <SectionHeader description={description} period={period} title={title} />
+      {children}
+    </section>
+  );
+}
+
+function KpiCard({ detail, label, period, tone, value }: DashboardKpi) {
+  return (
+    <section className="flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-4">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className={cn("size-1.5 shrink-0 rounded-full", toneDotClass[tone])}
+          />
+          <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+            {label}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[10px] font-semibold uppercase",
+            toneBadgeClass[tone]
+          )}
+        >
+          {period}
+        </span>
+      </div>
+      <p className="mt-3 text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[28px] 2xl:text-[30px]">
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+        {detail}
+      </p>
+    </section>
+  );
+}
+
+function KpiGrid({
+  cards,
+  columns = "xl:grid-cols-4",
+}: {
+  cards: DashboardKpi[];
+  columns?: string;
+}) {
+  return (
+    <div className={cn("grid gap-3 md:grid-cols-2", columns)}>
+      {cards.map((card) => (
+        <KpiCard key={`${card.label}-${card.period}`} {...card} />
+      ))}
     </div>
   );
 }
@@ -729,10 +302,7 @@ function TrendChartTooltip({
           const labelText = isRevenue ? "Receita" : "Reembolsos";
 
           return (
-            <div
-              key={key}
-              className="flex items-center justify-between gap-4"
-            >
+            <div key={key} className="flex items-center justify-between gap-4">
               <span className="inline-flex items-center gap-2 text-[var(--fly-text-soft)]">
                 <span
                   aria-hidden="true"
@@ -752,9 +322,9 @@ function TrendChartTooltip({
   );
 }
 
-function TrendChart({ data }: { data: TrendPoint[] }) {
+function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
   const isCompact = useCompactViewport();
-  const hasChartData = data.length > 0;
+  const hasChartData = data.some((item) => item.receita > 0 || item.reembolsos > 0);
   const compactChartTicks = useMemo(() => getCompactChartTicks(data), [data]);
 
   return (
@@ -762,7 +332,8 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
       <div className="mb-4">
         <SectionHeader
           title="Tendência"
-          description="Receita e reembolsos nos últimos dias"
+          description="Receita e reembolsos"
+          period="Últimos 30 dias"
         />
       </div>
 
@@ -875,7 +446,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
       ) : (
         <EmptyState
           compact
-          title="Sem tendência no período"
+          title="Sem tendência recente"
           description="A curva será exibida quando houver dados suficientes."
         />
       )}
@@ -883,7 +454,7 @@ function TrendChart({ data }: { data: TrendPoint[] }) {
   );
 }
 
-function OrdersFunnelCard({ rows }: { rows: PedidoFunnelRow[] }) {
+function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   const max = Math.max(...rows.map((row) => row.count), 1);
 
@@ -892,39 +463,55 @@ function OrdersFunnelCard({ rows }: { rows: PedidoFunnelRow[] }) {
       <div className="mb-5">
         <SectionHeader
           title="Funil de pedidos"
-          description={`${formatNumber(total)} pedidos totais no recorte`}
+          description={`${formatNumber(total)} pedidos pagos no dia`}
+          period="Hoje"
         />
       </div>
-      <div className="space-y-4">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="grid grid-cols-[minmax(110px,0.7fr)_minmax(120px,1fr)_auto] items-center gap-3 text-sm max-sm:grid-cols-1"
-          >
-            <p className="truncate text-[var(--fly-text-soft)]">{row.label}</p>
-            <div className="h-2 overflow-hidden rounded-full bg-[var(--fly-divider)]">
-              <span
-                aria-hidden="true"
-                className={cn("block h-full rounded-full", toneBarClass[row.tone])}
-                style={{ width: `${Math.max((row.count / max) * 100, 5)}%` }}
-              />
+
+      {rows.length > 0 ? (
+        <div className="space-y-4">
+          {rows.map((row) => (
+            <div
+              key={row.label}
+              className="grid grid-cols-[minmax(112px,0.7fr)_minmax(120px,1fr)_auto] items-center gap-3 text-sm max-sm:grid-cols-1"
+            >
+              <p className="truncate text-[var(--fly-text-soft)]">{row.label}</p>
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+                <span
+                  aria-hidden="true"
+                  className={cn("flynow-conversion-bar block h-full rounded-full", toneBarClass[row.tone])}
+                  style={{ width: `${Math.max((row.count / max) * 100, 5)}%` }}
+                />
+              </div>
+              <div className="flex min-w-[132px] items-center justify-end gap-5 tabular-nums max-sm:justify-between">
+                <span className="font-semibold text-[var(--fly-text)]">
+                  {formatNumber(row.count)}
+                </span>
+                <span className="text-xs text-[var(--fly-text-muted)]">
+                  {compactCurrency(row.amount)}
+                </span>
+              </div>
             </div>
-            <div className="flex min-w-[132px] items-center justify-end gap-5 tabular-nums max-sm:justify-between">
-              <span className="font-semibold text-[var(--fly-text)]">
-                {formatNumber(row.count)}
-              </span>
-              <span className="text-xs text-[var(--fly-text-muted)]">
-                {compactCurrency(row.amount)}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          compact
+          title="Sem funil hoje"
+          description="Os status aparecerão quando houver pedidos pagos no dia."
+        />
+      )}
     </section>
   );
 }
 
-function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count: number }) {
+function ActiveAlertsPanel({
+  alerts,
+  count,
+}: {
+  alerts: DashboardAlert[];
+  count: number;
+}) {
   return (
     <section className="rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
       <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -953,7 +540,7 @@ function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count:
               className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-transparent bg-transparent px-3 py-2.5 max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
             >
               <span className="text-xs font-medium tabular-nums text-[var(--fly-text-dim)]">
-                {alert.orderNumber ? `#${alert.orderNumber}` : "—"}
+                {alert.orderNumber ? `#${alert.orderNumber}` : "-"}
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[var(--fly-text)]">
@@ -985,20 +572,25 @@ function ActiveAlertsPanel({ alerts, count }: { alerts: DashboardAlert[]; count:
         <EmptyState
           compact
           title="Sem alertas ativos"
-          description="Nenhum pedido atrasado foi encontrado para este período."
+          description="Nenhum pedido atrasado foi encontrado agora."
         />
       )}
     </section>
   );
 }
 
-function FunnelAlertsPanel({ alerts }: { alerts: FunnelAlert[] }) {
+function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
   return (
     <section className="rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-[15px] font-semibold text-[var(--fly-text)]">
-          Alertas do funil
-        </h2>
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-semibold text-[var(--fly-text)]">
+            Alertas do funil
+          </h2>
+          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+            Leitura dos últimos 7 dias
+          </p>
+        </div>
         <span className="text-xs text-[var(--fly-text-muted)]">
           {formatNumber(alerts.length)} sinais
         </span>
@@ -1006,7 +598,7 @@ function FunnelAlertsPanel({ alerts }: { alerts: FunnelAlert[] }) {
       <div className="space-y-2.5">
         {alerts.map((alert) => (
           <article
-            key={alert.title}
+            key={`${alert.title}-${alert.detail}`}
             className="rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] px-3 py-3"
           >
             <div className="flex min-w-0 items-start justify-between gap-3">
@@ -1029,290 +621,96 @@ function FunnelAlertsPanel({ alerts }: { alerts: FunnelAlert[] }) {
   );
 }
 
-function PeriodActions({
-  activeRange,
-  range,
-  calendarValue,
-  maxDate,
-  calendarCloseSignal,
-  onSelect,
-  onCalendarChange,
-}: {
-  activeRange: string;
-  range: { from: Date; to: Date };
-  calendarValue: RangeValue | null;
-  maxDate: Date;
-  calendarCloseSignal: number;
-  onSelect: (preset: RangePreset) => void;
-  onCalendarChange: (value: RangeValue | null) => void;
-}) {
+function UpdatedBadge({ value }: { value: string }) {
   return (
-    <SystemDateRangeFilter
-      activeRange={activeRange}
-      appliedLabel={`Período aplicado: ${format(range.from, "dd/MM/yyyy")} - ${format(range.to, "dd/MM/yyyy")}`}
-      ariaLabel="Filtro de período"
-      calendarCloseSignal={calendarCloseSignal}
-      calendarValue={calendarValue}
-      maxDate={maxDate}
-      onCalendarChange={onCalendarChange}
-      onPresetSelect={onSelect}
-      presets={RANGE_PRESETS}
-    />
+    <div className="hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] px-3 py-2 text-xs text-[var(--fly-text-muted)] shadow-[var(--fly-panel-inset)] lg:block">
+      Atualizado em <span className="font-medium text-[var(--fly-text-soft)]">{value}</span>
+    </div>
   );
 }
 
-export function PerformanceDashboard({
-  initialCarrinhos,
-  initialPedidos,
-  initialRange: initialRangeValue,
-}: PerformanceDashboardProps) {
-  const initialRange = useMemo(
-    () => rangeFromDateKeys(initialRangeValue),
-    [initialRangeValue.endDate, initialRangeValue.startDate]
-  );
-  const maxSelectableDate = useMemo(
-    () => rangeDateFromKey(getTodayInAppTimezone(), "end"),
-    []
-  );
-  const initialRangeKey = useMemo(
-    () =>
-      `${format(initialRange.from, "yyyy-MM-dd")}:${format(
-        initialRange.to,
-        "yyyy-MM-dd"
-      )}`,
-    [initialRange]
-  );
-  const [activeRange, setActiveRange] = useState("30d");
-  const [range, setRange] = useState(initialRange);
-  const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
-    start: initialRange.from,
-    end: initialRange.to,
-  });
-  const [calendarCloseSignal] = useState(0);
-  const {
-    data,
-    status,
-    error,
-    isInitialLoading,
-    isRefreshing,
-    isEmpty,
-    retry,
-  } = useMetrics(range.from, range.to);
-  const rangeKey = useMemo(
-    () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
-    [range]
-  );
-  const [contentVersion, setContentVersion] = useState(initialRangeKey);
-  const dashboardData = useMemo(
-    () =>
-      data
-        ? buildDashboardData({
-            carrinhos: initialCarrinhos,
-            data,
-            pedidos: initialPedidos,
-            range,
-          })
-        : null,
-    [data, initialCarrinhos, initialPedidos, range]
-  );
-
-  useEffect(() => {
-    if ((status === "success" || status === "empty") && data) {
-      setContentVersion(rangeKey);
-    }
-  }, [data, rangeKey, status]);
-
-  function selectPreset(preset: RangePreset) {
-    const nextRange = preset.getRange();
-
-    setActiveRange(preset.key);
-    setRange(nextRange);
-    setCalendarValue({ start: nextRange.from, end: nextRange.to });
-  }
-
-  function selectCalendarRange(value: RangeValue | null) {
-    setCalendarValue(value);
-
-    if (!value) {
-      setActiveRange("custom");
-      return;
-    }
-
-    if (value?.start && value.end) {
-      setActiveRange("custom");
-      setRange({ from: value.start, to: value.end });
-    }
-  }
-
+export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
   return (
     <>
       <DashboardHeader
         title="Dashboard"
-        description="Métricas do período selecionado e sinais operacionais"
-        actions={
-          <PeriodActions
-            activeRange={activeRange}
-            range={range}
-            calendarValue={calendarValue}
-            maxDate={maxSelectableDate}
-            calendarCloseSignal={calendarCloseSignal}
-            onSelect={selectPreset}
-            onCalendarChange={selectCalendarRange}
-          />
-        }
+        description="Métricas do dia atual, sinais operacionais e tendência recente"
+        actions={<UpdatedBadge value={data.generatedAtLabel} />}
       />
 
       <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
-        {isInitialLoading ? <DashboardSkeleton /> : null}
-
-        {!isInitialLoading && error && !data ? (
-          <ErrorState
-            message="Não foi possível carregar as métricas. Tente novamente em alguns instantes."
-            onRetry={retry}
-          />
-        ) : null}
-
-        {!isInitialLoading && isEmpty ? (
-          <EmptyState
-            title="Sem dados para o período"
-            description="Altere o período para visualizar as métricas disponíveis."
-          />
-        ) : null}
-
-        {data && dashboardData && !isEmpty ? (
+        <div className="flynow-dashboard-content relative flex flex-col gap-5">
           <div
-            key={contentVersion}
-            aria-busy={isRefreshing}
-            className={cn(
-              "flynow-dashboard-content relative flex flex-col gap-5",
-              isRefreshing && "flynow-dashboard-content--refreshing"
-            )}
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
           >
-            {error ? <RefreshErrorNotice onRetry={retry} /> : null}
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
+            <SectionGroup
+              title="Visão geral"
+              description="Venda e reversão financeira do dia atual"
+              period="Hoje"
             >
-              <SectionGroup title="Visão geral">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <KpiCard
-                    detail={`${formatNumber(dashboardData.pedidosPeriodo)} pedidos`}
-                    label="Vendas no período"
-                    tone="green"
-                    value={formatCurrency(dashboardData.salesValue)}
-                  />
-                  <KpiCard
-                    detail="vendas do período menos reversões"
-                    label="Receita líquida"
-                    tone="green"
-                    value={formatCurrency(dashboardData.receitaLiquida)}
-                  />
-                  <KpiCard
-                    detail={`${formatNumber(dashboardData.reembolsosPeriodoEventos)} eventos`}
-                    label="Reembolsos no período"
-                    tone="red"
-                    value={formatCurrency(dashboardData.reembolsosPeriodo)}
-                  />
-                  <KpiCard
-                    detail="com base nas vendas do período"
-                    label="Taxa de reembolso"
-                    tone="gold"
-                    value={formatPercent(dashboardData.taxaReembolso)}
-                  />
-                </div>
-              </SectionGroup>
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "70ms" } as CSSProperties}
-            >
-              <SectionGroup title="Operacional">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <KpiCard
-                    detail="pedidos em rota"
-                    label="Em trânsito"
-                    tone="blue"
-                    value={formatNumber(dashboardData.emTransito)}
-                  />
-                  <KpiCard
-                    detail="requerem atenção"
-                    label="Alertas ativos"
-                    tone="gold"
-                    value={formatNumber(dashboardData.alertasAtivos)}
-                  />
-                  <KpiCard
-                    detail={`${formatNumber(dashboardData.checkoutMonitorado)} monitorados`}
-                    label="Carrinhos no período"
-                    tone="gold"
-                    value={formatNumber(dashboardData.carrinhosPeriodo)}
-                  />
-                </div>
-                <OrdersFunnelCard rows={dashboardData.funnelRows} />
-              </SectionGroup>
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "140ms" } as CSSProperties}
-            >
-              <SectionGroup title="Saúde do funil">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <KpiCard
-                    detail="base dos eventos PayT no período"
-                    label="Checkout monitorado"
-                    tone="blue"
-                    value={formatNumber(dashboardData.checkoutMonitorado)}
-                  />
-                  <KpiCard
-                    detail="abandono e perda no recorte"
-                    label="Taxa de perda"
-                    tone="red"
-                    value={formatPercent(dashboardData.taxaPerda)}
-                  />
-                  <KpiCard
-                    detail="recuperados após evento não pago"
-                    label="Taxa de recuperação"
-                    tone="green"
-                    value={formatPercent(dashboardData.taxaRecuperacao)}
-                  />
-                  <KpiCard
-                    detail="sinais avaliados pela camada analítica"
-                    label="Alertas de funil"
-                    tone="gold"
-                    value={formatNumber(dashboardData.alertasFunil.length)}
-                  />
-                </div>
-              </SectionGroup>
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "210ms" } as CSSProperties}
-            >
-              <SectionGroup title="Análise de pedidos">
-                <TrendChart data={dashboardData.trend} />
-              </SectionGroup>
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "280ms" } as CSSProperties}
-            >
-              <ActiveAlertsPanel
-                alerts={dashboardData.activeAlerts}
-                count={dashboardData.alertasAtivos}
-              />
-            </div>
-
-            <div
-              className="flynow-dashboard-enter-item"
-              style={{ "--flynow-enter-delay": "350ms" } as CSSProperties}
-            >
-              <FunnelAlertsPanel alerts={dashboardData.alertasFunil} />
-            </div>
+              <KpiGrid cards={data.overviewCards} />
+            </SectionGroup>
           </div>
-        ) : null}
+
+          <div
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "70ms" } as CSSProperties}
+          >
+            <SectionGroup
+              title="Operação"
+              description="Sinais que precisam representar o estado atual da operação"
+              period="Agora + 24h"
+            >
+              <KpiGrid cards={data.operationCards} columns="xl:grid-cols-3" />
+            </SectionGroup>
+          </div>
+
+          <div
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "140ms" } as CSSProperties}
+          >
+            <SectionGroup
+              title="Saúde do checkout"
+              description="Eventos de checkout e recuperação em janela curta"
+              period="24h + 7 dias"
+            >
+              <KpiGrid cards={data.checkoutCards} />
+            </SectionGroup>
+          </div>
+
+          <div
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "210ms" } as CSSProperties}
+          >
+            <SectionGroup
+              title="Análise recente"
+              description="Funil do dia e curva consolidada dos últimos 30 dias"
+            >
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+                <OrdersFunnelCard rows={data.funnelRows} />
+                <TrendChart data={data.trend} />
+              </div>
+            </SectionGroup>
+          </div>
+
+          <div
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "280ms" } as CSSProperties}
+          >
+            <ActiveAlertsPanel
+              alerts={data.activeAlerts}
+              count={data.activeAlerts.length}
+            />
+          </div>
+
+          <div
+            className="flynow-dashboard-enter-item"
+            style={{ "--flynow-enter-delay": "350ms" } as CSSProperties}
+          >
+            <FunnelAlertsPanel alerts={data.alertasFunil} />
+          </div>
+        </div>
       </div>
     </>
   );
