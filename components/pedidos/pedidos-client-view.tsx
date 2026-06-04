@@ -614,52 +614,61 @@ function OverviewPanel({
   contagem: Record<PedidoStatusLogistico, number>;
   pedidos: Pedido[];
 }) {
-  const ticketMedio = totalPedidos > 0 ? valorPago / totalPedidos : 0;
+  const pedidosPagos = pedidos.filter(
+    (pedido) => pedido.paymentStatus === "paid"
+  ).length;
+  const pedidosSemPagamento = Math.max(totalPedidos - pedidosPagos, 0);
+  const ticketMedioPago = pedidosPagos > 0 ? valorPago / pedidosPagos : 0;
   const emExpedicao =
     contagem.nota_fiscal + contagem.separacao + contagem.aguardando_postagem;
   const emRota =
     contagem.postado + contagem.em_transporte + contagem.aguardando_retirada;
+  const emPreparacao = contagem.pago + emExpedicao;
+  const operacaoAberta = emPreparacao + emRota;
   const atrasados = pedidos.filter((pedido) => pedido.issue === "atrasado").length;
-  const problemas =
-    contagem.devolvido + financeiro.chargebacks + financeiro.reembolsos + atrasados;
+  const reversoes = financeiro.chargebacks + financeiro.reembolsos;
+  const entregaComRisco = contagem.devolvido + atrasados;
+  const problemas = reversoes + entregaComRisco;
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <MetricPanel
+        label="Pedidos no periodo"
+        value={totalPedidos.toLocaleString("pt-BR")}
+        supportingText="Base operacional carregada"
+        tone="blue"
+        rows={[
+          { label: "Pagos", value: pedidosPagos, total: totalPedidos },
+          {
+            label: "Sem pagamento confirmado",
+            value: pedidosSemPagamento,
+            total: totalPedidos,
+          },
+        ]}
+      />
+      <MetricPanel
         label="Receita paga"
         value={formatCurrency(valorPago)}
-        supportingText={`${totalPedidos.toLocaleString("pt-BR")} pedidos no periodo`}
+        supportingText={`${pedidosPagos.toLocaleString("pt-BR")} pedidos pagos no periodo`}
         tone="gold"
         rows={[
           {
             label: "Ticket medio",
-            value: Math.round(ticketMedio),
-            displayValue: formatCurrency(ticketMedio),
-            total: Math.max(ticketMedio, 1),
+            value: Math.round(ticketMedioPago),
+            displayValue: formatCurrency(ticketMedioPago),
+            total: Math.max(ticketMedioPago, 1),
           },
-          { label: "Pagos", value: pedidos.filter((pedido) => pedido.paymentStatus === "paid").length, total: totalPedidos },
+          { label: "Pedidos pagos", value: pedidosPagos, total: totalPedidos },
         ]}
       />
       <MetricPanel
-        label="Fila logistica"
-        value={emExpedicao.toLocaleString("pt-BR")}
-        supportingText="Pedidos antes da postagem"
-        tone="blue"
-        rows={[
-          { label: "Nota fiscal", value: contagem.nota_fiscal, total: emExpedicao },
-          { label: "Separacao", value: contagem.separacao, total: emExpedicao },
-          { label: "Aguard. postagem", value: contagem.aguardando_postagem, total: emExpedicao },
-        ]}
-      />
-      <MetricPanel
-        label="Distribuicao"
-        value={emRota.toLocaleString("pt-BR")}
-        supportingText="Postados e em transito"
+        label="Operacao em aberto"
+        value={operacaoAberta.toLocaleString("pt-BR")}
+        supportingText="Pedidos ainda nao finalizados"
         tone="green"
         rows={[
-          { label: "Postado", value: contagem.postado, total: emRota },
-          { label: "Em transito", value: contagem.em_transporte, total: emRota },
-          { label: "Saiu p/ entrega", value: contagem.aguardando_retirada, total: emRota },
+          { label: "Em preparacao", value: emPreparacao, total: operacaoAberta },
+          { label: "Em rota", value: emRota, total: operacaoAberta },
         ]}
       />
       <MetricPanel
@@ -668,10 +677,8 @@ function OverviewPanel({
         supportingText={`${formatCurrency(financeiro.valorChargebacks + financeiro.valorReembolsos)} revertidos`}
         tone="red"
         rows={[
-          { label: "Chargebacks", value: financeiro.chargebacks, total: problemas },
-          { label: "Reembolsos", value: financeiro.reembolsos, total: problemas },
-          { label: "Devolvidos", value: contagem.devolvido, total: problemas },
-          { label: "Atrasados", value: atrasados, total: problemas },
+          { label: "Reversoes", value: reversoes, total: problemas },
+          { label: "Entrega", value: entregaComRisco, total: problemas },
         ]}
       />
     </div>
@@ -694,10 +701,10 @@ function LogisticsStatusStrip({
       <div className="mb-3 flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold text-[var(--fly-text)]">
-            Status logisticos
+            Pipeline logistico
           </h2>
           <p className="mt-0.5 text-xs text-[var(--fly-text-muted)]">
-            Leitura rapida da fila no periodo
+            Detalhe por status e filtro da tabela
           </p>
         </div>
         {selectedStatus !== "all" ? (
