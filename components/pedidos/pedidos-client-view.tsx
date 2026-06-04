@@ -99,6 +99,11 @@ type PedidosActionResult = {
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const DETAIL_DRAWER_ANIMATION_MS = 220;
 const KANBAN_COLUMN_CARD_LIMIT = 12;
+const KANBAN_PAYMENT_STATUSES = new Set<PedidoStatusPagamento>([
+  "paid",
+  "refunded",
+  "chargeback",
+]);
 
 const PERIOD_PRESETS: PresetOption[] = [
   { key: "today", label: "Hoje", displayLabel: "Hoje" },
@@ -320,6 +325,10 @@ function getCompactPaymentLabel(status: PedidoStatusPagamento) {
   return PEDIDO_STATUS_PAGAMENTO_LABELS[status];
 }
 
+function isPedidoEligibleForKanban(pedido: Pedido) {
+  return KANBAN_PAYMENT_STATUSES.has(pedido.paymentStatus);
+}
+
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState<boolean | null>(null);
 
@@ -365,11 +374,11 @@ function StatusBadge({
 
 function PaymentStatusInline({
   status,
-  paidAt,
+  referenceDate,
   className,
 }: {
   status: PedidoStatusPagamento;
-  paidAt?: string | null;
+  referenceDate?: string | null;
   className?: string;
 }) {
   return (
@@ -386,9 +395,9 @@ function PaymentStatusInline({
       <span className="truncate text-[var(--fly-text-soft)]">
         {PEDIDO_STATUS_PAGAMENTO_LABELS[status]}
       </span>
-      {paidAt ? (
+      {referenceDate ? (
         <span className="hidden shrink-0 text-[11px] text-[var(--fly-text-dim)] xl:inline">
-          {formatDate(paidAt)}
+          {formatDate(referenceDate)}
         </span>
       ) : null}
     </span>
@@ -1331,7 +1340,7 @@ function OrdersTable({
                   </p>
                   <PaymentStatusInline
                     status={pedido.paymentStatus}
-                    paidAt={pedido.paidAt}
+                    referenceDate={pedido.paidAt ?? pedido.createdAt}
                     className="mt-1"
                   />
                 </td>
@@ -2207,30 +2216,37 @@ export default function PedidosClientView({
     deferredQuery,
   ]);
 
-  const filteredValue = useMemo(
-    () =>
-      filteredPedidos
-        .filter((pedido) => pedido.paymentStatus === "paid")
-        .reduce((total, pedido) => total + (pedido.amount ?? 0), 0),
+  const kanbanPedidos = useMemo(
+    () => filteredPedidos.filter(isPedidoEligibleForKanban),
     [filteredPedidos]
   );
 
-  const totalPages = Math.max(Math.ceil(filteredPedidos.length / pageSize), 1);
+  const displayPedidos = view === "kanban" ? kanbanPedidos : filteredPedidos;
+
+  const filteredValue = useMemo(
+    () =>
+      displayPedidos
+        .filter((pedido) => pedido.paymentStatus === "paid")
+        .reduce((total, pedido) => total + (pedido.amount ?? 0), 0),
+    [displayPedidos]
+  );
+
+  const totalPages = Math.max(Math.ceil(displayPedidos.length / pageSize), 1);
   const pagination = useMemo<PaginationModel>(
     () => ({
       page: clampPage(page, totalPages),
       pageSize,
-      totalItems: filteredPedidos.length,
+      totalItems: displayPedidos.length,
       totalPages,
     }),
-    [filteredPedidos.length, page, pageSize, totalPages]
+    [displayPedidos.length, page, pageSize, totalPages]
   );
 
   const visiblePedidos = useMemo(() => {
     const safePage = clampPage(page, totalPages);
     const start = (safePage - 1) * pageSize;
-    return filteredPedidos.slice(start, start + pageSize);
-  }, [filteredPedidos, page, pageSize, totalPages]);
+    return displayPedidos.slice(start, start + pageSize);
+  }, [displayPedidos, page, pageSize, totalPages]);
 
   const activeFilterCount =
     (query.trim() ? 1 : 0) +
@@ -2252,7 +2268,7 @@ export default function PedidosClientView({
 
   useEffect(() => {
     setPage(1);
-  }, [logisticsStatus, onlyIssues, paymentStatus, product, query, range, pageSize]);
+  }, [logisticsStatus, onlyIssues, paymentStatus, product, query, range, pageSize, view]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -2455,7 +2471,7 @@ export default function PedidosClientView({
             >
               <div className="space-y-4">
                 <SummaryStrip
-                  filteredCount={filteredPedidos.length}
+                  filteredCount={displayPedidos.length}
                   totalPeriodCount={periodPedidos.length}
                   filteredValue={filteredValue}
                   periodoLabel={periodoLabel}
@@ -2482,10 +2498,14 @@ export default function PedidosClientView({
                     onClearFilters={clearFilters}
                   />
 
-                  {filteredPedidos.length === 0 ? (
+                  {displayPedidos.length === 0 ? (
                     <EmptyState
                       title="Nenhum pedido encontrado"
-                      description="Ajuste busca, filtros ou periodo para voltar a visualizar a operacao."
+                      description={
+                        view === "kanban" && filteredPedidos.length > 0
+                          ? "O Kanban mostra apenas pedidos pagos, reembolsados ou em chargeback."
+                          : "Ajuste busca, filtros ou periodo para voltar a visualizar a operacao."
+                      }
                     />
                   ) : view === "tabela" ? (
                     <div id="pedidos-view-tabela" role="tabpanel">
