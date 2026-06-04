@@ -28,6 +28,9 @@ const CARRINHOS_SELECT =
 const PAGE_SIZE = 1000;
 const DEFAULT_REAL_EVENT_LIMIT = 10000;
 
+type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
+type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
+
 type PaytEventRow = {
   event_key: string;
   transaction_id: string | null;
@@ -62,6 +65,12 @@ type CarrinhosDataRange = {
 
 type CarrinhosFetchOptions = {
   maxEvents?: number;
+};
+
+type CarrinhosEventFetchResult = {
+  rows: PaytEventRow[];
+  reachedEventLimit: boolean;
+  source: CarrinhosEventSource;
 };
 
 export type CarrinhosFrontendData = {
@@ -449,15 +458,58 @@ function safeMapRawWebhookToPaytEventRow(raw: PaytRawWebhookRow) {
   }
 }
 
-async function fetchCarrinhosFromPaytEvents({
-  startDate,
-  endDate,
-}: CarrinhosDataRange, options: CarrinhosFetchOptions = {}) {
-  const supabase = createServiceClient();
+function timestampValue(value: string | null | undefined) {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+async function getLatestStreamEventAt(
+  supabase: SupabaseServiceClient,
+  startTs: string,
+  endTs: string
+) {
+  const { data, error } = await supabase
+    .from("payt_event_stream")
+    .select("event_at")
+    .gte("event_at", startTs)
+    .lte("event_at", endTs)
+    .order("event_at", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+
+  const latest = (data as Array<{ event_at?: string | null }> | null)?.[0];
+  return timestampValue(latest?.event_at);
+}
+
+async function getLatestRawReceivedAt(
+  supabase: SupabaseServiceClient,
+  startTs: string,
+  endTs: string
+) {
+  const { data, error } = await supabase
+    .from("payt_webhooks_raw")
+    .select("received_at")
+    .gte("received_at", startTs)
+    .lte("received_at", endTs)
+    .order("received_at", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+
+  const latest = (data as Array<{ received_at?: string | null }> | null)?.[0];
+  return timestampValue(latest?.received_at);
+}
+
+async function fetchStreamEventRows(
+  supabase: SupabaseServiceClient,
+  startTs: string,
+  endTs: string,
+  maxEvents: number | null
+): Promise<CarrinhosEventFetchResult> {
   const rows: PaytEventRow[] = [];
-  const maxEvents = options.maxEvents ?? null;
   let reachedEventLimit = false;
-  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     if (maxEvents != null && offset >= maxEvents) break;
@@ -479,46 +531,127 @@ async function fetchCarrinhosFromPaytEvents({
 
     rows.push(...(data as PaytEventRow[]));
 
-    if (maxEvents != null && rows.length >= maxEvents) {
+    if (maxEvents != null && offset + data.length >= maxEvents) {
       reachedEventLimit = data.length === PAGE_SIZE;
       break;
     }
     if (data.length < PAGE_SIZE) break;
   }
 
-  if (rows.length === 0) {
-    for (let offset = 0; ; offset += PAGE_SIZE) {
-      if (maxEvents != null && offset >= maxEvents) break;
+  return {
+    rows,
+    reachedEventLimit,
+    source: "payt_event_stream",
+  };
+}
 
-      const to = maxEvents == null
-        ? offset + PAGE_SIZE - 1
-        : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
+async function fetchRawWebhookEventRows(
+  supabase: SupabaseServiceClient,
+  startTs: string,
+  endTs: string,
+  maxEvents: number | null
+): Promise<CarrinhosEventFetchResult> {
+  const rows: PaytEventRow[] = [];
+  let reachedEventLimit = false;
 
-      const { data, error } = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload, received_at")
-        .gte("received_at", startTs)
-        .lte("received_at", endTs)
-        .order("received_at", { ascending: false })
-        .range(offset, to);
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    if (maxEvents != null && offset >= maxEvents) break;
 
-      if (error) throw error;
-      if (!data || data.length === 0) break;
+    const to = maxEvents == null
+      ? offset + PAGE_SIZE - 1
+      : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
 
-      const mappedRows = (data as PaytRawWebhookRow[])
-        .map(safeMapRawWebhookToPaytEventRow)
-        .filter((event): event is PaytEventRow => event !== null)
-        .filter((event) => event.event_at >= startTs && event.event_at <= endTs);
+    const { data, error } = await supabase
+      .from("payt_webhooks_raw")
+      .select("payload, received_at")
+      .gte("received_at", startTs)
+      .lte("received_at", endTs)
+      .order("received_at", { ascending: false })
+      .range(offset, to);
 
-      rows.push(...mappedRows);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
 
-      if (maxEvents != null && rows.length >= maxEvents) {
-        reachedEventLimit = data.length === PAGE_SIZE;
-        break;
-      }
-      if (data.length < PAGE_SIZE) break;
+    const mappedRows = (data as PaytRawWebhookRow[])
+      .map(safeMapRawWebhookToPaytEventRow)
+      .filter((event): event is PaytEventRow => event !== null)
+      .filter((event) => event.event_at >= startTs && event.event_at <= endTs);
+
+    rows.push(...mappedRows);
+
+    if (maxEvents != null && offset + data.length >= maxEvents) {
+      reachedEventLimit = data.length === PAGE_SIZE;
+      break;
     }
+    if (data.length < PAGE_SIZE) break;
   }
+
+  return {
+    rows,
+    reachedEventLimit,
+    source: "payt_webhooks_raw",
+  };
+}
+
+async function fetchCurrentPeriodEvents(
+  supabase: SupabaseServiceClient,
+  startTs: string,
+  endTs: string,
+  maxEvents: number | null
+) {
+  try {
+    const [streamLatest, rawLatest] = await Promise.all([
+      getLatestStreamEventAt(supabase, startTs, endTs),
+      getLatestRawReceivedAt(supabase, startTs, endTs),
+    ]);
+    const shouldPreferRaw =
+      rawLatest !== null && (streamLatest === null || rawLatest > streamLatest);
+
+    if (shouldPreferRaw) {
+      const rawResult = await fetchRawWebhookEventRows(
+        supabase,
+        startTs,
+        endTs,
+        maxEvents
+      );
+
+      if (rawResult.rows.length > 0 || streamLatest === null) {
+        return rawResult;
+      }
+    }
+
+    const streamResult = await fetchStreamEventRows(
+      supabase,
+      startTs,
+      endTs,
+      maxEvents
+    );
+
+    if (streamResult.rows.length > 0 || rawLatest === null) {
+      return streamResult;
+    }
+
+    return fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents);
+  } catch (error) {
+    if (!isMissingEventStream(error)) throw error;
+    return fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents);
+  }
+}
+
+async function fetchCarrinhosFromPaytEvents({
+  startDate,
+  endDate,
+}: CarrinhosDataRange, options: CarrinhosFetchOptions = {}) {
+  const supabase = createServiceClient();
+  const maxEvents = options.maxEvents ?? null;
+  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
+  const eventResult = await fetchCurrentPeriodEvents(
+    supabase,
+    startTs,
+    endTs,
+    maxEvents
+  );
+  const { rows } = eventResult;
 
   const grouped = rows.reduce((map, row) => {
     const key = row.cart_id ?? row.transaction_id ?? row.event_key;
@@ -545,7 +678,7 @@ async function fetchCarrinhosFromPaytEvents({
 
   return {
     carrinhos,
-    reachedEventLimit,
+    reachedEventLimit: eventResult.reachedEventLimit,
     metrics: {
       funil: getCarrinhosFunil(metricCarrinhos),
       resumo: getCarrinhosResumo(metricCarrinhos),

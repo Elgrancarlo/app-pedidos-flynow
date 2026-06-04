@@ -5,7 +5,9 @@ import {
   getCarrinhosFunil,
   getCarrinhosResumo,
   getDefaultCarrinhosRange,
+  getPresetCarrinhosRange,
   type Carrinho,
+  type CarrinhoPeriodoPreset,
 } from "@/lib/carrinhos";
 import {
   getCarrinhosInitialEventLimit,
@@ -18,6 +20,7 @@ import { shouldUseMockData } from "@/lib/data-mode";
 export const dynamic = "force-dynamic";
 
 type CarrinhosSearchParams = Promise<{
+  dias?: string | string[];
   endDate?: string | string[];
   startDate?: string | string[];
 }>;
@@ -30,10 +33,25 @@ function isDateParam(value: string | undefined) {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+function getLegacyDaysPreset(value: string | undefined): CarrinhoPeriodoPreset | null {
+  if (!value) return null;
+
+  if (value === "1" || value.toLowerCase() === "hoje") return "today";
+  if (value.toLowerCase() === "mes" || value.toLowerCase() === "month") return "month";
+  if (value === "7" || value === "15" || value === "30") return `${value}d`;
+
+  return null;
+}
+
 function getPageRange(params: Awaited<CarrinhosSearchParams>) {
   const defaults = getDefaultCarrinhosRange();
   const startDate = getSingleParam(params.startDate);
   const endDate = getSingleParam(params.endDate);
+  const legacyPreset = getLegacyDaysPreset(getSingleParam(params.dias));
+
+  if (!isDateParam(startDate) && !isDateParam(endDate) && legacyPreset) {
+    return getPresetCarrinhosRange(legacyPreset);
+  }
 
   const range = {
     startDate: isDateParam(startDate) ? startDate! : defaults.startDate,
