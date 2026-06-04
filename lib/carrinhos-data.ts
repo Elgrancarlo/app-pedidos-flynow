@@ -464,6 +464,23 @@ function timestampValue(value: string | null | undefined) {
   return Number.isNaN(time) ? null : time;
 }
 
+function sortPaytEventsByNewest(rows: PaytEventRow[]) {
+  return [...rows].sort(
+    (first, second) =>
+      new Date(second.event_at).getTime() - new Date(first.event_at).getTime()
+  );
+}
+
+function groupPaytEvents(rows: PaytEventRow[]) {
+  return rows.reduce((map, row) => {
+    const key = row.cart_id ?? row.transaction_id ?? row.event_key;
+    const current = map.get(key) ?? [];
+    current.push(row);
+    map.set(key, current);
+    return map;
+  }, new Map<string, PaytEventRow[]>());
+}
+
 async function getLatestStreamEventAt(
   supabase: SupabaseServiceClient,
   startTs: string,
@@ -649,26 +666,23 @@ async function fetchCarrinhosFromPaytEvents({
     supabase,
     startTs,
     endTs,
-    maxEvents
+    null
   );
-  const { rows } = eventResult;
+  const rows = sortPaytEventsByNewest(eventResult.rows);
+  const tableRows = maxEvents == null ? rows : rows.slice(0, maxEvents);
+  const reachedEventLimit = maxEvents != null && rows.length > maxEvents;
 
-  const grouped = rows.reduce((map, row) => {
-    const key = row.cart_id ?? row.transaction_id ?? row.event_key;
-    const current = map.get(key) ?? [];
-    current.push(row);
-    map.set(key, current);
-    return map;
-  }, new Map<string, PaytEventRow[]>());
-
-  const groupedEvents = Array.from(grouped.values());
+  const groupedEvents = Array.from(groupPaytEvents(rows).values());
   const monitorGroups = groupedEvents.filter(isLegacyMonitorGroup);
   const metricGroups = [
     ...monitorGroups,
     ...groupedEvents.filter(isLegacyRecoveredGroup),
   ];
   const metricCarrinhos = metricGroups.map(mapEventsToCarrinho);
-  const carrinhos = monitorGroups
+  const tableGroups = Array.from(groupPaytEvents(tableRows).values()).filter(
+    isLegacyMonitorGroup
+  );
+  const carrinhos = tableGroups
     .map(mapEventsToCarrinho)
     .sort(
       (first, second) =>
@@ -678,7 +692,7 @@ async function fetchCarrinhosFromPaytEvents({
 
   return {
     carrinhos,
-    reachedEventLimit: eventResult.reachedEventLimit,
+    reachedEventLimit,
     metrics: {
       funil: getCarrinhosFunil(metricCarrinhos),
       resumo: getCarrinhosResumo(metricCarrinhos),
@@ -700,7 +714,7 @@ export async function getCarrinhosForFrontendData(
       source: "real",
       warning:
         maxEvents != null && result.reachedEventLimit
-          ? `Exibindo os carrinhos a partir dos ${maxEvents.toLocaleString("pt-BR")} eventos mais recentes do recorte para manter a tela rápida.`
+          ? `A tabela exibe os carrinhos a partir dos ${maxEvents.toLocaleString("pt-BR")} eventos mais recentes do recorte. Os KPIs consideram o período completo.`
           : undefined,
     };
   } catch (error) {
