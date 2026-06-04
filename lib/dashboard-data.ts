@@ -1,4 +1,4 @@
-import { buildFunilAlerts, defaultAnalyticsDates, getFunilAnalytics } from "@/lib/analytics";
+import { buildFunilAiAlerts, defaultAnalyticsDates, getFunilAnalytics } from "@/lib/analytics";
 import {
   getTodayInAppTimezone,
   getUtcRangeForAppDate,
@@ -51,6 +51,7 @@ export type DashboardAlert = {
 
 export type DashboardFunnelAlert = {
   detail: string;
+  level: string;
   source: string;
   title: string;
 };
@@ -370,8 +371,8 @@ function buildMockCheckout(carrinhos: Carrinho[]) {
       ? (lostCount + abandonedCount) / (carts24h + recoveredCount)
       : 0;
   const taxaRecuperacao =
-    lostCount + abandonedCount + recoveredCount > 0
-      ? recoveredCount / (lostCount + abandonedCount + recoveredCount)
+    carts24h + recoveredCount > 0
+      ? recoveredCount / (carts24h + recoveredCount)
       : 0;
 
   return {
@@ -438,7 +439,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   );
   const refundValue = financialMetrics.valorReembolsos;
   const chargebackValue = financialMetrics.valorChargebacks;
-  const netRevenue = Math.max(salesValue - refundValue - chargebackValue, 0);
+  const netRevenue = salesValue - refundValue - chargebackValue;
   const refundRate = salesCount > 0 ? financialMetrics.reembolsos / salesCount : 0;
   const checkoutSummary = checkout.summary;
   const carts24h =
@@ -452,26 +453,25 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       ? (checkoutSummary.lostCount + checkoutSummary.abandonedCount) /
         checkoutLossBase
       : 0;
-  const recoveryBase =
-    checkoutSummary.lostCount +
-    checkoutSummary.abandonedCount +
-    checkoutSummary.recoveredCount;
   const taxaRecuperacao =
-    recoveryBase > 0 ? checkoutSummary.recoveredCount / recoveryBase : 0;
+    checkoutMonitorado > 0 ? checkoutSummary.recoveredCount / checkoutMonitorado : 0;
   const activeAlerts = ((atrasados.data ?? []) as DashboardAlertRpcRow[]).map(
     (row) => normalizeAlert(row, today)
   );
-  const funnelAlerts = buildFunilAlerts(funilAnalytics.dailyRows).map((alert) => ({
-    detail: alert.detail,
-    source: "Regras",
-    title: alert.title,
-  }));
+  const funnelAlerts = await buildFunilAiAlerts({
+    dailyRows: funilAnalytics.dailyRows,
+    logs: funilAnalytics.logs,
+    transcripts: funilAnalytics.transcripts,
+  });
+  const criticalFunnelAlerts = funnelAlerts.filter(
+    (alert) => alert.level === "alerta"
+  ).length;
 
   return {
     activeAlerts,
     alertasFunil: funnelAlerts,
     checkoutCards: buildCheckoutCards({
-      alertasFunil: funnelAlerts.length,
+      alertasFunil: criticalFunnelAlerts,
       checkoutMonitorado,
       taxaPerda,
       taxaRecuperacao,
@@ -494,10 +494,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       salesCount,
       salesValue,
     }),
-    trend: fillTrendWindow(
-      ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
-      today
-    ),
+    trend: ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
   };
 }
 
@@ -512,7 +509,7 @@ function getMockDashboardData(): DashboardPageData {
   const salesCount = todayPedidos.filter((pedido) => pedido.paymentStatus === "paid").length;
   const refundValue = todayFinanceiro.valorReembolsos;
   const chargebackValue = todayFinanceiro.valorChargebacks;
-  const netRevenue = Math.max(salesValue - refundValue - chargebackValue, 0);
+  const netRevenue = salesValue - refundValue - chargebackValue;
   const refundRate = salesCount > 0 ? todayFinanceiro.reembolsos / salesCount : 0;
   const allStatusCounts = getPedidosContagemPorStatus(pedidos);
   const emTransito = OPEN_LOGISTICS_STATUSES.reduce(
@@ -572,16 +569,20 @@ function getMockDashboardData(): DashboardPageData {
   const alertasFunil: DashboardFunnelAlert[] = [
     {
       detail: `${today}: receita e take rate estaveis na janela recente.`,
+      level: "ok",
       source: "Regras",
       title: "Funil sem alertas críticos",
     },
   ];
+  const criticalFunnelAlerts = alertasFunil.filter(
+    (alert) => alert.level === "alerta"
+  ).length;
 
   return {
     activeAlerts,
     alertasFunil,
     checkoutCards: buildCheckoutCards({
-      alertasFunil: alertasFunil.length,
+      alertasFunil: criticalFunnelAlerts,
       checkoutMonitorado: checkout.checkoutMonitorado,
       taxaPerda: checkout.taxaPerda,
       taxaRecuperacao: checkout.taxaRecuperacao,
