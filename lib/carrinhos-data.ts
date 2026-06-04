@@ -7,8 +7,6 @@ import {
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
   createMockCarrinhos,
-  getCarrinhosFunil,
-  getCarrinhosResumo,
   type Carrinho,
   type CarrinhoEtapa,
   type CarrinhoFunilEtapa,
@@ -26,7 +24,7 @@ const CARRINHOS_SELECT =
   "event_key, transaction_id, cart_id, event_status, event_name, event_group, customer_name, customer_email, customer_phone, customer_doc, product_name, product_group, product_quantity, payment_method, total_price, paid_at, payload, event_at, created_at";
 
 const PAGE_SIZE = 1000;
-const DEFAULT_REAL_EVENT_LIMIT = 10000;
+const DEFAULT_TABLE_EVENT_LIMIT = 1500;
 
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
@@ -387,6 +385,7 @@ function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
   return {
     id: externalId,
     externalCartId: externalId,
+    eventCount: sortedEvents.length,
     customerName: latest.customer_name ?? "Cliente sem nome",
     customerEmail: latest.customer_email,
     customerPhone: latest.customer_phone,
@@ -426,6 +425,80 @@ function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
     timeline: buildTimeline({ externalId, events: sortedEvents, attempts }),
     createdAt: first.event_at,
     lastActivityAt: latest.event_at,
+  };
+}
+
+function compactCarrinhoForTable(carrinho: Carrinho): Carrinho {
+  const latestTimelineEvent = carrinho.timeline.at(-1);
+  const relevantNextStep = carrinho.nextSteps.at(0);
+
+  return {
+    ...carrinho,
+    recoveryAttempts: [],
+    nextSteps: relevantNextStep ? [relevantNextStep] : [],
+    timeline: latestTimelineEvent ? [latestTimelineEvent] : [],
+  };
+}
+
+function buildMetricsFromGroups(groupedEvents: PaytEventRow[][]) {
+  const resumo = groupedEvents.reduce<CarrinhosResumo>(
+    (acc, events) => {
+      const sortedEvents = [...events].sort(
+        (first, second) =>
+          new Date(first.event_at).getTime() - new Date(second.event_at).getTime()
+      );
+      const status = inferStatus(sortedEvents);
+      const potentialValue =
+        sortedEvents.findLast((event) => event.total_price != null)?.total_price ?? 0;
+      const sale = sortedEvents.findLast(isSaleEvent);
+      const recoveredValue =
+        status === "recuperado" ? sale?.total_price ?? potentialValue : 0;
+
+      acc.total += 1;
+      acc.receitaPotencial += potentialValue;
+      acc.receitaRecuperada += recoveredValue;
+
+      if (status === "checkout") acc.checkout += 1;
+      if (status === "em_recuperacao") acc.emRecuperacao += 1;
+      if (status === "abandonado" || status === "em_recuperacao") {
+        acc.abandonados += 1;
+      }
+      if (status === "recuperado") acc.recuperados += 1;
+      if (status === "perdido") acc.perdidos += 1;
+
+      return acc;
+    },
+    {
+      total: 0,
+      checkout: 0,
+      abandonados: 0,
+      emRecuperacao: 0,
+      recuperados: 0,
+      perdidos: 0,
+      receitaPotencial: 0,
+      receitaRecuperada: 0,
+      taxaRecuperacao: 0,
+      ticketMedio: 0,
+    }
+  );
+  const recoveryBase = resumo.abandonados + resumo.recuperados + resumo.perdidos;
+
+  resumo.taxaRecuperacao = recoveryBase > 0 ? resumo.recuperados / recoveryBase : 0;
+  resumo.ticketMedio = resumo.total > 0 ? resumo.receitaPotencial / resumo.total : 0;
+
+  return {
+    resumo,
+    funil: {
+      iniciado: resumo.total,
+      checkout:
+        resumo.checkout +
+        resumo.abandonados +
+        resumo.recuperados +
+        resumo.perdidos,
+      abandonado: resumo.abandonados + resumo.recuperados + resumo.perdidos,
+      recuperado: resumo.recuperados,
+      perdido: resumo.perdidos,
+    } satisfies Record<CarrinhoFunilEtapa, number>,
   };
 }
 
@@ -678,12 +751,13 @@ async function fetchCarrinhosFromPaytEvents({
     ...monitorGroups,
     ...groupedEvents.filter(isLegacyRecoveredGroup),
   ];
-  const metricCarrinhos = metricGroups.map(mapEventsToCarrinho);
+  const metrics = buildMetricsFromGroups(metricGroups);
   const tableGroups = Array.from(groupPaytEvents(tableRows).values()).filter(
     isLegacyMonitorGroup
   );
   const carrinhos = tableGroups
     .map(mapEventsToCarrinho)
+    .map(compactCarrinhoForTable)
     .sort(
       (first, second) =>
         new Date(second.lastActivityAt).getTime() -
@@ -693,10 +767,7 @@ async function fetchCarrinhosFromPaytEvents({
   return {
     carrinhos,
     reachedEventLimit,
-    metrics: {
-      funil: getCarrinhosFunil(metricCarrinhos),
-      resumo: getCarrinhosResumo(metricCarrinhos),
-    },
+    metrics,
   };
 }
 
@@ -740,5 +811,5 @@ export async function getCarrinhosForFrontend(
 }
 
 export function getCarrinhosInitialEventLimit() {
-  return DEFAULT_REAL_EVENT_LIMIT;
+  return DEFAULT_TABLE_EVENT_LIMIT;
 }

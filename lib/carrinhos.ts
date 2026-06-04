@@ -117,6 +117,7 @@ export type CarrinhoNextStep = {
 export type Carrinho = {
   id: string;
   externalCartId: string;
+  eventCount?: number;
   customerName: string;
   customerEmail: string | null;
   customerPhone: string | null;

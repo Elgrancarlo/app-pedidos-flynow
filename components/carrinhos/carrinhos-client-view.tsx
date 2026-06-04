@@ -267,6 +267,10 @@ function formatIdentifier(value: string | null | undefined) {
 }
 
 function getCartEventCount(carrinho: Carrinho) {
+  if (typeof carrinho.eventCount === "number" && carrinho.eventCount > 0) {
+    return carrinho.eventCount;
+  }
+
   return Math.max(carrinho.timeline.length, carrinho.recoveryAttempts.length, 1);
 }
 

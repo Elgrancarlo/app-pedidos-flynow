@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Shell from "@/components/layout/shell";
 import CarrinhosClientView from "@/components/carrinhos/carrinhos-client-view";
 import {
@@ -16,6 +17,7 @@ import {
 } from "@/lib/carrinhos-data";
 import { toAppDateString } from "@/lib/app-dates";
 import { shouldUseMockData } from "@/lib/data-mode";
+import CarrinhosLoading from "./loading";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +79,19 @@ function filterCarrinhosByRange(
   });
 }
 
-export default async function CarrinhosPage({
+export default function CarrinhosPage({
+  searchParams,
+}: {
+  searchParams: CarrinhosSearchParams;
+}) {
+  return (
+    <Suspense fallback={<CarrinhosLoading />}>
+      <CarrinhosDataView searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function CarrinhosDataView({
   searchParams,
 }: {
   searchParams: CarrinhosSearchParams;
