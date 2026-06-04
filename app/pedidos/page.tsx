@@ -6,33 +6,74 @@ import {
   getPedidosContagemPorStatus,
   getPedidosFinanceiroResumo,
   getPedidosValorPago,
+  type Pedido,
 } from "@/lib/pedidos";
 import {
-  getPedidosDatasetRange,
   getPedidosForFrontend,
-  getPedidosInitialRealLimit,
   getPedidosRealInitialMetrics,
 } from "@/lib/pedidos-data";
 import { shouldUseMockData } from "@/lib/data-mode";
 
 export const dynamic = "force-dynamic";
 
-export default async function PedidosPage() {
-  const periodo = getDefaultPedidosRange();
-  const datasetRange = shouldUseMockData() ? getPedidosDatasetRange(30) : periodo;
+type PedidosSearchParams = Promise<{
+  endDate?: string | string[];
+  startDate?: string | string[];
+}>;
+
+function getSingleParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isDateParam(value: string | undefined) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function getPageRange(params: Awaited<PedidosSearchParams>) {
+  const defaults = getDefaultPedidosRange();
+  const startDate = getSingleParam(params.startDate);
+  const endDate = getSingleParam(params.endDate);
+
+  const range = {
+    startDate: isDateParam(startDate) ? startDate! : defaults.startDate,
+    endDate: isDateParam(endDate) ? endDate! : defaults.endDate,
+  };
+
+  return range.startDate <= range.endDate
+    ? range
+    : { startDate: range.endDate, endDate: range.startDate };
+}
+
+function getPedidoPeriodDate(pedido: Pedido) {
+  return (pedido.paidAt ?? pedido.createdAt).slice(0, 10);
+}
+
+function filterPedidosByRange(
+  pedidos: Pedido[],
+  range: { startDate: string; endDate: string }
+) {
+  return pedidos.filter((pedido) => {
+    const date = getPedidoPeriodDate(pedido);
+    return date >= range.startDate && date <= range.endDate;
+  });
+}
+
+export default async function PedidosPage({
+  searchParams,
+}: {
+  searchParams: PedidosSearchParams;
+}) {
+  const periodo = getPageRange(await searchParams);
   const useMockData = shouldUseMockData();
-  const pedidos = useMockData
-    ? createMockPedidos()
-    : await getPedidosForFrontend(datasetRange, {
-        maxRows: getPedidosInitialRealLimit(),
-      });
+  const pedidos = useMockData ? createMockPedidos() : await getPedidosForFrontend(periodo);
+  const metricasPedidos = filterPedidosByRange(pedidos, periodo);
   const metricas = useMockData
     ? {
-        contagem: getPedidosContagemPorStatus(pedidos),
-        financeiro: getPedidosFinanceiroResumo(pedidos),
-        valorPago: getPedidosValorPago(pedidos),
+        contagem: getPedidosContagemPorStatus(metricasPedidos),
+        financeiro: getPedidosFinanceiroResumo(metricasPedidos),
+        valorPago: getPedidosValorPago(metricasPedidos),
       }
-    : await getPedidosRealInitialMetrics(datasetRange, pedidos);
+    : await getPedidosRealInitialMetrics(periodo, pedidos);
 
   return (
     <Shell>

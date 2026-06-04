@@ -31,6 +31,7 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -82,6 +83,17 @@ type PaginationModel = {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+};
+
+type PedidosActionResult = {
+  atualizados?: number;
+  erro?: string;
+  erros?: string[];
+  ignorados?: number;
+  inseridos?: number;
+  ok: boolean;
+  processados?: number;
+  whatsappEnviados?: number;
 };
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
@@ -185,6 +197,22 @@ function normalizePedidoRange(startDate: string, endDate: string) {
 function toDateInput(value: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
+}
+
+function getPedidoPeriodDate(pedido: Pedido) {
+  return toDateInput(pedido.paidAt ?? pedido.createdAt);
+}
+
+function getRangePresetKey(range: { startDate: string; endDate: string }) {
+  const preset = PERIOD_PRESETS.find((option) => {
+    const presetRange = getPresetPedidosRange(option.key);
+    return (
+      presetRange.startDate === range.startDate &&
+      presetRange.endDate === range.endDate
+    );
+  });
+
+  return preset?.key ?? "custom";
 }
 
 function formatDate(value: string | null, options?: Intl.DateTimeFormatOptions) {
@@ -2039,11 +2067,12 @@ export default function PedidosClientView({
   financeiroInicial,
   valorPagoInicial,
 }: PedidosClientViewProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<LoadStatus>("success");
   const refreshTimerRef = useRef<number | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
   const [activeRange, setActiveRange] = useState<PedidoPeriodoPreset | "custom">(
-    "7d"
+    () => getRangePresetKey(periodoInicial)
   );
   const [range, setRange] = useState(periodoInicial);
   const maxSelectableDate = useMemo(() => new Date(), []);
@@ -2060,6 +2089,12 @@ export default function PedidosClientView({
   const [clearedInitialError, setClearedInitialError] = useState(false);
   const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setRange(periodoInicial);
+    setActiveRange(getRangePresetKey(periodoInicial));
+    setStatus("success");
+  }, [periodoInicial.endDate, periodoInicial.startDate]);
 
   useEffect(() => {
     const hasErrorScenario =
@@ -2079,8 +2114,8 @@ export default function PedidosClientView({
 
   const periodPedidos = useMemo(() => {
     return pedidos.filter((pedido) => {
-      const paidDate = toDateInput(pedido.paidAt);
-      return paidDate >= range.startDate && paidDate <= range.endDate;
+      const periodDate = getPedidoPeriodDate(pedido);
+      return periodDate >= range.startDate && periodDate <= range.endDate;
     });
   }, [pedidos, range.endDate, range.startDate]);
 
@@ -2231,6 +2266,15 @@ export default function PedidosClientView({
     }, 760);
   }, []);
 
+  const navigateToRange = useCallback((nextRange: { startDate: string; endDate: string }) => {
+    const params = new URLSearchParams({
+      endDate: nextRange.endDate,
+      startDate: nextRange.startDate,
+    });
+
+    router.push(`/pedidos?${params.toString()}`);
+  }, [router]);
+
   const applyPreset = useCallback((preset: PedidoPeriodoPreset) => {
     const nextRange = getPresetPedidosRange(preset);
     const didChange =
@@ -2240,9 +2284,10 @@ export default function PedidosClientView({
     setActiveRange(preset);
     if (didChange) {
       startDateRefresh();
+      navigateToRange(nextRange);
     }
     setRange(nextRange);
-  }, [range.endDate, range.startDate, startDateRefresh]);
+  }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const selectCalendarRange = useCallback((value: RangeValue | null) => {
     if (!value?.start || !value.end) return;
@@ -2258,27 +2303,69 @@ export default function PedidosClientView({
     setActiveRange("custom");
     if (didChange) {
       startDateRefresh();
+      navigateToRange(normalizedRange);
     }
     setRange(normalizedRange);
-  }, [range.endDate, range.startDate, startDateRefresh]);
+  }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
-  const simulateSync = useCallback(() => {
+  const formatActionResult = useCallback((label: string, result: PedidosActionResult) => {
+    if (!result.ok) {
+      return result.erro ?? result.erros?.[0] ?? `${label} nao foi concluido.`;
+    }
+
+    const details = [
+      result.inseridos != null
+        ? `${result.inseridos.toLocaleString("pt-BR")} importados`
+        : null,
+      result.atualizados != null
+        ? `${result.atualizados.toLocaleString("pt-BR")} atualizados`
+        : null,
+      result.ignorados != null
+        ? `${result.ignorados.toLocaleString("pt-BR")} ignorados`
+        : null,
+      result.whatsappEnviados
+        ? `${result.whatsappEnviados.toLocaleString("pt-BR")} WhatsApp`
+        : null,
+    ].filter(Boolean);
+
+    return details.length > 0
+      ? `${label}: ${details.join(" · ")}.`
+      : `${label} concluido.`;
+  }, []);
+
+  const runPedidosAction = useCallback(async (
+    endpoint: "/api/import-h7" | "/api/sync-h7",
+    label: string
+  ) => {
     setStatus("refreshing");
     setActionNotice(null);
 
-    window.setTimeout(() => {
-      setStatus("success");
-      setActionNotice(
-        "Sincronização simulada: dados locais preservados para futura integração H7."
-      );
-    }, 720);
-  }, []);
+    try {
+      const response = await fetch(endpoint, {
+        body: JSON.stringify(range),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result = (await response.json()) as PedidosActionResult;
 
-  const simulateImport = useCallback(() => {
-    setActionNotice(
-      "Importacao em modo visual: historico pronto para conectar ao endpoint real."
-    );
-  }, []);
+      setActionNotice(formatActionResult(label, result));
+      setStatus("success");
+      if (result.ok) {
+        router.refresh();
+      }
+    } catch {
+      setActionNotice(`${label} falhou por erro de rede.`);
+      setStatus("success");
+    }
+  }, [formatActionResult, range, router]);
+
+  const syncH7 = useCallback(() => {
+    void runPedidosAction("/api/sync-h7", "Sincronizacao H7");
+  }, [runPedidosAction]);
+
+  const importH7 = useCallback(() => {
+    void runPedidosAction("/api/import-h7", "Importacao H7");
+  }, [runPedidosAction]);
 
   const retry = useCallback(() => {
     setClearedInitialError(true);
@@ -2307,8 +2394,8 @@ export default function PedidosClientView({
             maxDate={maxSelectableDate}
             onCalendarChange={selectCalendarRange}
             onPresetSelect={applyPreset}
-            onImport={simulateImport}
-            onSync={simulateSync}
+            onImport={importH7}
+            onSync={syncH7}
           />
         }
       />

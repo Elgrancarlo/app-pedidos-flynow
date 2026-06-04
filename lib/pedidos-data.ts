@@ -2,6 +2,7 @@ import {
   createServiceClient,
   type Pedido as PedidoRow,
 } from "@/lib/supabase";
+import { getFinancialEventMetrics } from "@/lib/financeiro";
 import {
   PEDIDO_LOGISTICS_PIPELINE,
   type Pedido,
@@ -18,11 +19,6 @@ const PEDIDOS_SELECT =
   "id, payt_transaction_id, payt_cart_id, ordem_pedido, cliente_nome, cliente_email, cliente_telefone, cliente_cpf, produto_nome, produto_grupo, qtd_potes, valor_total, forma_pagamento, parcelas, data_pagamento, status, status_pagamento, chargeback, codigo_rastreio, data_entrega, data_prometida_entrega, data_chegou_logistica, nfc_numero, nfc_valor, created_at, updated_at";
 
 const PAGE_SIZE = 1000;
-const DEFAULT_REAL_INITIAL_LIMIT = 1500;
-
-// Frontend contract: the current real-data view is scoped by payment date.
-// Pending-payment rows should be added through the adapter before enabling that UI slice.
-export const PEDIDOS_REAL_DATE_FIELD = "data_pagamento";
 
 type PedidosDataRange = {
   startDate: string;
@@ -38,25 +34,6 @@ export type PedidosRealInitialMetrics = {
   financeiro: PedidoFinanceiroResumo;
   valorPago: number;
 };
-
-function toISODate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(date.getDate() + days);
-  return nextDate;
-}
-
-export function getPedidosDatasetRange(days = 30): PedidosDataRange {
-  const today = new Date();
-
-  return {
-    startDate: toISODate(addDays(today, -days)),
-    endDate: toISODate(today),
-  };
-}
 
 function normalizePaymentStatus(
   status: string | null,
@@ -118,12 +95,29 @@ function emptyStatusCounts(): Record<PedidoStatusLogistico, number> {
   );
 }
 
-function rangeStartTs(range: PedidosDataRange) {
-  return getUtcRangeForAppDates(range.startDate, range.endDate).startTs;
+function getPedidoRangeDate(pedido: Pedido) {
+  return (pedido.paidAt ?? pedido.createdAt).slice(0, 10);
 }
 
-function rangeEndTs(range: PedidosDataRange) {
-  return getUtcRangeForAppDates(range.startDate, range.endDate).endTs;
+function isPedidoInRange(pedido: Pedido, range: PedidosDataRange) {
+  const rangeDate = getPedidoRangeDate(pedido);
+  return rangeDate >= range.startDate && rangeDate <= range.endDate;
+}
+
+function getStatusCountsFromPedidos(pedidos: Pedido[]) {
+  return pedidos.reduce<Record<PedidoStatusLogistico, number>>(
+    (acc, pedido) => {
+      acc[pedido.logisticsStatus] += 1;
+      return acc;
+    },
+    emptyStatusCounts()
+  );
+}
+
+function getPaidValueFromPedidos(pedidos: Pedido[]) {
+  return pedidos
+    .filter((pedido) => pedido.paymentStatus === "paid")
+    .reduce((total, pedido) => total + (pedido.amount ?? 0), 0);
 }
 
 function inferPedidoCanal(row: PedidoRow): PedidoCanal {
@@ -204,18 +198,14 @@ export async function getPedidosForFrontend({
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
-    const to = maxRows == null
-      ? offset + PAGE_SIZE - 1
-      : Math.min(offset + PAGE_SIZE - 1, maxRows - 1);
-
     const { data, error } = await supabase
       .from("pedidos")
       .select(PEDIDOS_SELECT)
-      .gte(PEDIDOS_REAL_DATE_FIELD, startTs)
-      .lte(PEDIDOS_REAL_DATE_FIELD, endTs)
+      .gte("data_pagamento", startTs)
+      .lte("data_pagamento", endTs)
       .order("ordem_pedido", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
-      .range(offset, to);
+      .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) {
       console.error("[pedidos] Erro ao buscar pedidos:", error.message);
@@ -226,7 +216,28 @@ export async function getPedidosForFrontend({
 
     rows.push(...(data as PedidoRow[]));
 
-    if (maxRows != null && rows.length >= maxRows) break;
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .select(PEDIDOS_SELECT)
+      .is("data_pagamento", null)
+      .gte("created_at", startTs)
+      .lte("created_at", endTs)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error("[pedidos] Erro ao buscar pedidos pendentes:", error.message);
+      break;
+    }
+
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as PedidoRow[]));
+
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -237,101 +248,39 @@ export async function getPedidosForFrontend({
       seen.add(row.id);
       return true;
     })
-    .map(mapPedidoRowToPedido);
-}
-
-async function getPedidosContagemReal(
-  range: PedidosDataRange
-): Promise<Record<PedidoStatusLogistico, number>> {
-  const supabase = createServiceClient();
-  const counts = emptyStatusCounts();
-  const { data, error } = await supabase.rpc("contagem_por_status", {
-    p_start: rangeStartTs(range),
-    p_end: rangeEndTs(range),
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  for (const row of data ?? []) {
-    const status = normalizeLogisticsStatus(row.status);
-    counts[status] += Number(row.total ?? 0);
-  }
-
-  return counts;
+    .map(mapPedidoRowToPedido)
+    .sort((left, right) => {
+      const leftTime = new Date(left.paidAt ?? left.createdAt).getTime();
+      const rightTime = new Date(right.paidAt ?? right.createdAt).getTime();
+      return rightTime - leftTime;
+    })
+    .slice(0, maxRows ?? undefined);
 }
 
 async function getPedidosFinanceiroReal(
   range: PedidosDataRange
 ): Promise<PedidoFinanceiroResumo> {
-  const supabase = createServiceClient();
-  const { data, error } = await supabase.rpc("metricas_financeiras", {
-    p_start: rangeStartTs(range),
-    p_end: rangeEndTs(range),
-  });
-
-  if (error) {
-    throw error;
-  }
-
-  return {
-    chargebacks: Number(data?.chargebacks ?? 0),
-    valorChargebacks: Number(data?.valorChargebacks ?? 0),
-    reembolsos: Number(data?.reembolsos ?? 0),
-    valorReembolsos: Number(data?.valorReembolsos ?? 0),
-  };
-}
-
-async function getPedidosValorPagoReal(range: PedidosDataRange) {
-  const supabase = createServiceClient();
-  let valorPago = 0;
-
-  for (let offset = 0; ; offset += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("pedidos")
-      .select("valor_total")
-      .gte(PEDIDOS_REAL_DATE_FIELD, rangeStartTs(range))
-      .lte(PEDIDOS_REAL_DATE_FIELD, rangeEndTs(range))
-      .eq("status_pagamento", "paid")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data || data.length === 0) break;
-
-    valorPago += data.reduce(
-      (sum, row) => sum + Number(row.valor_total ?? 0),
-      0
-    );
-
-    if (data.length < PAGE_SIZE) break;
-  }
-
-  return valorPago;
+  return getFinancialEventMetrics(range.startDate, range.endDate);
 }
 
 export async function getPedidosRealInitialMetrics(
   range: PedidosDataRange,
   fallbackPedidos: Pedido[]
 ): Promise<PedidosRealInitialMetrics> {
+  const periodPedidos = fallbackPedidos.filter((pedido) =>
+    isPedidoInRange(pedido, range)
+  );
+  const contagem = getStatusCountsFromPedidos(periodPedidos);
+  const valorPago = getPaidValueFromPedidos(periodPedidos);
+
   try {
-    const [contagem, financeiro, valorPago] = await Promise.all([
-      getPedidosContagemReal(range),
-      getPedidosFinanceiroReal(range),
-      getPedidosValorPagoReal(range),
-    ]);
+    const financeiro = await getPedidosFinanceiroReal(range);
 
     return { contagem, financeiro, valorPago };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("[pedidos] Erro ao buscar métricas agregadas:", message);
+    console.error("[pedidos] Erro ao buscar métricas financeiras:", message);
 
-    const contagem = emptyStatusCounts();
-    let valorPago = 0;
     const financeiro: PedidoFinanceiroResumo = {
       chargebacks: 0,
       valorChargebacks: 0,
@@ -339,11 +288,7 @@ export async function getPedidosRealInitialMetrics(
       valorReembolsos: 0,
     };
 
-    for (const pedido of fallbackPedidos) {
-      contagem[pedido.logisticsStatus] += 1;
-      if (pedido.paymentStatus === "paid") {
-        valorPago += pedido.amount ?? 0;
-      }
+    for (const pedido of periodPedidos) {
       if (pedido.paymentStatus === "chargeback") {
         financeiro.chargebacks += 1;
         financeiro.valorChargebacks += pedido.amount ?? 0;
@@ -356,8 +301,4 @@ export async function getPedidosRealInitialMetrics(
 
     return { contagem, financeiro, valorPago };
   }
-}
-
-export function getPedidosInitialRealLimit() {
-  return DEFAULT_REAL_INITIAL_LIMIT;
 }
