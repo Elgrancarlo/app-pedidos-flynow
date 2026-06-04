@@ -12,6 +12,7 @@ import {
   type PedidoStatusLogistico,
   type PedidoStatusPagamento,
 } from "@/lib/pedidos";
+import { getUtcRangeForAppDates } from "@/lib/app-dates";
 
 const PEDIDOS_SELECT =
   "id, payt_transaction_id, payt_cart_id, ordem_pedido, cliente_nome, cliente_email, cliente_telefone, cliente_cpf, produto_nome, produto_grupo, qtd_potes, valor_total, forma_pagamento, parcelas, data_pagamento, status, status_pagamento, chargeback, codigo_rastreio, data_entrega, data_prometida_entrega, data_chegou_logistica, nfc_numero, nfc_valor, created_at, updated_at";
@@ -118,11 +119,11 @@ function emptyStatusCounts(): Record<PedidoStatusLogistico, number> {
 }
 
 function rangeStartTs(range: PedidosDataRange) {
-  return `${range.startDate}T00:00:00Z`;
+  return getUtcRangeForAppDates(range.startDate, range.endDate).startTs;
 }
 
 function rangeEndTs(range: PedidosDataRange) {
-  return `${range.endDate}T23:59:59Z`;
+  return getUtcRangeForAppDates(range.startDate, range.endDate).endTs;
 }
 
 function inferPedidoCanal(row: PedidoRow): PedidoCanal {
@@ -200,6 +201,7 @@ export async function getPedidosForFrontend({
   const supabase = createServiceClient();
   const rows: PedidoRow[] = [];
   const maxRows = options.maxRows ?? null;
+  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const to = maxRows == null
@@ -209,8 +211,8 @@ export async function getPedidosForFrontend({
     const { data, error } = await supabase
       .from("pedidos")
       .select(PEDIDOS_SELECT)
-      .gte(PEDIDOS_REAL_DATE_FIELD, `${startDate}T00:00:00Z`)
-      .lte(PEDIDOS_REAL_DATE_FIELD, `${endDate}T23:59:59Z`)
+      .gte(PEDIDOS_REAL_DATE_FIELD, startTs)
+      .lte(PEDIDOS_REAL_DATE_FIELD, endTs)
       .order("ordem_pedido", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .range(offset, to);

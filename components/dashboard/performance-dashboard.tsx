@@ -14,13 +14,7 @@ import {
 } from "recharts";
 import {
   differenceInCalendarDays,
-  endOfDay,
-  endOfMonth,
   format,
-  startOfDay,
-  startOfMonth,
-  subDays,
-  subMonths,
 } from "date-fns";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -30,13 +24,17 @@ import {
 } from "@/components/workspace/system-date-range-filter";
 import { useMetrics } from "@/hooks/useMetrics";
 import {
-  createMockCarrinhos,
   getCarrinhosResumo,
   type Carrinho,
 } from "@/lib/carrinhos";
+import {
+  APP_UTC_OFFSET,
+  getTodayInAppTimezone,
+  shiftDateString,
+} from "@/lib/app-dates";
+import type { DashboardRange } from "@/lib/dashboard-range";
 import type { MetricsData } from "@/lib/metrics";
 import {
-  createMockPedidos,
   getPedidosContagemPorStatus,
   getPedidosFinanceiroResumo,
   getPedidosValorPago,
@@ -95,14 +93,14 @@ type DashboardData = {
   activeAlerts: DashboardAlert[];
   alertasAtivos: number;
   alertasFunil: FunnelAlert[];
-  carrinhos24h: number;
+  carrinhosPeriodo: number;
   checkoutMonitorado: number;
   emTransito: number;
   funnelRows: PedidoFunnelRow[];
-  pedidosHoje: number;
+  pedidosPeriodo: number;
   receitaLiquida: number;
-  reembolsosHojeEventos: number;
-  reembolsosHoje: number;
+  reembolsosPeriodoEventos: number;
+  reembolsosPeriodo: number;
   salesValue: number;
   taxaPerda: number;
   taxaRecuperacao: number;
@@ -124,14 +122,20 @@ type TrendChartTooltipProps = {
   payload?: TrendChartTooltipPayload[];
 };
 
+type PerformanceDashboardProps = {
+  initialCarrinhos: Carrinho[];
+  initialPedidos: Pedido[];
+  initialRange: DashboardRange;
+};
+
 const RANGE_PRESETS: RangePreset[] = [
   {
     key: "today",
     label: "Hoje",
     displayLabel: "Hoje",
     getRange: () => {
-      const today = new Date();
-      return { from: startOfDay(today), to: endOfDay(today) };
+      const today = getTodayInAppTimezone();
+      return rangeFromDateKeyPair(today, today);
     },
   },
   {
@@ -139,8 +143,8 @@ const RANGE_PRESETS: RangePreset[] = [
     label: "7 dias",
     displayLabel: "7D",
     getRange: () => {
-      const today = new Date();
-      return { from: startOfDay(subDays(today, 6)), to: endOfDay(today) };
+      const today = getTodayInAppTimezone();
+      return rangeFromDateKeyPair(shiftDateString(today, -6), today);
     },
   },
   {
@@ -148,8 +152,8 @@ const RANGE_PRESETS: RangePreset[] = [
     label: "30 dias",
     displayLabel: "30D",
     getRange: () => {
-      const today = new Date();
-      return { from: startOfDay(subDays(today, 29)), to: endOfDay(today) };
+      const today = getTodayInAppTimezone();
+      return rangeFromDateKeyPair(shiftDateString(today, -29), today);
     },
   },
   {
@@ -157,8 +161,8 @@ const RANGE_PRESETS: RangePreset[] = [
     label: "Este mês",
     displayLabel: "Este mês",
     getRange: () => {
-      const today = new Date();
-      return { from: startOfMonth(today), to: endOfDay(today) };
+      const today = getTodayInAppTimezone();
+      return rangeFromDateKeyPair(`${today.slice(0, 8)}01`, today);
     },
   },
   {
@@ -166,11 +170,7 @@ const RANGE_PRESETS: RangePreset[] = [
     label: "Mês anterior",
     displayLabel: "Mês anterior",
     getRange: () => {
-      const previousMonth = subMonths(new Date(), 1);
-      return {
-        from: startOfMonth(previousMonth),
-        to: endOfMonth(previousMonth),
-      };
+      return previousMonthRangeFromToday(getTodayInAppTimezone());
     },
   },
 ];
@@ -239,6 +239,33 @@ function formatDateLabel(value: string) {
   });
 }
 
+function rangeDateFromKey(value: string, boundary: "start" | "end") {
+  const time = boundary === "start" ? "00:00:00.000" : "23:59:59.999";
+
+  return new Date(`${value}T${time}${APP_UTC_OFFSET}`);
+}
+
+function rangeFromDateKeys(range: DashboardRange) {
+  return {
+    from: rangeDateFromKey(range.startDate, "start"),
+    to: rangeDateFromKey(range.endDate, "end"),
+  };
+}
+
+function rangeFromDateKeyPair(startDate: string, endDate: string) {
+  return rangeFromDateKeys({ startDate, endDate });
+}
+
+function previousMonthRangeFromToday(today: string) {
+  const thisMonthStart = `${today.slice(0, 8)}01`;
+  const previousMonthEnd = shiftDateString(thisMonthStart, -1);
+
+  return rangeFromDateKeyPair(
+    `${previousMonthEnd.slice(0, 8)}01`,
+    previousMonthEnd
+  );
+}
+
 function getDateFromIso(value: string | null | undefined) {
   if (!value) return null;
   const date = new Date(value);
@@ -288,10 +315,6 @@ function getDelayDays(pedido: Pedido, index: number) {
   return 0;
 }
 
-function getTodaySeriesPoint(data: MetricsData) {
-  return data.serie_temporal.at(-1);
-}
-
 function getAverageTicket(data: MetricsData, pedidos: Pedido[]) {
   const frontend = data.conversoes_etapa.frontend;
   if (frontend.quantidade > 0 && frontend.receita > 0) {
@@ -320,7 +343,7 @@ function buildFunnelAlerts({
   dashboardData,
   data,
 }: {
-  dashboardData: Pick<DashboardData, "pedidosHoje" | "taxaPerda">;
+  dashboardData: Pick<DashboardData, "pedidosPeriodo" | "taxaPerda">;
   data: MetricsData;
 }): FunnelAlert[] {
   const trend = data.serie_temporal;
@@ -339,12 +362,12 @@ function buildFunnelAlerts({
   return [
     {
       title: "Queda de receita no funil",
-      detail: `${latest ? latest.data : format(new Date(), "yyyy-MM-dd")}: receita ficou ${formatPercent(revenueDrop)} abaixo da média dos 3 dias anteriores.`,
+      detail: `${latest ? latest.data : getTodayInAppTimezone()}: receita ficou ${formatPercent(revenueDrop)} abaixo da média dos 3 dias anteriores.`,
       source: "IA",
     },
     {
       title: "Diminuição de vendas diretas",
-      detail: `${latest ? latest.data : format(new Date(), "yyyy-MM-dd")}: ${dashboardData.pedidosHoje} vendas diretas no recorte monitorado.`,
+      detail: `${latest ? latest.data : getTodayInAppTimezone()}: ${dashboardData.pedidosPeriodo} vendas diretas no recorte monitorado.`,
       source: "IA",
     },
     {
@@ -369,29 +392,21 @@ function buildDashboardData({
   const periodPedidos = pedidos.filter((pedido) =>
     isWithinRange(pedido.paidAt ?? pedido.createdAt, range)
   );
-  const todayKey = format(range.to, "yyyy-MM-dd");
-  const todayPedidos = periodPedidos.filter((pedido) => {
-    const paidAt = getDateFromIso(pedido.paidAt ?? pedido.createdAt);
-    return paidAt ? format(paidAt, "yyyy-MM-dd") === todayKey : false;
-  });
   const periodCarrinhos = carrinhos.filter((carrinho) =>
     isWithinRange(carrinho.lastActivityAt ?? carrinho.createdAt, range)
   );
-  const todayCarrinhos = carrinhos.filter((carrinho) => {
-    const activity = getDateFromIso(carrinho.lastActivityAt ?? carrinho.createdAt);
-    return activity ? activity.getTime() >= subDays(new Date(), 1).getTime() : false;
-  });
-  const financeiroHoje = getPedidosFinanceiroResumo(todayPedidos);
+  const financeiroPeriodo = getPedidosFinanceiroResumo(periodPedidos);
   const statusCounts = getPedidosContagemPorStatus(periodPedidos);
   const carrinhosResumo = getCarrinhosResumo(periodCarrinhos);
-  const todaySeriesPoint = getTodaySeriesPoint(data);
   const averageTicket = getAverageTicket(data, periodPedidos);
+  const analyticsDirectSales = data.conversoes_etapa.frontend.quantidade;
   const salesValue =
-    todaySeriesPoint?.faturamento ?? getPedidosValorPago(todayPedidos);
-  const reembolsosHoje = financeiroHoje.valorReembolsos;
-  const receitaLiquida = Math.max(salesValue - reembolsosHoje, 0);
-  const pedidosHoje =
-    todayPedidos.filter((pedido) => pedido.paymentStatus === "paid").length ||
+    data.faturamento_total > 0 ? data.faturamento_total : getPedidosValorPago(periodPedidos);
+  const reembolsosPeriodo = financeiroPeriodo.valorReembolsos;
+  const receitaLiquida = Math.max(salesValue - reembolsosPeriodo, 0);
+  const pedidosPeriodo =
+    analyticsDirectSales ||
+    periodPedidos.filter((pedido) => pedido.paymentStatus === "paid").length ||
     Math.round(salesValue / Math.max(averageTicket, 1));
   const activeAlerts = periodPedidos
     .filter((pedido, index) => {
@@ -426,13 +441,13 @@ function buildDashboardData({
     perdaBase > 0
       ? (carrinhosResumo.abandonados + carrinhosResumo.perdidos) / perdaBase
       : 0;
-  const refundRate = salesValue > 0 ? reembolsosHoje / salesValue : 0;
+  const refundRate = salesValue > 0 ? reembolsosPeriodo / salesValue : 0;
   const financeiroRate =
     data.faturamento_total > 0
       ? Math.max(refundRate, 0.006)
       : 0.006;
   const dashboardDataBase = {
-    pedidosHoje,
+    pedidosPeriodo,
     taxaPerda,
   };
   const funnelRows: PedidoFunnelRow[] = [
@@ -454,14 +469,14 @@ function buildDashboardData({
     activeAlerts,
     alertasAtivos: activeAlerts.length,
     alertasFunil: buildFunnelAlerts({ dashboardData: dashboardDataBase, data }),
-    carrinhos24h: todayCarrinhos.length,
+    carrinhosPeriodo: periodCarrinhos.length,
     checkoutMonitorado,
     emTransito,
     funnelRows,
-    pedidosHoje,
+    pedidosPeriodo,
     receitaLiquida,
-    reembolsosHojeEventos: financeiroHoje.reembolsos,
-    reembolsosHoje,
+    reembolsosPeriodoEventos: financeiroPeriodo.reembolsos,
+    reembolsosPeriodo,
     salesValue,
     taxaPerda,
     taxaRecuperacao: carrinhosResumo.taxaRecuperacao,
@@ -651,32 +666,6 @@ function RefreshErrorNotice({ onRetry }: { onRetry: () => void }) {
         <RefreshCw aria-hidden="true" className="size-3.5" />
         Recarregar
       </button>
-    </div>
-  );
-}
-
-function DataSourceNotice({
-  metricsSource,
-}: {
-  metricsSource: "mock" | "real" | null;
-}) {
-  if (!metricsSource) return null;
-
-  const message =
-    metricsSource === "real"
-      ? "Métricas carregadas do backend; blocos operacionais de pedidos e carrinhos ainda usam mock controlado."
-      : "Modo mock ativo; métricas e blocos operacionais usam dados simulados para revisão visual.";
-
-  return (
-    <div
-      role="status"
-      className="flex items-center gap-2 rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-2 text-[13px] leading-5 text-[var(--fly-brand-strong)] shadow-[var(--fly-panel-inset)]"
-    >
-      <span
-        aria-hidden="true"
-        className="size-1.5 shrink-0 rounded-full bg-[var(--fly-chart-revenue)]"
-      />
-      <span className="min-w-0">{message}</span>
     </div>
   );
 }
@@ -1072,9 +1061,19 @@ function PeriodActions({
   );
 }
 
-export function PerformanceDashboard() {
-  const initialRange = useMemo(() => RANGE_PRESETS[2].getRange(), []);
-  const maxSelectableDate = useMemo(() => endOfDay(new Date()), []);
+export function PerformanceDashboard({
+  initialCarrinhos,
+  initialPedidos,
+  initialRange: initialRangeValue,
+}: PerformanceDashboardProps) {
+  const initialRange = useMemo(
+    () => rangeFromDateKeys(initialRangeValue),
+    [initialRangeValue.endDate, initialRangeValue.startDate]
+  );
+  const maxSelectableDate = useMemo(
+    () => rangeDateFromKey(getTodayInAppTimezone(), "end"),
+    []
+  );
   const initialRangeKey = useMemo(
     () =>
       `${format(initialRange.from, "yyyy-MM-dd")}:${format(
@@ -1083,8 +1082,6 @@ export function PerformanceDashboard() {
       )}`,
     [initialRange]
   );
-  const pedidosMock = useMemo(() => createMockPedidos(), []);
-  const carrinhosMock = useMemo(() => createMockCarrinhos(), []);
   const [activeRange, setActiveRange] = useState("30d");
   const [range, setRange] = useState(initialRange);
   const [calendarValue, setCalendarValue] = useState<RangeValue | null>({
@@ -1100,7 +1097,6 @@ export function PerformanceDashboard() {
     isRefreshing,
     isEmpty,
     retry,
-    source: metricsSource,
   } = useMetrics(range.from, range.to);
   const rangeKey = useMemo(
     () => `${format(range.from, "yyyy-MM-dd")}:${format(range.to, "yyyy-MM-dd")}`,
@@ -1111,13 +1107,13 @@ export function PerformanceDashboard() {
     () =>
       data
         ? buildDashboardData({
-            carrinhos: carrinhosMock,
+            carrinhos: initialCarrinhos,
             data,
-            pedidos: pedidosMock,
+            pedidos: initialPedidos,
             range,
           })
         : null,
-    [carrinhosMock, data, pedidosMock, range]
+    [data, initialCarrinhos, initialPedidos, range]
   );
 
   useEffect(() => {
@@ -1152,7 +1148,7 @@ export function PerformanceDashboard() {
     <>
       <DashboardHeader
         title="Dashboard"
-        description="Métricas do dia atual e sinais operacionais"
+        description="Métricas do período selecionado e sinais operacionais"
         actions={
           <PeriodActions
             activeRange={activeRange}
@@ -1193,8 +1189,6 @@ export function PerformanceDashboard() {
             )}
           >
             {error ? <RefreshErrorNotice onRetry={retry} /> : null}
-            <DataSourceNotice metricsSource={metricsSource} />
-
             <div
               className="flynow-dashboard-enter-item"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
@@ -1202,25 +1196,25 @@ export function PerformanceDashboard() {
               <SectionGroup title="Visão geral">
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <KpiCard
-                    detail={`${formatNumber(dashboardData.pedidosHoje)} pedidos`}
-                    label="Vendas hoje"
+                    detail={`${formatNumber(dashboardData.pedidosPeriodo)} pedidos`}
+                    label="Vendas no período"
                     tone="green"
                     value={formatCurrency(dashboardData.salesValue)}
                   />
                   <KpiCard
-                    detail="vendas do dia menos reversões"
+                    detail="vendas do período menos reversões"
                     label="Receita líquida"
                     tone="green"
                     value={formatCurrency(dashboardData.receitaLiquida)}
                   />
                   <KpiCard
-                    detail={`${formatNumber(dashboardData.reembolsosHojeEventos)} eventos`}
-                    label="Reembolsos hoje"
+                    detail={`${formatNumber(dashboardData.reembolsosPeriodoEventos)} eventos`}
+                    label="Reembolsos no período"
                     tone="red"
-                    value={formatCurrency(dashboardData.reembolsosHoje)}
+                    value={formatCurrency(dashboardData.reembolsosPeriodo)}
                   />
                   <KpiCard
-                    detail="com base nas vendas de hoje"
+                    detail="com base nas vendas do período"
                     label="Taxa de reembolso"
                     tone="gold"
                     value={formatPercent(dashboardData.taxaReembolso)}
@@ -1249,9 +1243,9 @@ export function PerformanceDashboard() {
                   />
                   <KpiCard
                     detail={`${formatNumber(dashboardData.checkoutMonitorado)} monitorados`}
-                    label="Carrinhos (24h)"
+                    label="Carrinhos no período"
                     tone="gold"
-                    value={formatNumber(dashboardData.carrinhos24h)}
+                    value={formatNumber(dashboardData.carrinhosPeriodo)}
                   />
                 </div>
                 <OrdersFunnelCard rows={dashboardData.funnelRows} />

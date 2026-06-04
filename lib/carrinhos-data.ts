@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
+import { getUtcRangeForAppDates } from "@/lib/app-dates";
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
   createMockCarrinhos,
@@ -388,6 +389,7 @@ async function fetchCarrinhosFromPaytEvents({
   const supabase = createServiceClient();
   const rows: PaytEventRow[] = [];
   const maxEvents = options.maxEvents ?? null;
+  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const to = maxEvents == null
@@ -397,8 +399,8 @@ async function fetchCarrinhosFromPaytEvents({
     const { data, error } = await supabase
       .from("payt_event_stream")
       .select(CARRINHOS_SELECT)
-      .gte("event_at", `${startDate}T00:00:00Z`)
-      .lte("event_at", `${endDate}T23:59:59Z`)
+      .gte("event_at", startTs)
+      .lte("event_at", endTs)
       .order("event_at", { ascending: false })
       .range(offset, to);
 
