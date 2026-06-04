@@ -17,17 +17,14 @@ import {
   ChevronRight,
   Columns3,
   Copy,
-  Download,
   Filter,
   Inbox,
   List,
-  Loader2,
-  MoreHorizontal,
   RefreshCw,
   Search,
-  Send,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -195,6 +192,18 @@ function normalizeCarrinhoRange(startDate: string, endDate: string) {
     : { startDate: endDate, endDate: startDate };
 }
 
+function getRangePresetKey(range: { startDate: string; endDate: string }) {
+  const preset = PERIOD_PRESETS.find((option) => {
+    const presetRange = getPresetCarrinhosRange(option.key);
+    return (
+      presetRange.startDate === range.startDate &&
+      presetRange.endDate === range.endDate
+    );
+  });
+
+  return preset?.key ?? "custom";
+}
+
 function toDateInput(value: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
@@ -336,114 +345,24 @@ function StatusBadge({
   );
 }
 
-function HeaderIconButton({
-  children,
-  ariaLabel,
-  title,
-  onClick,
-  variant = "default",
-  disabled,
-}: {
-  children: ReactNode;
-  ariaLabel: string;
-  title: string;
-  onClick?: () => void;
-  variant?: "default" | "brand";
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "inline-flex size-10 shrink-0 items-center justify-center rounded-xl border outline-none transition-colors duration-150 focus-visible:ring-2 sm:size-8 sm:rounded-[10px]",
-        variant === "brand"
-          ? "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] text-[var(--fly-brand-strong)] hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-[var(--fly-brand-ring)]"
-          : "border-[var(--fly-border)] bg-[var(--fly-control)] text-[var(--fly-text-soft)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] hover:text-[var(--fly-text)] focus-visible:ring-[var(--fly-brand-ring)]",
-        disabled && "opacity-60"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 function HeaderActions({
   activeRange,
   calendarValue,
-  isRefreshing,
   maxDate,
   onCalendarChange,
   onPresetSelect,
-  onImport,
-  onSync,
-  onPrepareRecovery,
 }: {
   activeRange: CarrinhoPeriodoPreset | "custom";
   calendarValue: RangeValue | null;
-  isRefreshing: boolean;
   maxDate: Date;
   onCalendarChange: (value: RangeValue | null) => void;
   onPresetSelect: (preset: CarrinhoPeriodoPreset) => void;
-  onImport: () => void;
-  onSync: () => void;
-  onPrepareRecovery: () => void;
 }) {
   return (
     <SystemDateRangeFilter
       activeRange={activeRange}
       ariaLabel="Acoes e periodo dos carrinhos"
       calendarValue={calendarValue}
-      leadingActions={
-        <>
-          <RadixDropdownMenu.Root modal={false}>
-            <RadixDropdownMenu.Trigger asChild>
-              <HeaderIconButton ariaLabel="Abrir acoes" title="Acoes">
-                <MoreHorizontal aria-hidden="true" className="size-3.5" />
-              </HeaderIconButton>
-            </RadixDropdownMenu.Trigger>
-            <RadixDropdownMenu.Portal>
-              <RadixDropdownMenu.Content
-                align="end"
-                sideOffset={8}
-                className="flynow-calendar-popover flynow-offer-select-content z-[80] w-52 rounded-xl border border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)] p-1 text-[var(--fly-text)] shadow-[0_28px_90px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.045),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_36px_rgba(255,255,255,0.035)] backdrop-blur-[28px]"
-              >
-                <RadixDropdownMenu.Item
-                  onSelect={onImport}
-                  className="flex h-9 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 text-xs font-medium text-[var(--fly-text-soft)] outline-none transition-colors duration-150 data-[highlighted]:bg-[var(--fly-control-hover)] data-[highlighted]:text-[var(--fly-text)]"
-                >
-                  <Download aria-hidden="true" className="size-3.5" />
-                  Importar historico
-                </RadixDropdownMenu.Item>
-                <RadixDropdownMenu.Item
-                  onSelect={onPrepareRecovery}
-                  className="flex h-9 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 text-xs font-medium text-[var(--fly-text-soft)] outline-none transition-colors duration-150 data-[highlighted]:bg-[var(--fly-control-hover)] data-[highlighted]:text-[var(--fly-text)]"
-                >
-                  <Send aria-hidden="true" className="size-3.5" />
-                  Preparar recuperacao
-                </RadixDropdownMenu.Item>
-              </RadixDropdownMenu.Content>
-            </RadixDropdownMenu.Portal>
-          </RadixDropdownMenu.Root>
-
-          <HeaderIconButton
-            ariaLabel={isRefreshing ? "Sincronizando H7" : "Sincronizar H7"}
-            title={isRefreshing ? "Sincronizando H7" : "Sincronizar H7"}
-            onClick={onSync}
-            disabled={isRefreshing}
-            variant="brand"
-          >
-            {isRefreshing ? (
-              <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-            ) : (
-              <RefreshCw aria-hidden="true" className="size-3.5" />
-            )}
-          </HeaderIconButton>
-        </>
-      }
       maxDate={maxDate}
       onCalendarChange={onCalendarChange}
       onPresetSelect={(preset) => onPresetSelect(preset.key)}
@@ -1865,11 +1784,12 @@ export default function CarrinhosClientView({
   funilInicial,
   referenceDate,
 }: CarrinhosClientViewProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<LoadStatus>("success");
   const refreshTimerRef = useRef<number | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
   const [activeRange, setActiveRange] = useState<CarrinhoPeriodoPreset | "custom">(
-    "7d"
+    () => getRangePresetKey(periodoInicial)
   );
   const [range, setRange] = useState(periodoInicial);
   const maxSelectableDate = useMemo(() => new Date(), []);
@@ -1888,6 +1808,13 @@ export default function CarrinhosClientView({
   const [clearedInitialError, setClearedInitialError] = useState(false);
   const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
+
+  useEffect(() => {
+    setRange(periodoInicial);
+    setActiveRange(getRangePresetKey(periodoInicial));
+    setStatus("success");
+    setActionNotice(dataWarning ?? null);
+  }, [dataWarning, periodoInicial.endDate, periodoInicial.startDate]);
 
   useEffect(() => {
     const hasErrorScenario =
@@ -2060,6 +1987,15 @@ export default function CarrinhosClientView({
     }, 760);
   }, []);
 
+  const navigateToRange = useCallback((nextRange: { startDate: string; endDate: string }) => {
+    const params = new URLSearchParams({
+      endDate: nextRange.endDate,
+      startDate: nextRange.startDate,
+    });
+
+    router.push(`/carrinhos?${params.toString()}`);
+  }, [router]);
+
   const applyPreset = useCallback((preset: CarrinhoPeriodoPreset) => {
     const nextRange = getPresetCarrinhosRange(preset);
     const didChange =
@@ -2069,9 +2005,10 @@ export default function CarrinhosClientView({
     setActiveRange(preset);
     if (didChange) {
       startDateRefresh();
+      navigateToRange(nextRange);
     }
     setRange(nextRange);
-  }, [range.endDate, range.startDate, startDateRefresh]);
+  }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const selectCalendarRange = useCallback((value: RangeValue | null) => {
     if (!value?.start || !value.end) return;
@@ -2087,33 +2024,10 @@ export default function CarrinhosClientView({
     setActiveRange("custom");
     if (didChange) {
       startDateRefresh();
+      navigateToRange(normalizedRange);
     }
     setRange(normalizedRange);
-  }, [range.endDate, range.startDate, startDateRefresh]);
-
-  const simulateSync = useCallback(() => {
-    setStatus("refreshing");
-    setActionNotice(null);
-
-    window.setTimeout(() => {
-      setStatus("success");
-      setActionNotice(
-        "Sincronização simulada: eventos H7 preservados para futura integração."
-      );
-    }, 720);
-  }, []);
-
-  const simulateImport = useCallback(() => {
-    setActionNotice(
-      "Importacao em modo visual: historico pronto para conectar ao endpoint real."
-    );
-  }, []);
-
-  const prepareRecovery = useCallback(() => {
-    setActionNotice(
-      "Recuperação preparada: próximos passos simulados sem disparar mensagens reais."
-    );
-  }, []);
+  }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const retry = useCallback(() => {
     setClearedInitialError(true);
@@ -2142,13 +2056,9 @@ export default function CarrinhosClientView({
           <HeaderActions
             activeRange={activeRange}
             calendarValue={calendarValue}
-            isRefreshing={isRefreshing}
             maxDate={maxSelectableDate}
             onCalendarChange={selectCalendarRange}
             onPresetSelect={applyPreset}
-            onImport={simulateImport}
-            onSync={simulateSync}
-            onPrepareRecovery={prepareRecovery}
           />
         }
       />

@@ -3,6 +3,8 @@ import { getUtcRangeForAppDates } from "@/lib/app-dates";
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
   createMockCarrinhos,
+  getCarrinhosFunil,
+  getCarrinhosResumo,
   type Carrinho,
   type CarrinhoEtapa,
   type CarrinhoFunilEtapa,
@@ -13,6 +15,7 @@ import {
   type CarrinhoRecoveryStatus,
   type CarrinhoStatus,
   type CarrinhoTimelineEvent,
+  type CarrinhosResumo,
 } from "@/lib/carrinhos";
 
 const CARRINHOS_SELECT =
@@ -54,6 +57,10 @@ type CarrinhosFetchOptions = {
 
 export type CarrinhosFrontendData = {
   carrinhos: Carrinho[];
+  metrics?: {
+    funil: Record<CarrinhoFunilEtapa, number>;
+    resumo: CarrinhosResumo;
+  };
   source: "mock" | "real";
   warning?: string;
 };
@@ -132,8 +139,12 @@ function inferOrigin(payload: Record<string, unknown> | null): CarrinhoOrigem {
 function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
   const latest = events[events.length - 1];
   const statuses = new Set(events.map((event) => event.event_status));
+  const hasSale = statuses.has("paid") || events.some((event) => event.event_group === "sale");
+  const hasPreviousNonPaid = events.some(
+    (event) => event.event_status !== "paid" && event.event_group !== "sale"
+  );
 
-  if (statuses.has("paid") || events.some((event) => event.event_group === "sale")) {
+  if (hasSale && hasPreviousNonPaid) {
     return "recuperado";
   }
 
@@ -142,6 +153,34 @@ function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
   if (latest.event_group === "checkout") return "checkout";
 
   return "ativo";
+}
+
+function getLatestPaytEvent(events: PaytEventRow[]) {
+  return events.reduce((latest, event) => {
+    return new Date(event.event_at).getTime() > new Date(latest.event_at).getTime()
+      ? event
+      : latest;
+  }, events[0]);
+}
+
+function isSaleEvent(event: PaytEventRow) {
+  return event.event_status === "paid" || event.event_group === "sale";
+}
+
+function isLegacyRecoveredGroup(events: PaytEventRow[]) {
+  const latest = getLatestPaytEvent(events);
+  return (
+    isSaleEvent(latest) &&
+    events.some((event) => !isSaleEvent(event))
+  );
+}
+
+function isLegacyMonitorGroup(events: PaytEventRow[]) {
+  const latest = getLatestPaytEvent(events);
+  return (
+    !isSaleEvent(latest) &&
+    ["checkout", "loss", "abandonment"].includes(latest.event_group)
+  );
 }
 
 function getStage(status: CarrinhoStatus): CarrinhoEtapa {
@@ -421,13 +460,28 @@ async function fetchCarrinhosFromPaytEvents({
     return map;
   }, new Map<string, PaytEventRow[]>());
 
-  return Array.from(grouped.values())
+  const groupedEvents = Array.from(grouped.values());
+  const monitorGroups = groupedEvents.filter(isLegacyMonitorGroup);
+  const metricGroups = [
+    ...monitorGroups,
+    ...groupedEvents.filter(isLegacyRecoveredGroup),
+  ];
+  const metricCarrinhos = metricGroups.map(mapEventsToCarrinho);
+  const carrinhos = monitorGroups
     .map(mapEventsToCarrinho)
     .sort(
       (first, second) =>
         new Date(second.lastActivityAt).getTime() -
         new Date(first.lastActivityAt).getTime()
     );
+
+  return {
+    carrinhos,
+    metrics: {
+      funil: getCarrinhosFunil(metricCarrinhos),
+      resumo: getCarrinhosResumo(metricCarrinhos),
+    },
+  };
 }
 
 export async function getCarrinhosForFrontendData(
@@ -436,13 +490,14 @@ export async function getCarrinhosForFrontendData(
 ): Promise<CarrinhosFrontendData> {
   try {
     const maxEvents = options.maxEvents ?? null;
-    const carrinhos = await fetchCarrinhosFromPaytEvents(range, options);
+    const result = await fetchCarrinhosFromPaytEvents(range, options);
 
     return {
-      carrinhos,
+      carrinhos: result.carrinhos,
+      metrics: result.metrics,
       source: "real",
       warning:
-        maxEvents != null && carrinhos.length >= Math.floor(maxEvents * 0.6)
+        maxEvents != null && result.carrinhos.length >= Math.floor(maxEvents * 0.6)
           ? `Exibindo os carrinhos mais recentes do recorte inicial para manter a tela rápida.`
           : undefined,
     };
