@@ -72,14 +72,13 @@ export type DashboardPageData = {
   trend: DashboardTrendPoint[];
 };
 
-type VendasHojeResponse = {
+type PedidosEmTransitoResponse = {
   count?: number | string | null;
   valor?: number | string | null;
 };
 
-type PedidosEmTransitoResponse = {
-  count?: number | string | null;
-  valor?: number | string | null;
+type VendasHojeRow = {
+  valor_total: number | string | null;
 };
 
 type DashboardFunnelRpcRow = {
@@ -324,7 +323,7 @@ function buildCheckoutCards({
 }): DashboardKpi[] {
   return [
     {
-      detail: "eventos PayT monitorados",
+      detail: "checkouts consolidados na janela",
       label: "Checkout monitorado",
       period: "24h",
       tone: "blue",
@@ -378,7 +377,7 @@ function buildMockCheckout(carrinhos: Carrinho[]) {
   return {
     abandonedCount,
     carts24h,
-    checkoutMonitorado: recentCarrinhos.length,
+    checkoutMonitorado: carts24h + recoveredCount,
     openCount,
     taxaPerda,
     taxaRecuperacao,
@@ -392,7 +391,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   const analyticsRange = defaultAnalyticsDates(7);
 
   const [
-    vendasHoje,
+    vendasHojeRows,
     financialMetrics,
     emTransito,
     atrasados,
@@ -401,7 +400,13 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     tendencia,
     funilAnalytics,
   ] = await Promise.all([
-    supabase.rpc("vendas_hoje"),
+    supabase
+      .from("pedidos")
+      .select("valor_total")
+      .eq("status_pagamento", "paid")
+      .not("data_pagamento", "is", null)
+      .gte("data_pagamento", startTs)
+      .lte("data_pagamento", endTs),
     getFinancialEventMetrics(today, today),
     supabase.rpc("pedidos_em_transito"),
     supabase.rpc("pedidos_atrasados"),
@@ -419,15 +424,18 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     ),
   ]);
 
-  if (vendasHoje.error) throw vendasHoje.error;
+  if (vendasHojeRows.error) throw vendasHojeRows.error;
   if (emTransito.error) throw emTransito.error;
   if (atrasados.error) throw atrasados.error;
   if (funilPedidos.error) throw funilPedidos.error;
   if (tendencia.error) throw tendencia.error;
 
-  const sales = vendasHoje.data as VendasHojeResponse | null;
-  const salesCount = numberValue(sales?.count);
-  const salesValue = numberValue(sales?.valor);
+  const salesRows = (vendasHojeRows.data ?? []) as VendasHojeRow[];
+  const salesCount = salesRows.length;
+  const salesValue = salesRows.reduce(
+    (sum, pedido) => sum + numberValue(pedido.valor_total),
+    0
+  );
   const refundValue = financialMetrics.valorReembolsos;
   const chargebackValue = financialMetrics.valorChargebacks;
   const netRevenue = Math.max(salesValue - refundValue - chargebackValue, 0);
@@ -437,7 +445,8 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     checkoutSummary.openCount +
     checkoutSummary.lostCount +
     checkoutSummary.abandonedCount;
-  const checkoutLossBase = carts24h + checkoutSummary.recoveredCount;
+  const checkoutMonitorado = carts24h + checkoutSummary.recoveredCount;
+  const checkoutLossBase = checkoutMonitorado;
   const taxaPerda =
     checkoutLossBase > 0
       ? (checkoutSummary.lostCount + checkoutSummary.abandonedCount) /
@@ -463,7 +472,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     alertasFunil: funnelAlerts,
     checkoutCards: buildCheckoutCards({
       alertasFunil: funnelAlerts.length,
-      checkoutMonitorado: checkout.totalEvents,
+      checkoutMonitorado,
       taxaPerda,
       taxaRecuperacao,
     }),
