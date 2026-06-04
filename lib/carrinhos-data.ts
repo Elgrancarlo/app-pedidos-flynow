@@ -18,6 +18,7 @@ const CARRINHOS_SELECT =
   "event_key, transaction_id, cart_id, event_status, event_name, event_group, customer_name, customer_email, customer_phone, customer_doc, product_name, product_group, product_quantity, payment_method, total_price, paid_at, payload, event_at, created_at";
 
 const PAGE_SIZE = 1000;
+const DEFAULT_REAL_EVENT_LIMIT = 3000;
 
 type PaytEventRow = {
   event_key: string;
@@ -44,6 +45,10 @@ type PaytEventRow = {
 type CarrinhosDataRange = {
   startDate: string;
   endDate: string;
+};
+
+type CarrinhosFetchOptions = {
+  maxEvents?: number;
 };
 
 export type CarrinhosFrontendData = {
@@ -379,24 +384,30 @@ function isMissingEventStream(error: unknown) {
 async function fetchCarrinhosFromPaytEvents({
   startDate,
   endDate,
-}: CarrinhosDataRange) {
+}: CarrinhosDataRange, options: CarrinhosFetchOptions = {}) {
   const supabase = createServiceClient();
   const rows: PaytEventRow[] = [];
+  const maxEvents = options.maxEvents ?? null;
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
+    const to = maxEvents == null
+      ? offset + PAGE_SIZE - 1
+      : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
+
     const { data, error } = await supabase
       .from("payt_event_stream")
       .select(CARRINHOS_SELECT)
       .gte("event_at", `${startDate}T00:00:00Z`)
       .lte("event_at", `${endDate}T23:59:59Z`)
       .order("event_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(offset, to);
 
     if (error) throw error;
     if (!data || data.length === 0) break;
 
     rows.push(...(data as PaytEventRow[]));
 
+    if (maxEvents != null && rows.length >= maxEvents) break;
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -418,12 +429,20 @@ async function fetchCarrinhosFromPaytEvents({
 }
 
 export async function getCarrinhosForFrontendData(
-  range: CarrinhosDataRange
+  range: CarrinhosDataRange,
+  options: CarrinhosFetchOptions = {}
 ): Promise<CarrinhosFrontendData> {
   try {
+    const maxEvents = options.maxEvents ?? null;
+    const carrinhos = await fetchCarrinhosFromPaytEvents(range, options);
+
     return {
-      carrinhos: await fetchCarrinhosFromPaytEvents(range),
+      carrinhos,
       source: "real",
+      warning:
+        maxEvents != null && carrinhos.length >= Math.floor(maxEvents * 0.6)
+          ? `Exibindo os carrinhos mais recentes do recorte inicial para manter a tela rápida.`
+          : undefined,
     };
   } catch (error) {
     if (!isMissingEventStream(error)) {
@@ -445,4 +464,8 @@ export async function getCarrinhosForFrontend(
   const data = await getCarrinhosForFrontendData(range);
 
   return data.carrinhos;
+}
+
+export function getCarrinhosInitialEventLimit() {
+  return DEFAULT_REAL_EVENT_LIMIT;
 }

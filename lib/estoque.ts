@@ -135,6 +135,9 @@ const MOCK_PRODUCTS = [
   { nome: "Derma Bloom Televendas", saldo: 54, baseVendas: 6 },
 ];
 
+const REAL_MOVEMENT_PAGE_SIZE = 1000;
+const REAL_MOVEMENT_ALL_LIMIT = 5000;
+
 function daysForPreset(preset: EstoquePeriodoPreset) {
   return preset === "all" ? null : Number(preset);
 }
@@ -439,17 +442,28 @@ async function getRealGrupos(): Promise<EstoqueGrupo[]> {
   return (data ?? []) as EstoqueGrupo[];
 }
 
-async function getRealMovimentacoes(): Promise<EstoqueMovimentacao[]> {
+async function getRealMovimentacoes(
+  preset: EstoquePeriodoPreset
+): Promise<EstoqueMovimentacao[]> {
   const supabase = createServiceClient();
-  const pageSize = 1000;
+  const since = periodoDesde(preset);
+  const maxRows = since ? null : REAL_MOVEMENT_ALL_LIMIT;
   const result: EstoqueMovimentacao[] = [];
 
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
+  for (let offset = 0; ; offset += REAL_MOVEMENT_PAGE_SIZE) {
+    const to = maxRows == null
+      ? offset + REAL_MOVEMENT_PAGE_SIZE - 1
+      : Math.min(offset + REAL_MOVEMENT_PAGE_SIZE - 1, maxRows - 1);
+    let query = supabase
       .from("estoque_movimentacao")
       .select("id, produto_grupo, tipo, qtd_potes, referencia_pedido_id, observacao, created_at")
-      .order("created_at", { ascending: false })
-      .range(offset, offset + pageSize - 1);
+      .order("created_at", { ascending: false });
+
+    if (since) {
+      query = query.gte("created_at", since);
+    }
+
+    const { data, error } = await query.range(offset, to);
 
     if (error) {
       console.error("[estoque] Erro ao buscar movimentacoes:", error.message);
@@ -459,7 +473,8 @@ async function getRealMovimentacoes(): Promise<EstoqueMovimentacao[]> {
     if (!data || data.length === 0) break;
 
     result.push(...(data as EstoqueMovimentacao[]));
-    if (data.length < pageSize) break;
+    if (maxRows != null && result.length >= maxRows) break;
+    if (data.length < REAL_MOVEMENT_PAGE_SIZE) break;
   }
 
   return result;
@@ -476,7 +491,7 @@ export async function getEstoquePageData(
 
   const [grupos, movimentacoes] = await Promise.all([
     getRealGrupos(),
-    getRealMovimentacoes(),
+    getRealMovimentacoes(preset),
   ]);
 
   return buildEstoqueData({

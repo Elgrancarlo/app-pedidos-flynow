@@ -7,17 +7,35 @@ import {
 import { shouldUseMockData } from "@/lib/data-mode";
 import {
   createMockPedidos,
-  type Pedido,
   type PedidoFormaPagamento,
   type PedidoStatusPagamento,
 } from "@/lib/pedidos";
-import { getPedidosForFrontend } from "@/lib/pedidos-data";
+
+const FINANCEIRO_PEDIDOS_SELECT =
+  "valor_total, forma_pagamento, data_pagamento, status_pagamento, chargeback";
+
+const FINANCEIRO_PAGE_SIZE = 1000;
 
 type FinancialMetrics = {
   chargebacks: number;
   valorChargebacks: number;
   reembolsos: number;
   valorReembolsos: number;
+};
+
+type FinanceiroPedidoSnapshot = {
+  amount: number | null;
+  paidAt: string | null;
+  paymentMethod: PedidoFormaPagamento | null;
+  paymentStatus: PedidoStatusPagamento;
+};
+
+type FinanceiroPedidoRow = {
+  valor_total: number | null;
+  forma_pagamento: string | null;
+  data_pagamento: string | null;
+  status_pagamento: string | null;
+  chargeback: boolean | null;
 };
 
 export type FinanceiroRange = {
@@ -80,6 +98,101 @@ function numberValue(value: unknown) {
     if (Number.isFinite(parsed)) return parsed;
   }
   return 0;
+}
+
+function normalizeFinanceiroPaymentStatus(
+  status: string | null,
+  chargeback: boolean | null
+): PedidoStatusPagamento {
+  const normalized = status?.toLowerCase() ?? "";
+
+  if (chargeback || normalized === "chargeback" || normalized === "charged_back") {
+    return "chargeback";
+  }
+  if (normalized === "paid") return "paid";
+  if (normalized === "refunded" || normalized === "refund_requested") {
+    return "refunded";
+  }
+  if (
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "expired" ||
+    normalized === "refused" ||
+    normalized === "failed"
+  ) {
+    return "cancelled";
+  }
+
+  return "waiting_payment";
+}
+
+function normalizeFinanceiroPaymentMethod(value: string | null): PedidoFormaPagamento | null {
+  const normalized = value?.toLowerCase() ?? "";
+
+  if (!normalized) return null;
+  if (normalized.includes("pix")) return "pix";
+  if (normalized.includes("boleto") || normalized.includes("bank_slip")) return "boleto";
+  if (normalized.includes("card") || normalized.includes("cartao") || normalized.includes("credit")) {
+    return "credit_card";
+  }
+
+  return null;
+}
+
+function mapFinanceiroPedidoRow(row: FinanceiroPedidoRow): FinanceiroPedidoSnapshot {
+  return {
+    amount: row.valor_total,
+    paidAt: row.data_pagamento,
+    paymentMethod: normalizeFinanceiroPaymentMethod(row.forma_pagamento),
+    paymentStatus: normalizeFinanceiroPaymentStatus(
+      row.status_pagamento,
+      row.chargeback
+    ),
+  };
+}
+
+function mapMockPedidoToFinanceiroSnapshot(
+  pedido: ReturnType<typeof createMockPedidos>[number]
+): FinanceiroPedidoSnapshot {
+  return {
+    amount: pedido.amount,
+    paidAt: pedido.paidAt,
+    paymentMethod: pedido.paymentMethod,
+    paymentStatus: pedido.paymentStatus,
+  };
+}
+
+async function getFinanceiroPedidosForFrontend(
+  range: FinanceiroRange
+): Promise<FinanceiroPedidoSnapshot[]> {
+  const supabase = createServiceClient();
+  const { startTs, endTs } = getUtcRangeForAppDates(
+    range.startDate,
+    range.endDate
+  );
+  const rows: FinanceiroPedidoRow[] = [];
+
+  for (let offset = 0; ; offset += FINANCEIRO_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .select(FINANCEIRO_PEDIDOS_SELECT)
+      .gte("data_pagamento", startTs)
+      .lte("data_pagamento", endTs)
+      .order("data_pagamento", { ascending: false })
+      .range(offset, offset + FINANCEIRO_PAGE_SIZE - 1);
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as FinanceiroPedidoRow[]));
+
+    if (data.length < FINANCEIRO_PAGE_SIZE) break;
+  }
+
+  return rows.map(mapFinanceiroPedidoRow);
 }
 
 export async function getFinancialEventMetrics(startDate: string, endDate: string): Promise<FinancialMetrics> {
@@ -149,13 +262,19 @@ function methodLabel(method: FinanceiroPaymentMix["method"]) {
   return "Sem método";
 }
 
-function statusAmount(pedidos: Pedido[], status: PedidoStatusPagamento) {
+function statusAmount(
+  pedidos: FinanceiroPedidoSnapshot[],
+  status: PedidoStatusPagamento
+) {
   return pedidos
     .filter((pedido) => pedido.paymentStatus === status)
     .reduce((total, pedido) => total + (pedido.amount ?? 0), 0);
 }
 
-function buildDailySeries(pedidos: Pedido[], range: FinanceiroRange) {
+function buildDailySeries(
+  pedidos: FinanceiroPedidoSnapshot[],
+  range: FinanceiroRange
+) {
   const series: FinanceiroDailyPoint[] = [];
   for (let day = range.startDate; day <= range.endDate; day = shiftDateString(day, 1)) {
     const dayPedidos = pedidos.filter((pedido) => toDateInput(pedido.paidAt) === day);
@@ -187,7 +306,7 @@ function buildFinanceiroPageData({
   source,
   financialMetrics,
 }: {
-  pedidos: Pedido[];
+  pedidos: FinanceiroPedidoSnapshot[];
   range: FinanceiroRange;
   source: "mock" | "real";
   financialMetrics?: FinancialMetrics;
@@ -295,7 +414,7 @@ export function createMockFinanceiroData(
   const pedidos = createMockPedidos().filter((pedido) => {
     const paidDate = toDateInput(pedido.paidAt);
     return paidDate >= range.startDate && paidDate <= range.endDate;
-  });
+  }).map(mapMockPedidoToFinanceiroSnapshot);
 
   return buildFinanceiroPageData({
     pedidos,
@@ -312,7 +431,7 @@ export async function getFinanceiroPageData(
   }
 
   const [pedidos, financialMetrics] = await Promise.all([
-    getPedidosForFrontend(range),
+    getFinanceiroPedidosForFrontend(range),
     getFinancialEventMetrics(range.startDate, range.endDate),
   ]);
 
