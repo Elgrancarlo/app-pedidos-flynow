@@ -1,6 +1,10 @@
 import { createServiceClient } from "@/lib/supabase";
 import { getUtcRangeForAppDates } from "@/lib/app-dates";
 import {
+  buildPaytEventStreamRow,
+  type PaytPayload,
+} from "@/lib/payt-events";
+import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
   createMockCarrinhos,
   getCarrinhosFunil,
@@ -44,6 +48,11 @@ type PaytEventRow = {
   payload: Record<string, unknown> | null;
   event_at: string;
   created_at: string;
+};
+
+type PaytRawWebhookRow = {
+  payload: PaytPayload;
+  received_at: string | null;
 };
 
 type CarrinhosDataRange = {
@@ -138,13 +147,12 @@ function inferOrigin(payload: Record<string, unknown> | null): CarrinhoOrigem {
 
 function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
   const latest = events[events.length - 1];
-  const statuses = new Set(events.map((event) => event.event_status));
-  const hasSale = statuses.has("paid") || events.some((event) => event.event_group === "sale");
+  const latestIsSale = latest.event_status === "paid" || latest.event_group === "sale";
   const hasPreviousNonPaid = events.some(
     (event) => event.event_status !== "paid" && event.event_group !== "sale"
   );
 
-  if (hasSale && hasPreviousNonPaid) {
+  if (latestIsSale && hasPreviousNonPaid) {
     return "recuperado";
   }
 
@@ -421,6 +429,26 @@ function isMissingEventStream(error: unknown) {
   );
 }
 
+function mapRawWebhookToPaytEventRow(raw: PaytRawWebhookRow): PaytEventRow {
+  const row = buildPaytEventStreamRow(raw.payload);
+  const createdAt = raw.received_at ?? row.event_at;
+
+  return {
+    ...row,
+    created_at: createdAt,
+  };
+}
+
+function safeMapRawWebhookToPaytEventRow(raw: PaytRawWebhookRow) {
+  if (!raw.payload || typeof raw.payload !== "object") return null;
+
+  try {
+    return mapRawWebhookToPaytEventRow(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function fetchCarrinhosFromPaytEvents({
   startDate,
   endDate,
@@ -432,6 +460,8 @@ async function fetchCarrinhosFromPaytEvents({
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
+    if (maxEvents != null && offset >= maxEvents) break;
+
     const to = maxEvents == null
       ? offset + PAGE_SIZE - 1
       : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
@@ -454,6 +484,40 @@ async function fetchCarrinhosFromPaytEvents({
       break;
     }
     if (data.length < PAGE_SIZE) break;
+  }
+
+  if (rows.length === 0) {
+    for (let offset = 0; ; offset += PAGE_SIZE) {
+      if (maxEvents != null && offset >= maxEvents) break;
+
+      const to = maxEvents == null
+        ? offset + PAGE_SIZE - 1
+        : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
+
+      const { data, error } = await supabase
+        .from("payt_webhooks_raw")
+        .select("payload, received_at")
+        .gte("received_at", startTs)
+        .lte("received_at", endTs)
+        .order("received_at", { ascending: false })
+        .range(offset, to);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      const mappedRows = (data as PaytRawWebhookRow[])
+        .map(safeMapRawWebhookToPaytEventRow)
+        .filter((event): event is PaytEventRow => event !== null)
+        .filter((event) => event.event_at >= startTs && event.event_at <= endTs);
+
+      rows.push(...mappedRows);
+
+      if (maxEvents != null && rows.length >= maxEvents) {
+        reachedEventLimit = data.length === PAGE_SIZE;
+        break;
+      }
+      if (data.length < PAGE_SIZE) break;
+    }
   }
 
   const grouped = rows.reduce((map, row) => {
