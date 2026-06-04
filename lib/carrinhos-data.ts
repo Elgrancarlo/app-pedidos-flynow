@@ -24,7 +24,7 @@ const CARRINHOS_SELECT =
   "event_key, transaction_id, cart_id, event_status, event_name, event_group, customer_name, customer_email, customer_phone, customer_doc, product_name, product_group, product_quantity, payment_method, total_price, paid_at, payload, event_at, created_at";
 
 const PAGE_SIZE = 1000;
-const DEFAULT_TABLE_EVENT_LIMIT = 1500;
+const DEFAULT_TABLE_EVENT_LIMIT = 100;
 
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
