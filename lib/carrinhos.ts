@@ -1,3 +1,5 @@
+import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
+
 export type CarrinhoPeriodoPreset = "today" | "7d" | "15d" | "30d" | "month";
 
 export type CarrinhoStatus =
@@ -569,33 +571,32 @@ function buildNextSteps({
 }
 
 export function getDefaultCarrinhosRange() {
-  const today = new Date();
-  const start = addDays(today, -7);
+  const today = getTodayInAppTimezone();
 
   return {
-    startDate: toISODate(start),
-    endDate: toISODate(today),
+    startDate: today,
+    endDate: today,
   };
 }
 
 export function getPresetCarrinhosRange(preset: CarrinhoPeriodoPreset) {
-  const today = new Date();
+  const today = getTodayInAppTimezone();
 
   if (preset === "today") {
-    return { startDate: toISODate(today), endDate: toISODate(today) };
+    return { startDate: today, endDate: today };
   }
 
   if (preset === "month") {
     return {
-      startDate: toISODate(new Date(today.getFullYear(), today.getMonth(), 1)),
-      endDate: toISODate(today),
+      startDate: `${today.slice(0, 8)}01`,
+      endDate: today,
     };
   }
 
   const days = Number(preset.replace("d", ""));
   return {
-    startDate: toISODate(addDays(today, -days)),
-    endDate: toISODate(today),
+    startDate: shiftDateString(today, -(days - 1)),
+    endDate: today,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   getCarrinhosDatasetRange,
   getCarrinhosForFrontendData,
 } from "@/lib/carrinhos-data";
+import { toAppDateString } from "@/lib/app-dates";
 import { shouldUseMockData } from "@/lib/data-mode";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ function getPageRange(params: Awaited<CarrinhosSearchParams>) {
 }
 
 function getCarrinhoPeriodDate(carrinho: Carrinho) {
-  return carrinho.lastActivityAt.slice(0, 10);
+  return toAppDateString(carrinho.lastActivityAt);
 }
 
 function filterCarrinhosByRange(

@@ -9,6 +9,20 @@ export function getTodayInAppTimezone() {
   }).format(new Date());
 }
 
+export function toAppDateString(value: Date | string | null | undefined) {
+  if (!value) return "";
+
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 export function shiftDateString(date: string, days: number) {
   const base = new Date(`${date}T12:00:00Z`);
   base.setUTCDate(base.getUTCDate() + days);

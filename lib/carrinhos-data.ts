@@ -22,7 +22,7 @@ const CARRINHOS_SELECT =
   "event_key, transaction_id, cart_id, event_status, event_name, event_group, customer_name, customer_email, customer_phone, customer_doc, product_name, product_group, product_quantity, payment_method, total_price, paid_at, payload, event_at, created_at";
 
 const PAGE_SIZE = 1000;
-const DEFAULT_REAL_EVENT_LIMIT = 3000;
+const DEFAULT_REAL_EVENT_LIMIT = 10000;
 
 type PaytEventRow = {
   event_key: string;
@@ -428,6 +428,7 @@ async function fetchCarrinhosFromPaytEvents({
   const supabase = createServiceClient();
   const rows: PaytEventRow[] = [];
   const maxEvents = options.maxEvents ?? null;
+  let reachedEventLimit = false;
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
@@ -448,7 +449,10 @@ async function fetchCarrinhosFromPaytEvents({
 
     rows.push(...(data as PaytEventRow[]));
 
-    if (maxEvents != null && rows.length >= maxEvents) break;
+    if (maxEvents != null && rows.length >= maxEvents) {
+      reachedEventLimit = data.length === PAGE_SIZE;
+      break;
+    }
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -477,6 +481,7 @@ async function fetchCarrinhosFromPaytEvents({
 
   return {
     carrinhos,
+    reachedEventLimit,
     metrics: {
       funil: getCarrinhosFunil(metricCarrinhos),
       resumo: getCarrinhosResumo(metricCarrinhos),
@@ -497,8 +502,8 @@ export async function getCarrinhosForFrontendData(
       metrics: result.metrics,
       source: "real",
       warning:
-        maxEvents != null && result.carrinhos.length >= Math.floor(maxEvents * 0.6)
-          ? `Exibindo os carrinhos mais recentes do recorte inicial para manter a tela rápida.`
+        maxEvents != null && result.reachedEventLimit
+          ? `Exibindo os carrinhos a partir dos ${maxEvents.toLocaleString("pt-BR")} eventos mais recentes do recorte para manter a tela rápida.`
           : undefined,
     };
   } catch (error) {

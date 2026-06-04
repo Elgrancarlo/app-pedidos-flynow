@@ -32,6 +32,7 @@ import {
   SystemDateRangeFilter,
   type RangeValue,
 } from "@/components/workspace/system-date-range-filter";
+import { toAppDateString } from "@/lib/app-dates";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import {
   CARRINHO_ETAPA_LABELS,
@@ -205,8 +206,7 @@ function getRangePresetKey(range: { startDate: string; endDate: string }) {
 }
 
 function toDateInput(value: string | null) {
-  if (!value) return "";
-  return value.slice(0, 10);
+  return toAppDateString(value);
 }
 
 function formatDateTime(value: string | null, options?: Intl.DateTimeFormatOptions) {
