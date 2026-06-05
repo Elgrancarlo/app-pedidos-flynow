@@ -32,6 +32,7 @@ import {
   SystemDateRangeFilter,
   type RangeValue,
 } from "@/components/workspace/system-date-range-filter";
+import { SystemSelect } from "@/components/workspace/system-select";
 import { toAppDateString } from "@/lib/app-dates";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import {
@@ -914,18 +915,17 @@ function PaginationControls({
         <span className="hidden text-[var(--fly-text-dim)] sm:inline">/</span>
         <label className="flex items-center gap-2">
           <span>Por pagina</span>
-          <select
-            aria-label="Carrinhos por pagina"
-            value={model.pageSize}
-            onChange={(event) => onPageSizeChange(Number(event.target.value))}
-            className="h-8 rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-2 text-xs font-semibold text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-          >
-            {PAGE_SIZE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+          <SystemSelect
+            ariaLabel="Carrinhos por pagina"
+            value={String(model.pageSize)}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
+            options={PAGE_SIZE_OPTIONS.map((option) => ({
+              label: String(option),
+              value: String(option),
+            }))}
+            triggerClassName="h-8 w-[72px] rounded-[7px] px-2 text-xs font-semibold"
+            contentClassName="min-w-[72px]"
+          />
         </label>
       </div>
 

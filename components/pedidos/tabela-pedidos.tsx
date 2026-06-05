@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ExternalLink } from "lucide-react";
+import { SystemSelect } from "@/components/workspace/system-select";
 import type { Pedido, StatusPedido } from "@/lib/supabase";
 import { STATUS_LABELS, STATUS_COLORS } from "@/lib/supabase";
 
@@ -109,23 +110,23 @@ export default function TabelaPedidos({ pedidos, onDetalhe }: TabelaPedidosProps
           onChange={(e) => setBusca(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <select
+        <SystemSelect
+          ariaLabel="Filtrar pedidos por status"
           value={filtroStatus}
-          onChange={(e) => setFiltroStatus(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {FILTRO_STATUS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
-        </select>
-        <select
+          onValueChange={setFiltroStatus}
+          options={FILTRO_STATUS}
+          triggerClassName="h-9 min-w-[180px] rounded-[8px] text-xs"
+        />
+        <SystemSelect
+          ariaLabel="Filtrar pedidos por produto"
           value={filtroProduto}
-          onChange={(e) => setFiltroProduto(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option value="">Todos os produtos</option>
-          {produtos.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
+          onValueChange={setFiltroProduto}
+          options={[
+            { value: "", label: "Todos os produtos" },
+            ...produtos.map((p) => ({ value: p, label: p })),
+          ]}
+          triggerClassName="h-9 min-w-[180px] rounded-[8px] text-xs"
+        />
         <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
           <input
             type="checkbox"

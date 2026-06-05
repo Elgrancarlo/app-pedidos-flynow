@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { SystemSelect } from "@/components/workspace/system-select";
+
 interface FormEntradaProps {
   grupos: string[];
 }
@@ -17,6 +19,11 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
   const [erro, setErro] = useState("");
 
   const grupoFinal = grupo === "__novo__" ? novoGrupo.trim() : grupo;
+  const grupoOptions = [
+    { value: "", label: "Selecionar produto..." },
+    ...grupos.map((g) => ({ value: g, label: g })),
+    { value: "__novo__", label: "+ Novo produto" },
+  ];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,20 +69,13 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
         <label className="text-xs font-medium text-[var(--fly-text-muted)]">
           Produto
         </label>
-        <select
+        <SystemSelect
+          ariaLabel="Selecionar produto"
           value={grupo}
-          onChange={(e) => setGrupo(e.target.value)}
-          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
-          required
-        >
-          <option value="">Selecionar produto...</option>
-          {grupos.map((g) => (
-            <option key={g} value={g}>
-              {g}
-            </option>
-          ))}
-          <option value="__novo__">+ Novo produto</option>
-        </select>
+          onValueChange={setGrupo}
+          options={grupoOptions}
+          placeholder="Selecionar produto..."
+        />
       </div>
 
       {grupo === "__novo__" && (

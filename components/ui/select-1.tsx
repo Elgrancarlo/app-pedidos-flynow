@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import { Error } from "@/components/ui/error";
 import clsx from "clsx";
+import { SystemSelect } from "@/components/workspace/system-select";
 
 const sizes = [
   {
@@ -69,11 +72,22 @@ export const Select = ({
   error,
   onChange
 }: SelectProps) => {
+  const selectOptions = [
+    ...(placeholder ? [{ value: "", label: placeholder, disabled: true }] : []),
+    ...(options ?? [])
+  ];
+
+  function handleValueChange(nextValue: string) {
+    onChange?.({
+      currentTarget: { value: nextValue },
+      target: { value: nextValue },
+    } as React.ChangeEvent<HTMLSelectElement>);
+  }
+
   return (
     <div>
       {label && (
         <label
-          htmlFor="select"
           className="cursor-text block font-sans text-[13px] text-gray-900 capitalize mb-2"
         >
           {label}
@@ -83,52 +97,23 @@ export const Select = ({
         "relative flex items-center",
         disabled ? "fill-[#8f8f8f]" : "fill-[#666666] dark:fill-[#a1a1a1] hover:fill-[#171717] hover:dark:fill-[#ededed]"
       )}>
-        <style>
-          {`
-          .xsmallIconContainer svg {
-              width: 16px;
-              height: 12px;
-          }
-          .smallIconContainer, .mediumIconContainer, .largeIconContainer svg {
-              width: 16px;
-              height: 16px;
-          }
-        `}
-        </style>
-        <select
-          id="select"
+        <SystemSelect
+          ariaLabel={label ? `Selecionar ${label}` : "Selecionar opção"}
           disabled={disabled}
-          value={value}
-          onChange={onChange}
-          className={clsx(
+          value={value ?? ""}
+          onValueChange={handleValueChange}
+          options={selectOptions}
+          placeholder={placeholder}
+          prefix={prefix}
+          suffix={suffix ? suffix : <ArrowBottom />}
+          triggerClassName={clsx(
             "font-sans appearance-none w-full border rounded-[5px] duration-200 outline-none",
             sizes[prefix ? 1 : 0][size],
             disabled ? "cursor-not-allowed bg-gray-100 text-gray-700" : variant === "default" ? "text-gray-1000 bg-background-100 cursor-pointer" : "bg-transparent text-accents-5",
             error ? "border-error ring-red-900-alpha-160 ring-opacity-100 ring-[3px]" : `ring-gray-alpha-500 ring-opacity-100 focus:ring-[3px] ${variant === "default" ? "border-gray-alpha-400" : "border-transparent ring-none"}`
           )}
-        >
-          {placeholder && <option value="" disabled selected>{placeholder}</option>}
-          {options && options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        {prefix && (
-          <span className={clsx(
-            `inline-flex absolute pointer-events-none duration-150 ${size}IconContainer`,
-            size === "xsmall" ? "left-[5px]" : "left-3"
-          )}>
-            {prefix}
-          </span>
-        )}
-        <span
-          className={clsx(
-            `inline-flex absolute pointer-events-none duration-150 ${size}IconContainer`,
-            size === "xsmall" ? "right-[5px]" : "right-3"
-          )}>
-          {suffix ? suffix : <ArrowBottom />}
-        </span>
+          contentClassName="min-w-[var(--radix-dropdown-menu-trigger-width)]"
+        />
       </div>
       {error && (
         <div className="mt-2">
