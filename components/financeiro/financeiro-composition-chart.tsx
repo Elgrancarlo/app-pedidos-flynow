@@ -99,6 +99,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
   const waterfallData = [
     {
       amount: data.receitaBruta,
+      axisLabel: "Bruta",
       color: "var(--fly-chart-revenue)",
       detail: `${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`,
       displayValue: data.receitaBruta,
@@ -107,6 +108,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: Math.min(data.valorChargebacks, data.receitaBruta),
+      axisLabel: "CB",
       color: "#F87171",
       detail: `${data.chargebacks.toLocaleString("pt-BR")} eventos · taxa CB ${formatPercent(data.taxaChargeback)}`,
       displayValue: -data.valorChargebacks,
@@ -115,6 +117,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: Math.min(data.valorReembolsos, afterChargebacks),
+      axisLabel: "Reemb.",
       color: "#F0C76A",
       detail: `${data.reembolsos.toLocaleString("pt-BR")} eventos`,
       displayValue: -data.valorReembolsos,
@@ -123,6 +126,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: data.receitaLiquida,
+      axisLabel: "Líquida",
       color: "var(--fly-success)",
       detail: `${formatPercent(retainedRatio)} da receita bruta preservada`,
       displayValue: data.receitaLiquida,
@@ -161,7 +165,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
           <BarChart
             barCategoryGap={28}
             data={waterfallData}
-            margin={{ bottom: 4, left: 2, right: 18, top: 24 }}
+            margin={{ bottom: 8, left: 0, right: 12, top: 20 }}
           >
             <CartesianGrid
               stroke="var(--fly-chart-grid)"
@@ -170,8 +174,10 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
             />
             <XAxis
               axisLine={false}
-              dataKey="label"
+              dataKey="axisLabel"
+              height={34}
               interval={0}
+              minTickGap={8}
               tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
               tickLine={false}
             />
@@ -213,6 +219,7 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
                 <Cell fill={item.color} key={item.label} />
               ))}
               <LabelList
+                className="hidden sm:block"
                 dataKey="displayValue"
                 fill="var(--fly-text-soft)"
                 fontSize={11}
