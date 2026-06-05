@@ -4,7 +4,11 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
+  LabelList,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -51,12 +55,12 @@ const toneDotClass: Record<DashboardTone, string> = {
   red: "bg-[var(--fly-danger-strong)]",
 };
 
-const toneBarClass: Record<DashboardTone, string> = {
-  blue: "bg-[var(--fly-chart-investment)]",
-  gold: "bg-[var(--fly-chart-revenue)]",
-  green: "bg-[var(--fly-success)]",
-  neutral: "bg-[var(--fly-text-soft)]",
-  red: "bg-[var(--fly-danger-strong)]",
+const toneChartColor: Record<DashboardTone, string> = {
+  blue: "var(--fly-chart-investment)",
+  gold: "var(--fly-chart-revenue)",
+  green: "var(--fly-success)",
+  neutral: "var(--fly-text-soft)",
+  red: "var(--fly-danger-strong)",
 };
 
 function compactCurrency(value: number) {
@@ -95,6 +99,18 @@ function formatDateLabel(value: string) {
     day: "2-digit",
     month: "2-digit",
   });
+}
+
+function shortFunnelLabel(value: string) {
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes("aguardando")) return "Aguard.";
+  if (normalized.includes("transporte")) return "Transp.";
+  if (normalized.includes("postado")) return "Postado";
+  if (normalized.includes("entregue")) return "Entregue";
+  if (normalized.includes("devolvido")) return "Devolv.";
+
+  return value.length > 10 ? `${value.slice(0, 9)}.` : value;
 }
 
 function getCompactChartTicks(data: DashboardTrendPoint[]) {
@@ -364,6 +380,48 @@ function TrendChartTooltip({
   );
 }
 
+type FunnelChartTooltipPayload = {
+  payload?: DashboardFunnelRow & {
+    shortLabel: string;
+  };
+};
+
+function FunnelChartTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: FunnelChartTooltipPayload[];
+}) {
+  const row = payload?.[0]?.payload;
+
+  if (!active || !row) {
+    return null;
+  }
+
+  return (
+    <div className="flynow-chart-tooltip min-w-[178px] rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-2.5 text-xs shadow-[var(--fly-tooltip-shadow)] backdrop-blur-xl">
+      <p className="text-[11px] font-semibold text-[var(--fly-text)]">
+        {row.label}
+      </p>
+      <div className="mt-2 space-y-1.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[var(--fly-text-muted)]">Pedidos</span>
+          <span className="font-semibold tabular-nums text-[var(--fly-text)]">
+            {formatNumber(row.count)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[var(--fly-text-muted)]">Valor</span>
+          <span className="font-semibold tabular-nums text-[var(--fly-text)]">
+            {compactCurrency(row.amount)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
   const isCompact = useCompactViewport();
   const hasChartData = data.some((item) => item.receita > 0 || item.reembolsos > 0);
@@ -498,11 +556,14 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
 
 function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
-  const max = Math.max(...rows.map((row) => row.count), 1);
+  const chartRows = rows.map((row) => ({
+    ...row,
+    shortLabel: shortFunnelLabel(row.label),
+  }));
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
-      <div className="mb-5">
+    <section className="flex h-full min-w-0 flex-col rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
+      <div className="mb-4">
         <SectionHeader
           title="Funil de pedidos"
           description={`${formatNumber(total)} pedidos pagos no dia`}
@@ -511,30 +572,78 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
       </div>
 
       {rows.length > 0 ? (
-        <div className="space-y-4">
-          {rows.map((row) => (
-            <div
-              key={row.label}
-              className="grid grid-cols-[minmax(112px,0.7fr)_minmax(120px,1fr)_auto] items-center gap-3 text-sm max-sm:grid-cols-1"
+        <div
+          role="img"
+          aria-label="Gráfico de barras do funil de pedidos por status"
+          className="flynow-chart-stage min-h-[248px] flex-1"
+        >
+          <div className="flynow-chart-plot h-full min-w-0">
+            <ResponsiveContainer
+              width="100%"
+              height="100%"
+              minWidth={1}
+              minHeight={220}
+              initialDimension={{ width: 420, height: 280 }}
             >
-              <p className="truncate text-[var(--fly-text-soft)]">{row.label}</p>
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--fly-divider)]">
-                <span
-                  aria-hidden="true"
-                  className={cn("flynow-conversion-bar block h-full rounded-full", toneBarClass[row.tone])}
-                  style={{ width: `${Math.max((row.count / max) * 100, 5)}%` }}
+              <BarChart
+                data={chartRows}
+                margin={{ top: 24, right: 6, bottom: 0, left: 0 }}
+              >
+                <CartesianGrid
+                  stroke="var(--fly-border-subtle)"
+                  strokeDasharray="3 3"
+                  vertical={false}
                 />
-              </div>
-              <div className="flex min-w-[132px] items-center justify-end gap-5 tabular-nums max-sm:justify-between">
-                <span className="font-semibold text-[var(--fly-text)]">
-                  {formatNumber(row.count)}
-                </span>
-                <span className="text-xs text-[var(--fly-text-muted)]">
-                  {compactCurrency(row.amount)}
-                </span>
-              </div>
-            </div>
-          ))}
+                <XAxis
+                  dataKey="shortLabel"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fill: "var(--fly-text-muted)",
+                    fontSize: 11,
+                  }}
+                  interval={0}
+                  minTickGap={8}
+                  tickMargin={10}
+                />
+                <YAxis hide domain={[0, "dataMax"]} />
+                <Tooltip
+                  content={<FunnelChartTooltip />}
+                  cursor={{ fill: "var(--fly-row-bg-strong)" }}
+                  wrapperStyle={{
+                    outline: "none",
+                    pointerEvents: "none",
+                    zIndex: 20,
+                  }}
+                />
+                <Bar
+                  dataKey="count"
+                  maxBarSize={46}
+                  radius={[6, 6, 0, 0]}
+                  animationBegin={160}
+                  animationDuration={760}
+                  animationEasing="ease-out"
+                >
+                  <LabelList
+                    dataKey="count"
+                    position="top"
+                    formatter={(value) =>
+                      typeof value === "number" ? formatNumber(value) : ""
+                    }
+                    fill="var(--fly-text-soft)"
+                    fontSize={11}
+                    fontWeight={600}
+                  />
+                  {chartRows.map((row) => (
+                    <Cell
+                      key={row.label}
+                      fill={toneChartColor[row.tone]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       ) : (
         <EmptyState
