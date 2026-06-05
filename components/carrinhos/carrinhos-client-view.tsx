@@ -1809,7 +1809,6 @@ export default function CarrinhosClientView({
   const [actionNotice, setActionNotice] = useState<string | null>(
     dataWarning ?? null
   );
-  const [clearedInitialError, setClearedInitialError] = useState(false);
   const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
 
@@ -1819,14 +1818,6 @@ export default function CarrinhosClientView({
     setStatus("success");
     setActionNotice(dataWarning ?? null);
   }, [dataWarning, periodoInicial.endDate, periodoInicial.startDate]);
-
-  useEffect(() => {
-    const hasErrorScenario =
-      new URLSearchParams(window.location.search).get("mockCarrinhos") ===
-      "error";
-
-    setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
-  }, [clearedInitialError]);
 
   useEffect(() => {
     return () => {
@@ -2034,7 +2025,6 @@ export default function CarrinhosClientView({
   }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const retry = useCallback(() => {
-    setClearedInitialError(true);
     setStatus("success");
   }, []);
 

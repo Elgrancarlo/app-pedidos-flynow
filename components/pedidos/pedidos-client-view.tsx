@@ -2102,7 +2102,6 @@ export default function PedidosClientView({
   const [page, setPage] = useState(1);
   const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [clearedInitialError, setClearedInitialError] = useState(false);
   const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
 
@@ -2111,14 +2110,6 @@ export default function PedidosClientView({
     setActiveRange(getRangePresetKey(periodoInicial));
     setStatus("success");
   }, [periodoInicial.endDate, periodoInicial.startDate]);
-
-  useEffect(() => {
-    const hasErrorScenario =
-      new URLSearchParams(window.location.search).get("mockPedidos") ===
-      "error";
-
-    setStatus(hasErrorScenario && !clearedInitialError ? "error" : "success");
-  }, [clearedInitialError]);
 
   useEffect(() => {
     return () => {
@@ -2391,7 +2382,6 @@ export default function PedidosClientView({
   }, [runPedidosAction]);
 
   const retry = useCallback(() => {
-    setClearedInitialError(true);
     setStatus("success");
   }, []);
 

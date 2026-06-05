@@ -110,6 +110,8 @@ O sistema agora assume `real` por padrao. Mock so e usado quando `NEXT_PUBLIC_FL
 
 Motivo: evitar que falta de env ou valor invalido esconda erro real exibindo dados simulados.
 
+Atalhos de query string para cenarios mock nas telas operacionais foram removidos para evitar divergencia acidental em modo real.
+
 ## Decisao Geral
 
 Preservar o legado quando ele ja representa bem a operacao. Divergir quando o legado sofre com limite de linhas, lentidao, duplicidade ou arredondamento ruim.
