@@ -93,6 +93,22 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
+function normalizeFunnelLabel(label: string) {
+  return label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isAwaitingShipmentLabel(label: string) {
+  const normalized = normalizeFunnelLabel(label);
+  return normalized.includes("aguard") && normalized.includes("postag");
+}
+
+function isPostedLabel(label: string) {
+  return normalizeFunnelLabel(label) === "postado";
+}
+
 function formatDateLabel(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -541,13 +557,37 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
 
 function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
+  const awaitingShipment =
+    rows.find((row) => isAwaitingShipmentLabel(row.label)) ??
+    ({
+      amount: 0,
+      count: 0,
+      label: "Aguard. Postagem",
+      tone: "gold" as const,
+    } satisfies DashboardFunnelRow);
+  const posted =
+    rows.find((row) => isPostedLabel(row.label)) ??
+    ({
+      amount: 0,
+      count: 0,
+      label: "Postado",
+      tone: "blue" as const,
+    } satisfies DashboardFunnelRow);
+  const priorityRows = [awaitingShipment, posted];
+  const secondaryRows = rows.filter(
+    (row) => !isAwaitingShipmentLabel(row.label) && !isPostedLabel(row.label)
+  );
+  const chartRows = [
+    ...priorityRows.filter((row) => row.count > 0),
+    ...secondaryRows,
+  ];
 
   return (
     <section className="flex h-full min-w-0 flex-col rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
       <div className="mb-4">
         <SectionHeader
           title="Funil de pedidos"
-          description={`${formatNumber(total)} pedidos pagos no dia`}
+          description="Distribuição do dia por status logístico"
           period="Hoje"
         />
       </div>
@@ -577,7 +617,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                   }}
                 />
                 <Pie
-                  data={rows}
+                  data={chartRows}
                   dataKey="count"
                   nameKey="label"
                   cx="50%"
@@ -594,43 +634,70 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                   animationDuration={760}
                   animationEasing="ease-out"
                 >
-                  {rows.map((row) => (
+                  {chartRows.map((row) => (
                     <Cell key={row.label} fill={toneChartColor[row.tone]} />
                   ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="pointer-events-none absolute inset-x-0 bottom-5 text-center">
-              <p className="text-[26px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
-                {formatNumber(total)}
+            <div className="pointer-events-none absolute inset-x-0 bottom-7 text-center">
+              <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+                Total
               </p>
-              <p className="mt-1 text-[11px] font-medium text-[var(--fly-text-muted)]">
-                pedidos no dia
+              <p className="mt-1 text-[14px] font-semibold leading-none tabular-nums text-[var(--fly-text-soft)]">
+                {formatNumber(total)}
               </p>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
-            {rows.map((row) => (
+          <div className="mt-3 grid grid-cols-2 divide-x divide-[var(--fly-divider-subtle)] border-y border-[var(--fly-divider-subtle)]">
+            {priorityRows.map((row) => (
               <div
                 key={row.label}
-                className="flex min-w-0 items-center justify-between gap-3"
+                className="min-w-0 px-3 py-3 first:pl-0 last:pr-0"
               >
-                <span className="inline-flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span
                     aria-hidden="true"
                     className="size-1.5 shrink-0 rounded-full"
                     style={{ backgroundColor: toneChartColor[row.tone] }}
                   />
-                  <span className="truncate text-xs text-[var(--fly-text-muted)]">
+                  <span className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
                     {row.label}
                   </span>
-                </span>
-                <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                </div>
+                <p className="mt-2 text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
                   {formatNumber(row.count)}
-                </span>
+                </p>
+                <p className="mt-1 text-xs tabular-nums text-[var(--fly-text-muted)]">
+                  {compactCurrency(row.amount)}
+                </p>
               </div>
             ))}
           </div>
+          {secondaryRows.length > 0 ? (
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+              {secondaryRows.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex min-w-0 items-center justify-between gap-3"
+                >
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: toneChartColor[row.tone] }}
+                    />
+                    <span className="truncate text-xs text-[var(--fly-text-muted)]">
+                      {row.label}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                    {formatNumber(row.count)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : (
         <EmptyState
