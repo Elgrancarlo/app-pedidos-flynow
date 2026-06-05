@@ -29,13 +29,6 @@ const STATUS_TONES: Record<
   excesso: "blue",
 };
 
-const ESTIMATED_UNIT_PRICES = [
-  { match: "power 66", value: 197 },
-  { match: "derma bloom", value: 189 },
-  { match: "glico reset", value: 167 },
-  { match: "lift prime", value: 147 },
-];
-
 function formatNumber(value: number, maximumFractionDigits = 0) {
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits,
@@ -72,21 +65,16 @@ function coverageLabel(grupo: EstoqueProdutoResumo) {
   return `${grupo.coberturaDias} dias de cobertura`;
 }
 
-function estimatedUnitPrice(nome: string) {
-  const normalizedName = nome.toLowerCase();
-  return (
-    ESTIMATED_UNIT_PRICES.find(({ match }) => normalizedName.includes(match))
-      ?.value ?? 189
-  );
-}
-
-function estimateRevenue(potes: number, nome: string) {
-  return potes * estimatedUnitPrice(nome);
-}
-
 function sumPedidos(grupo: EstoqueProdutoResumo) {
   return grupo.ofertas.reduce(
     (total, oferta) => total + oferta.pedidosPeriodo,
+    0
+  );
+}
+
+function sumReceita(grupo: EstoqueProdutoResumo) {
+  return grupo.ofertas.reduce(
+    (total, oferta) => total + oferta.receitaPeriodo,
     0
   );
 }
@@ -123,7 +111,7 @@ export default function TabelaEstoque({
     <>
       <Panel
         title="Detalhamento por produto"
-        description={`${periodoLabel} · ${grupos.length.toLocaleString("pt-BR")} produtos monitorados · receita e ticket estimados por preço médio operacional`}
+        description={`${periodoLabel} · ${grupos.length.toLocaleString("pt-BR")} produtos monitorados · ofertas e receita por pedidos pagos no período`}
         action={
           grupoSelecionado ? (
             <button
@@ -145,7 +133,9 @@ export default function TabelaEstoque({
                 <th className="w-[36%] px-3 py-3">Produto</th>
                 <th className="w-[11%] px-3 py-3 text-right">Vendas</th>
                 <th className="w-[9%] px-3 py-3 text-right">Potes</th>
-                <th className="w-[15%] px-3 py-3 text-right">Receita bruta</th>
+                <th className="w-[15%] px-3 py-3 text-right">
+                  Receita pedidos
+                </th>
                 <th className="w-[10%] px-3 py-3 text-right">Potes/venda</th>
                 <th className="w-[11%] px-3 py-3 text-right">Ticket m.</th>
                 <th className="w-[8%] px-3 py-3 text-right">Conv.</th>
@@ -166,12 +156,9 @@ export default function TabelaEstoque({
                   const isSelected = grupoSelecionado === grupo.nome_grupo;
                   const expansionId = `estoque-ofertas-${grupo.id}`;
                   const pedidosPeriodo = sumPedidos(grupo);
-                  const receitaBruta = estimateRevenue(
-                    grupo.vendasPeriodo,
-                    grupo.nome_grupo
-                  );
+                  const receitaPedidos = sumReceita(grupo);
                   const ticketMedio =
-                    pedidosPeriodo > 0 ? receitaBruta / pedidosPeriodo : 0;
+                    pedidosPeriodo > 0 ? receitaPedidos / pedidosPeriodo : 0;
                   const potesPorVenda = averagePotesPerSale(
                     grupo.vendasPeriodo,
                     pedidosPeriodo
@@ -232,7 +219,9 @@ export default function TabelaEstoque({
                               </div>
                               <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--fly-text-muted)]">
                                 <span className="shrink-0">
-                                  {grupo.ofertas.length} variantes
+                                  {grupo.ofertas.length === 1
+                                    ? "1 oferta vendida"
+                                    : `${grupo.ofertas.length} ofertas vendidas`}
                                 </span>
                                 <span aria-hidden="true">·</span>
                                 <span
@@ -276,7 +265,7 @@ export default function TabelaEstoque({
                           {formatNumber(grupo.vendasPeriodo)}
                         </td>
                         <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
-                          {formatCurrency(receitaBruta)}
+                          {formatCurrency(receitaPedidos)}
                         </td>
                         <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-brand-strong)]">
                           {formatNumber(potesPorVenda, 1)}
@@ -305,72 +294,86 @@ export default function TabelaEstoque({
                             <div className="overflow-hidden">
                               <table className="w-full table-fixed text-left text-sm">
                                 <tbody>
-                                  {grupo.ofertas.map((oferta, ofertaIndex) => {
-                                    const receitaOferta = estimateRevenue(
-                                      oferta.potesVendidosPeriodo,
-                                      grupo.nome_grupo
-                                    );
-                                    const ticketOferta =
-                                      oferta.pedidosPeriodo > 0
-                                        ? receitaOferta / oferta.pedidosPeriodo
-                                        : 0;
-
-                                    return (
-                                      <tr
-                                        key={oferta.id}
-                                        className={cn(
-                                          "border-t border-[var(--fly-divider-subtle)] transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
-                                          ofertaIndex === 0 && "border-t-0"
-                                        )}
+                                  {grupo.ofertas.length === 0 ? (
+                                    <tr className="border-t border-[var(--fly-divider-subtle)]">
+                                      <td
+                                        colSpan={7}
+                                        className="px-3 py-6 text-center text-sm text-[var(--fly-text-muted)]"
                                       >
-                                        <td className="w-[36%] px-3 py-3 align-middle">
-                                          <div
-                                            className={cn(
-                                              "ml-9 min-w-0 border-l border-[var(--fly-divider)] pl-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
-                                              isSelected
-                                                ? "translate-y-0 opacity-100"
-                                                : "-translate-y-1 opacity-0"
+                                        Nenhuma oferta paga encontrada para este produto no período.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    grupo.ofertas.map((oferta, ofertaIndex) => {
+                                      const ticketOferta =
+                                        oferta.pedidosPeriodo > 0
+                                          ? oferta.receitaPeriodo /
+                                            oferta.pedidosPeriodo
+                                          : 0;
+
+                                      return (
+                                        <tr
+                                          key={oferta.id}
+                                          className={cn(
+                                            "border-t border-[var(--fly-divider-subtle)] transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                                            ofertaIndex === 0 && "border-t-0"
+                                          )}
+                                        >
+                                          <td className="w-[36%] px-3 py-3 align-middle">
+                                            <div
+                                              className={cn(
+                                                "ml-9 min-w-0 border-l border-[var(--fly-divider)] pl-4 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+                                                isSelected
+                                                  ? "translate-y-0 opacity-100"
+                                                  : "-translate-y-1 opacity-0"
+                                              )}
+                                            >
+                                              <span className="block truncate font-medium text-[var(--fly-text-soft)]">
+                                                {oferta.nome}
+                                              </span>
+                                              <span className="mt-1 block truncate text-xs text-[var(--fly-text-muted)]">
+                                                {oferta.canal} · Última venda{" "}
+                                                {oferta.ultimaVenda
+                                                  ? formatDate(
+                                                      oferta.ultimaVenda
+                                                    )
+                                                  : "-"}
+                                              </span>
+                                            </div>
+                                          </td>
+                                          <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                            {formatNumber(
+                                              oferta.pedidosPeriodo
                                             )}
-                                          >
-                                            <span className="block truncate font-medium text-[var(--fly-text-soft)]">
-                                              {oferta.nome}
-                                            </span>
-                                            <span className="mt-1 block truncate text-xs text-[var(--fly-text-muted)]">
-                                              {oferta.canal} · Última venda{" "}
-                                              {oferta.ultimaVenda
-                                                ? formatDate(oferta.ultimaVenda)
-                                                : "-"}
-                                            </span>
-                                          </div>
-                                        </td>
-                                        <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                          {formatNumber(oferta.pedidosPeriodo)}
-                                        </td>
-                                        <td className="w-[9%] px-3 py-3 text-right font-semibold tabular-nums text-[var(--fly-success)]">
-                                          {formatNumber(
-                                            oferta.potesVendidosPeriodo
-                                          )}
-                                        </td>
-                                        <td className="w-[15%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                          {formatCurrency(receitaOferta)}
-                                        </td>
-                                        <td className="w-[10%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
-                                          {formatNumber(
-                                            oferta.potesPorPedido,
-                                            1
-                                          )}
-                                        </td>
-                                        <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
-                                          {formatCurrency(ticketOferta)}
-                                        </td>
-                                        <td className="w-[8%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
-                                          {formatPercent(
-                                            oferta.participacaoPeriodo
-                                          )}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
+                                          </td>
+                                          <td className="w-[9%] px-3 py-3 text-right font-semibold tabular-nums text-[var(--fly-success)]">
+                                            {formatNumber(
+                                              oferta.potesVendidosPeriodo
+                                            )}
+                                          </td>
+                                          <td className="w-[15%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                            {formatCurrency(
+                                              oferta.receitaPeriodo
+                                            )}
+                                          </td>
+                                          <td className="w-[10%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
+                                            {formatNumber(
+                                              oferta.potesPorPedido,
+                                              1
+                                            )}
+                                          </td>
+                                          <td className="w-[11%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-soft)]">
+                                            {formatCurrency(ticketOferta)}
+                                          </td>
+                                          <td className="w-[8%] px-3 py-3 text-right tabular-nums text-[var(--fly-text-muted)]">
+                                            {formatPercent(
+                                              oferta.participacaoPeriodo
+                                            )}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })
+                                  )}
                                 </tbody>
                               </table>
                             </div>

@@ -1,9 +1,11 @@
 import { createServiceClient } from "@/lib/supabase";
 import {
   getTodayInAppTimezone,
+  getUtcRangeForAppDates,
   shiftDateString,
 } from "@/lib/app-dates";
 import { shouldUseMockData } from "@/lib/data-mode";
+import { inferirGrupo } from "@/lib/produtos";
 import type { EstoqueGrupo, EstoqueMovimentacao } from "@/lib/supabase";
 
 type StockMovementParams = {
@@ -26,6 +28,7 @@ export type EstoqueProdutoOferta = {
   pedidosPeriodo: number;
   potesPorPedido: number;
   potesVendidosPeriodo: number;
+  receitaPeriodo: number;
   participacaoPeriodo: number;
   ultimaVenda: string | null;
 };
@@ -136,7 +139,28 @@ const MOCK_PRODUCTS = [
 ];
 
 const REAL_MOVEMENT_PAGE_SIZE = 1000;
-const REAL_MOVEMENT_ALL_LIMIT = 5000;
+const REAL_ORDER_PAGE_SIZE = 1000;
+
+type EstoquePedidoOfertaRow = {
+  id: string;
+  produto_nome: string | null;
+  produto_grupo: string | null;
+  qtd_potes: number | null;
+  valor_total: number | null;
+  data_pagamento: string | null;
+  status_pagamento: string | null;
+  chargeback: boolean | null;
+};
+
+type EstoquePedidoOfertaSnapshot = {
+  id: string;
+  produtoGrupo: string;
+  nome: string;
+  canal: string;
+  qtdPotes: number;
+  receita: number;
+  paidAt: string | null;
+};
 
 function daysForPreset(preset: EstoquePeriodoPreset) {
   return preset === "all" ? null : Number(preset);
@@ -151,7 +175,9 @@ function periodoDesde(preset: EstoquePeriodoPreset) {
   const days = daysForPreset(preset);
   if (!days) return null;
 
-  return `${shiftDateString(getTodayInAppTimezone(), -(days - 1))}T00:00:00.000Z`;
+  const endDate = getTodayInAppTimezone();
+  const startDate = shiftDateString(endDate, -(days - 1));
+  return getUtcRangeForAppDates(startDate, endDate).startTs;
 }
 
 function normalizePreset(value?: string | null): EstoquePeriodoPreset {
@@ -160,10 +186,10 @@ function normalizePreset(value?: string | null): EstoquePeriodoPreset {
   }
 
   if (value === "all" || value === "" || value == null) {
-    return value === "all" ? "all" : "30";
+    return "all";
   }
 
-  return "30";
+  return "all";
 }
 
 function buildPeriodo(preset: EstoquePeriodoPreset) {
@@ -178,6 +204,140 @@ function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(date.getDate() + days);
   return next;
+}
+
+function numberValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function normalizeGroup(...candidates: Array<string | null | undefined>) {
+  const inferred = inferirGrupo(...candidates);
+  if (inferred) return inferred;
+
+  const fallback = candidates.find((value) => value?.trim());
+  return fallback?.trim() ?? "Produto sem grupo";
+}
+
+function observationContains(
+  item: Pick<EstoqueMovimentacao, "observacao">,
+  ...fragments: string[]
+) {
+  const observation = item.observacao?.toLocaleLowerCase("pt-BR") ?? "";
+  return fragments.some((fragment) => observation.includes(fragment));
+}
+
+function isManualAdjustment(item: Pick<EstoqueMovimentacao, "observacao">) {
+  return observationContains(item, "ajuste manual");
+}
+
+function isAutomaticRestock(item: Pick<EstoqueMovimentacao, "observacao">) {
+  return observationContains(
+    item,
+    "estorno automatico",
+    "estorno automático"
+  );
+}
+
+function isOperationalMovement(item: EstoqueMovimentacao) {
+  return !isManualAdjustment(item) && !isAutomaticRestock(item);
+}
+
+function normalizeMovement(item: EstoqueMovimentacao): EstoqueMovimentacao {
+  return {
+    ...item,
+    produto_grupo: normalizeGroup(item.produto_grupo),
+  };
+}
+
+function aggregateGroups(grupos: EstoqueGrupo[]) {
+  const grouped = new Map<string, EstoqueGrupo>();
+
+  for (const grupo of grupos) {
+    const nomeGrupo = normalizeGroup(grupo.nome_grupo);
+    const current = grouped.get(nomeGrupo);
+
+    if (current) {
+      current.estoque_atual += numberValue(grupo.estoque_atual);
+      if (grupo.updated_at > current.updated_at) {
+        current.updated_at = grupo.updated_at;
+      }
+      continue;
+    }
+
+    grouped.set(nomeGrupo, {
+      ...grupo,
+      nome_grupo: nomeGrupo,
+      estoque_atual: numberValue(grupo.estoque_atual),
+    });
+  }
+
+  return Array.from(grouped.values()).sort((left, right) =>
+    left.nome_grupo.localeCompare(right.nome_grupo)
+  );
+}
+
+function inferOfferChannel(productName: string) {
+  const normalized = productName.toLowerCase();
+
+  if (normalized.includes("televendas") || normalized.includes("call center")) {
+    return "Call Center";
+  }
+  if (normalized.includes("whatsapp") || normalized.includes("recuper")) {
+    return "WhatsApp";
+  }
+  if (
+    normalized.includes("upsell") ||
+    normalized.includes("downsell") ||
+    /\bus\s*[12]\b/.test(normalized) ||
+    /\bup\s*[12]\b/.test(normalized)
+  ) {
+    return "Upsell";
+  }
+
+  return "Front";
+}
+
+function normalizePedidoOfertaRow(
+  row: EstoquePedidoOfertaRow
+): EstoquePedidoOfertaSnapshot | null {
+  if (row.status_pagamento !== "paid" || row.chargeback === true) return null;
+
+  const nome = (row.produto_nome ?? row.produto_grupo ?? "").trim();
+  const produtoGrupo = normalizeGroup(row.produto_nome, row.produto_grupo);
+  const displayName = nome || produtoGrupo;
+
+  return {
+    id: row.id,
+    produtoGrupo,
+    nome: displayName,
+    canal: inferOfferChannel(displayName),
+    qtdPotes: numberValue(row.qtd_potes),
+    receita: numberValue(row.valor_total),
+    paidAt: row.data_pagamento,
+  };
+}
+
+function inferPeriodDays(
+  preset: EstoquePeriodoPreset,
+  movimentacoesPeriodo: EstoqueMovimentacao[]
+) {
+  const presetDays = daysForPreset(preset);
+  if (presetDays) return presetDays;
+
+  const timestamps = movimentacoesPeriodo
+    .map((item) => new Date(item.created_at).getTime())
+    .filter(Number.isFinite);
+
+  if (timestamps.length === 0) return 0;
+
+  const oldest = Math.min(...timestamps);
+  const newest = Math.max(...timestamps, new Date().getTime());
+  return Math.max(1, Math.ceil((newest - oldest) / 86_400_000));
 }
 
 function buildMockMovimentacoes(): EstoqueMovimentacao[] {
@@ -227,13 +387,6 @@ function buildMockMovimentacoes(): EstoqueMovimentacao[] {
   );
 }
 
-const OFFER_TEMPLATES = [
-  { label: "Kit principal", canal: "Front", potesPorPedido: 3, share: 0.46 },
-  { label: "Kit promocional", canal: "Front", potesPorPedido: 5, share: 0.24 },
-  { label: "Televendas", canal: "Call Center", potesPorPedido: 3, share: 0.2 },
-  { label: "Recuperacao", canal: "WhatsApp", potesPorPedido: 1, share: 0.1 },
-] as const;
-
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -243,54 +396,76 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-function latestSaleDate(movimentacoes: EstoqueMovimentacao[]) {
-  const latest = movimentacoes
-    .filter((item) => item.tipo === "venda")
+function buildOfertasProduto(
+  produtoGrupo: string,
+  pedidosPeriodo: EstoquePedidoOfertaSnapshot[]
+): EstoqueProdutoOferta[] {
+  const grouped = new Map<
+    string,
+    {
+      nome: string;
+      canal: string;
+      pedidosPeriodo: number;
+      potesVendidosPeriodo: number;
+      receitaPeriodo: number;
+      ultimaVenda: string | null;
+    }
+  >();
+
+  for (const pedido of pedidosPeriodo) {
+    if (pedido.produtoGrupo !== produtoGrupo) continue;
+
+    const key = pedido.nome || pedido.produtoGrupo;
+    const current = grouped.get(key) ?? {
+      nome: key,
+      canal: pedido.canal,
+      pedidosPeriodo: 0,
+      potesVendidosPeriodo: 0,
+      receitaPeriodo: 0,
+      ultimaVenda: null,
+    };
+
+    current.pedidosPeriodo += 1;
+    current.potesVendidosPeriodo += pedido.qtdPotes;
+    current.receitaPeriodo += pedido.receita;
+    if (
+      pedido.paidAt &&
+      (!current.ultimaVenda || pedido.paidAt > current.ultimaVenda)
+    ) {
+      current.ultimaVenda = pedido.paidAt;
+    }
+
+    grouped.set(key, current);
+  }
+
+  const totalPotes = Array.from(grouped.values()).reduce(
+    (total, oferta) => total + oferta.potesVendidosPeriodo,
+    0
+  );
+
+  return Array.from(grouped.values())
+    .map((oferta) => ({
+      id: `${slugify(produtoGrupo)}-${slugify(oferta.nome)}`,
+      produtoGrupo,
+      nome: oferta.nome,
+      canal: oferta.canal,
+      pedidosPeriodo: oferta.pedidosPeriodo,
+      potesPorPedido:
+        oferta.pedidosPeriodo > 0
+          ? oferta.potesVendidosPeriodo / oferta.pedidosPeriodo
+          : 0,
+      potesVendidosPeriodo: oferta.potesVendidosPeriodo,
+      receitaPeriodo: oferta.receitaPeriodo,
+      participacaoPeriodo:
+        totalPotes > 0 ? oferta.potesVendidosPeriodo / totalPotes : 0,
+      ultimaVenda: oferta.ultimaVenda,
+    }))
     .sort(
       (first, second) =>
-        new Date(second.created_at).getTime() -
-        new Date(first.created_at).getTime()
-    )[0];
-
-  return latest?.created_at ?? null;
-}
-
-function buildOfertasProduto({
-  produtoGrupo,
-  vendasPeriodo,
-  movimentacoesPeriodo,
-}: {
-  produtoGrupo: string;
-  vendasPeriodo: number;
-  movimentacoesPeriodo: EstoqueMovimentacao[];
-}): EstoqueProdutoOferta[] {
-  const latest = latestSaleDate(movimentacoesPeriodo);
-  let allocatedPotes = 0;
-
-  return OFFER_TEMPLATES.map((template, index) => {
-    const isLast = index === OFFER_TEMPLATES.length - 1;
-    const potesVendidosPeriodo = isLast
-      ? Math.max(0, vendasPeriodo - allocatedPotes)
-      : Math.round(vendasPeriodo * template.share);
-
-    allocatedPotes += potesVendidosPeriodo;
-
-    return {
-      id: `${slugify(produtoGrupo)}-${slugify(template.label)}`,
-      produtoGrupo,
-      nome: `${produtoGrupo} · ${template.label}`,
-      canal: template.canal,
-      pedidosPeriodo:
-        potesVendidosPeriodo > 0
-          ? Math.max(1, Math.round(potesVendidosPeriodo / template.potesPorPedido))
-          : 0,
-      potesPorPedido: template.potesPorPedido,
-      potesVendidosPeriodo,
-      participacaoPeriodo:
-        vendasPeriodo > 0 ? potesVendidosPeriodo / vendasPeriodo : 0,
-      ultimaVenda: potesVendidosPeriodo > 0 ? latest : null,
-    };
-  });
+        second.potesVendidosPeriodo - first.potesVendidosPeriodo ||
+        second.pedidosPeriodo - first.pedidosPeriodo ||
+        first.nome.localeCompare(second.nome)
+    );
 }
 
 function getStatusOperacional(
@@ -309,20 +484,27 @@ function getStatusOperacional(
 function buildEstoqueData({
   grupos,
   movimentacoes,
+  pedidosOfertas,
   preset,
   source,
 }: {
   grupos: EstoqueGrupo[];
   movimentacoes: EstoqueMovimentacao[];
+  pedidosOfertas: EstoquePedidoOfertaSnapshot[];
   preset: EstoquePeriodoPreset;
   source: "mock" | "real";
 }): EstoquePageData {
   const periodo = buildPeriodo(preset);
+  const gruposAgregados = aggregateGroups(grupos);
+  const movimentacoesNormalizadas = movimentacoes.map(normalizeMovement);
   const movimentacoesPeriodo = periodo.desde
-    ? movimentacoes.filter((item) => item.created_at >= periodo.desde!)
-    : movimentacoes;
+    ? movimentacoesNormalizadas.filter((item) => item.created_at >= periodo.desde!)
+    : movimentacoesNormalizadas;
+  const movimentacoesOperacionais = movimentacoesPeriodo.filter(
+    isOperationalMovement
+  );
 
-  const totals = movimentacoesPeriodo.reduce(
+  const totals = movimentacoesOperacionais.reduce(
     (acc, item) => {
       const current = acc.byGroup.get(item.produto_grupo) ?? {
         entradas: 0,
@@ -347,8 +529,8 @@ function buildEstoqueData({
     }
   );
 
-  const days = daysForPreset(preset) ?? 90;
-  const gruposResumo = grupos
+  const days = inferPeriodDays(preset, movimentacoesOperacionais);
+  const gruposResumo = gruposAgregados
     .map((grupo) => {
       const groupTotals = totals.byGroup.get(grupo.nome_grupo) ?? {
         entradas: 0,
@@ -358,9 +540,6 @@ function buildEstoqueData({
         groupTotals.vendas > 0 && days > 0 ? groupTotals.vendas / days : 0;
       const coberturaDias =
         giroPeriodo > 0 ? Math.round(grupo.estoque_atual / giroPeriodo) : null;
-      const movimentacoesDoGrupo = movimentacoesPeriodo.filter(
-        (item) => item.produto_grupo === grupo.nome_grupo
-      );
 
       return {
         ...grupo,
@@ -372,11 +551,7 @@ function buildEstoqueData({
           grupo.estoque_atual,
           coberturaDias
         ),
-        ofertas: buildOfertasProduto({
-          produtoGrupo: grupo.nome_grupo,
-          vendasPeriodo: groupTotals.vendas,
-          movimentacoesPeriodo: movimentacoesDoGrupo,
-        }),
+        ofertas: buildOfertasProduto(grupo.nome_grupo, pedidosOfertas),
       };
     })
     .sort(
@@ -395,7 +570,10 @@ function buildEstoqueData({
     movimentacoes: movimentacoesPeriodo,
     totalEntradaPeriodo: totals.totalEntradas,
     totalVendidoPeriodo: totals.totalVendas,
-    saldoAtualTotal: grupos.reduce((sum, grupo) => sum + grupo.estoque_atual, 0),
+    saldoAtualTotal: gruposAgregados.reduce(
+      (sum, grupo) => sum + grupo.estoque_atual,
+      0
+    ),
     gruposCriticos: gruposResumo.filter(
       (grupo) => grupo.statusOperacional === "critico"
     ).length,
@@ -407,7 +585,7 @@ function buildEstoqueData({
 }
 
 export function createMockEstoqueData(
-  preset: EstoquePeriodoPreset = "30"
+  preset: EstoquePeriodoPreset = "all"
 ): EstoquePageData {
   const now = new Date().toISOString();
   const movimentos = buildMockMovimentacoes();
@@ -422,6 +600,17 @@ export function createMockEstoqueData(
   return buildEstoqueData({
     grupos,
     movimentacoes: movimentos,
+    pedidosOfertas: movimentos
+      .filter((item) => item.tipo === "venda")
+      .map((item) => ({
+        id: item.id,
+        produtoGrupo: normalizeGroup(item.produto_grupo),
+        nome: item.produto_grupo,
+        canal: inferOfferChannel(item.produto_grupo),
+        qtdPotes: item.qtd_potes,
+        receita: item.qtd_potes * 189,
+        paidAt: item.created_at,
+      })),
     preset,
     source: "mock",
   });
@@ -447,13 +636,9 @@ async function getRealMovimentacoes(
 ): Promise<EstoqueMovimentacao[]> {
   const supabase = createServiceClient();
   const since = periodoDesde(preset);
-  const maxRows = since ? null : REAL_MOVEMENT_ALL_LIMIT;
   const result: EstoqueMovimentacao[] = [];
 
   for (let offset = 0; ; offset += REAL_MOVEMENT_PAGE_SIZE) {
-    const to = maxRows == null
-      ? offset + REAL_MOVEMENT_PAGE_SIZE - 1
-      : Math.min(offset + REAL_MOVEMENT_PAGE_SIZE - 1, maxRows - 1);
     let query = supabase
       .from("estoque_movimentacao")
       .select("id, produto_grupo, tipo, qtd_potes, referencia_pedido_id, observacao, created_at")
@@ -463,7 +648,10 @@ async function getRealMovimentacoes(
       query = query.gte("created_at", since);
     }
 
-    const { data, error } = await query.range(offset, to);
+    const { data, error } = await query.range(
+      offset,
+      offset + REAL_MOVEMENT_PAGE_SIZE - 1
+    );
 
     if (error) {
       console.error("[estoque] Erro ao buscar movimentacoes:", error.message);
@@ -473,8 +661,49 @@ async function getRealMovimentacoes(
     if (!data || data.length === 0) break;
 
     result.push(...(data as EstoqueMovimentacao[]));
-    if (maxRows != null && result.length >= maxRows) break;
     if (data.length < REAL_MOVEMENT_PAGE_SIZE) break;
+  }
+
+  return result;
+}
+
+async function getRealPedidosOfertas(
+  preset: EstoquePeriodoPreset
+): Promise<EstoquePedidoOfertaSnapshot[]> {
+  const supabase = createServiceClient();
+  const since = periodoDesde(preset);
+  const result: EstoquePedidoOfertaSnapshot[] = [];
+
+  for (let offset = 0; ; offset += REAL_ORDER_PAGE_SIZE) {
+    let query = supabase
+      .from("pedidos")
+      .select("id, produto_nome, produto_grupo, qtd_potes, valor_total, data_pagamento, status_pagamento, chargeback")
+      .eq("status_pagamento", "paid")
+      .not("data_pagamento", "is", null)
+      .order("data_pagamento", { ascending: false });
+
+    if (since) {
+      query = query.gte("data_pagamento", since);
+    }
+
+    const { data, error } = await query.range(
+      offset,
+      offset + REAL_ORDER_PAGE_SIZE - 1
+    );
+
+    if (error) {
+      console.error("[estoque] Erro ao buscar pedidos por oferta:", error.message);
+      break;
+    }
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data as EstoquePedidoOfertaRow[]) {
+      const pedido = normalizePedidoOfertaRow(row);
+      if (pedido) result.push(pedido);
+    }
+
+    if (data.length < REAL_ORDER_PAGE_SIZE) break;
   }
 
   return result;
@@ -489,14 +718,16 @@ export async function getEstoquePageData(
     return createMockEstoqueData(preset);
   }
 
-  const [grupos, movimentacoes] = await Promise.all([
+  const [grupos, movimentacoes, pedidosOfertas] = await Promise.all([
     getRealGrupos(),
     getRealMovimentacoes(preset),
+    getRealPedidosOfertas(preset),
   ]);
 
   return buildEstoqueData({
     grupos,
     movimentacoes,
+    pedidosOfertas,
     preset,
     source: "real",
   });
