@@ -500,7 +500,7 @@ function ActiveAlertsPanel({
   count: number;
 }) {
   return (
-    <section className="rounded-[8px] border border-[var(--fly-warning-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
+    <section className="rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
       <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2">
           <span
@@ -510,7 +510,10 @@ function ActiveAlertsPanel({
           <h2 className="text-[15px] font-semibold text-[var(--fly-text)]">
             Alertas ativos
           </h2>
-          <span className="rounded-full border border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] px-2 py-0.5 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
+          <span aria-hidden="true" className="text-xs text-[var(--fly-text-dim)]">
+            ·
+          </span>
+          <span className="text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
             {formatNumber(count)}
           </span>
         </div>
@@ -582,25 +585,27 @@ function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
           {formatNumber(alerts.length)} sinais
         </span>
       </div>
-      <div className="space-y-2.5">
+      <div className="divide-y divide-[var(--fly-divider-subtle)]">
         {alerts.map((alert) => (
           <article
             key={`${alert.title}-${alert.detail}`}
-            className="rounded-[8px] border border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] px-3 py-3"
+            className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 py-3 first:pt-0 last:pb-0"
           >
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[var(--fly-text)]">
-                  {alert.title}
-                </p>
-                <p className="mt-1 text-sm leading-5 text-[var(--fly-text-soft)]">
-                  {alert.detail}
-                </p>
-              </div>
-              <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)]">
-                {alert.source}
-              </span>
+            <span
+              aria-hidden="true"
+              className="mt-1.5 size-1.5 rounded-full bg-[var(--fly-danger-strong)]"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[var(--fly-text)]">
+                {alert.title}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-[var(--fly-text-soft)]">
+                {alert.detail}
+              </p>
             </div>
+            <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+              {alert.source}
+            </span>
           </article>
         ))}
       </div>
@@ -610,8 +615,15 @@ function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
 
 function UpdatedBadge({ value }: { value: string }) {
   return (
-    <div className="hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] px-3 py-2 text-xs text-[var(--fly-text-muted)] shadow-[var(--fly-panel-inset)] lg:block">
-      Atualizado em <span className="font-medium text-[var(--fly-text-soft)]">{value}</span>
+    <div className="hidden items-center gap-2 text-xs text-[var(--fly-text-dim)] lg:inline-flex">
+      <span
+        aria-hidden="true"
+        className="size-1.5 rounded-full bg-[var(--fly-text-dim)] opacity-70"
+      />
+      <span>
+        Atualizado{" "}
+        <span className="font-medium text-[var(--fly-text-soft)]">{value}</span>
+      </span>
     </div>
   );
 }
