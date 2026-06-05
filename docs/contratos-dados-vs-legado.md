@@ -6,7 +6,7 @@ Nem toda diferenca entre o novo frontend e o legado e erro. Algumas diferencas f
 
 | Pagina | Diverge do legado? | Decisao atual |
 |---|---:|---|
-| Dashboard | Pouco | Preserva o contrato principal; corrige janela de analytics para 7 dias inclusivos. |
+| Dashboard | Pouco | Preserva o contrato principal; filtra alertas vencidos no frontend; usa janelas inclusivas. |
 | Pedidos | Nao no contrato principal | Mantem `data_pagamento` para pagos e `created_at` para pendentes. |
 | Carrinhos | Sim | KPIs usam o periodo completo; tabela limita eventos para performance. |
 | Financeiro | Sim | Pagina todos os pedidos pagos para evitar limite de 1.000 linhas. |
@@ -21,7 +21,10 @@ Nem toda diferenca entre o novo frontend e o legado e erro. Algumas diferencas f
 
 Mantem a logica do legado: vendas do dia, estados operacionais atuais, carrinhos de 24h, alertas e tendencia de 30 dias.
 
-Ajuste aplicado: janelas numericas de analytics agora sao inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores, nao 8 dias.
+Ajustes aplicados:
+
+- janelas numericas de analytics agora sao inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores, nao 8 dias.
+- alertas ativos sao revalidados no frontend: data prometida precisa estar vencida e o pedido nao pode estar entregue/devolvido.
 
 ## Pedidos
 
@@ -58,6 +61,8 @@ Motivo: a leitura por produto fica mais util e a pagina inicial fica menos pesad
 Usa dados agregados reais de performance. Quando o legado tinha leitura menos estavel por arredondamento ou duplicidade, o novo frontend prioriza agregacao consolidada.
 
 Motivo: melhorar leitura de receita, investimento, ROAS e produtos sem depender de linhas fragmentadas.
+
+Padrao atual: janelas de 30 dias usam 30 dias inclusivos.
 
 ## Funil
 

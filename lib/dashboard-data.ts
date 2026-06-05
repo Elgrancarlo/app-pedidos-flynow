@@ -161,6 +161,21 @@ function getDelayDays(promisedAt: string | null | undefined, today: string) {
   return Math.max(delay, 0);
 }
 
+function isActiveDelayedAlert({
+  promisedAt,
+  status,
+  today,
+}: {
+  promisedAt: string | null | undefined;
+  status: string | null | undefined;
+  today: string;
+}) {
+  if (!promisedAt) return false;
+  if (status === "entregue" || status === "devolvido") return false;
+
+  return getDelayDays(promisedAt, today) > 0;
+}
+
 function normalizeStatusLabel(status: string | null) {
   if (!status) return "Sem status";
   return STATUS_LABELS[status as StatusPedido] ?? status;
@@ -455,9 +470,15 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       : 0;
   const taxaRecuperacao =
     checkoutMonitorado > 0 ? checkoutSummary.recoveredCount / checkoutMonitorado : 0;
-  const activeAlerts = ((atrasados.data ?? []) as DashboardAlertRpcRow[]).map(
-    (row) => normalizeAlert(row, today)
-  );
+  const activeAlerts = ((atrasados.data ?? []) as DashboardAlertRpcRow[])
+    .filter((row) =>
+      isActiveDelayedAlert({
+        promisedAt: row.data_prometida_entrega,
+        status: row.status,
+        today,
+      })
+    )
+    .map((row) => normalizeAlert(row, today));
   const funnelAlerts = await buildFunilAiAlerts({
     dailyRows: funilAnalytics.dailyRows,
     logs: funilAnalytics.logs,
@@ -518,11 +539,11 @@ function getMockDashboardData(): DashboardPageData {
   );
   const activeAlerts = pedidos
     .filter((pedido) => {
-      const delayDays = getDelayDays(pedido.promisedAt, today);
-      return (
-        delayDays > 0 &&
-        !["entregue", "devolvido"].includes(pedido.logisticsStatus)
-      );
+      return isActiveDelayedAlert({
+        promisedAt: pedido.promisedAt,
+        status: pedido.logisticsStatus,
+        today,
+      });
     })
     .slice(0, 50)
     .map((pedido) => ({

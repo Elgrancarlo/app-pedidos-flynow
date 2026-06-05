@@ -151,7 +151,7 @@ function channelLabel(channel: string) {
 }
 
 function getDefaultRange(): PerformanceRange {
-  return defaultAnalyticsDates(29);
+  return defaultAnalyticsDates(30);
 }
 
 function buildMockProducts(metrics: MetricsData): PerformanceProduct[] {
