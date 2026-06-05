@@ -7,6 +7,7 @@ import {
   ANALYTICS_CHANNEL_LABELS,
   createServiceClient,
 } from "@/lib/supabase";
+import { shouldUseMockData } from "@/lib/data-mode";
 import { isOpenRouterConfigured, openRouterChat } from "@/lib/openrouter";
 import { inferProductBase } from "@/lib/payt-analytics";
 import { getTodayInAppTimezone } from "@/lib/app-dates";
@@ -26,6 +27,10 @@ function isMissingAnalyticsSchemaError(error: unknown) {
     details.includes("analytics") ||
     details.includes("relation")
   );
+}
+
+function shouldIgnoreMissingAnalyticsSchema(error: unknown) {
+  return shouldUseMockData() && isMissingAnalyticsSchemaError(error);
 }
 
 export function defaultAnalyticsDates(days?: number) {
@@ -486,7 +491,7 @@ export async function getAnalyticsOverview(startDate: string, endDate: string) {
       ),
     ]);
   } catch (error) {
-    if (!isMissingAnalyticsSchemaError(error)) throw error;
+    if (!shouldIgnoreMissingAnalyticsSchema(error)) throw error;
   }
 
   const revenueTotal = funilRows.reduce((sum, row) => sum + numberValue(row.receita_total), 0);
@@ -635,7 +640,7 @@ export async function getFunilAnalytics(
           ),
     ]);
   } catch (error) {
-    if (!isMissingAnalyticsSchemaError(error)) throw error;
+    if (!shouldIgnoreMissingAnalyticsSchema(error)) throw error;
   }
 
   const summary = {
@@ -923,7 +928,7 @@ export async function getChannelAnalytics(startDate: string, endDate: string, ch
       ),
     ]);
   } catch (error) {
-    if (!isMissingAnalyticsSchemaError(error)) throw error;
+    if (!shouldIgnoreMissingAnalyticsSchema(error)) throw error;
   }
 
   const mediaBySource = Array.from(
@@ -1033,7 +1038,7 @@ export async function getUpsellAnalytics(startDate: string, endDate: string, pro
       },
     );
   } catch (error) {
-    if (!isMissingAnalyticsSchemaError(error)) throw error;
+    if (!shouldIgnoreMissingAnalyticsSchema(error)) throw error;
   }
 
   const byProduct = Array.from(

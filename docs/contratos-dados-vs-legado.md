@@ -75,6 +75,8 @@ Motivo: melhorar leitura de receita, investimento, ROAS e produtos sem depender 
 
 Padrao atual: janelas de 30 dias usam 30 dias inclusivos.
 
+Em modo real, falha ou ausencia do schema `analytics` nao vira tela zerada. O erro sobe para evitar leitura falsa.
+
 ## Funil
 
 Mantem as facts principais do legado:
