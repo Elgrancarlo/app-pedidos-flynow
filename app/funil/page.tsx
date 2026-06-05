@@ -319,22 +319,18 @@ function buildFunilHref({
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
   const toneByLevel: Record<
     PerformanceAlert["level"],
-    { border: string; dot: string }
+    { dot: string }
   > = {
     danger: {
-      border: "border-[var(--fly-danger-border)]",
       dot: "bg-[#F87171]",
     },
     info: {
-      border: "border-[var(--fly-info-border)]",
       dot: "bg-[var(--fly-chart-investment)]",
     },
     ok: {
-      border: "border-[var(--fly-success-border)]",
       dot: "bg-[var(--fly-success)]",
     },
     warning: {
-      border: "border-[var(--fly-warning-border)]",
       dot: "bg-[var(--fly-warning-strong)]",
     },
   };
@@ -348,10 +344,7 @@ function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
           return (
             <article
               key={`${alert.level}-${alert.title}`}
-              className={cn(
-                "rounded-[8px] border bg-[var(--fly-row-bg)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
-                tone.border
-              )}
+              className="rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span className={cn("size-1.5 shrink-0 rounded-full", tone.dot)} />
