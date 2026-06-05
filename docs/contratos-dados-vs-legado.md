@@ -1,76 +1,92 @@
 # Contratos de Dados vs Sistema Legado
 
-Nem toda diferenca entre o novo frontend e o sistema legado e um erro. Algumas paginas preservam o contrato antigo, enquanto outras foram ajustadas para evitar dados incompletos, lentidao ou leituras menos coerentes.
+Nem toda diferenca entre o novo frontend e o legado e erro. Algumas diferencas foram mantidas para evitar dados incompletos, lentidao ou leituras menos coerentes.
 
-## Resumo
+## Resumo Direto
 
-| Pagina | Contrato atual | Diverge do legado? | Motivo |
-|---|---|---|---|
-| Dashboard | Preserva janelas diferentes por tipo de dado | Nao no contrato principal | O dashboard mistura dados do dia, estados atuais, ultimas 24h, alertas recentes e tendencia de 30 dias. |
-| Pedidos | Preserva pedidos pagos por `data_pagamento` e pendentes por `created_at` | Nao no contrato principal | Evita esconder pedidos pendentes que ja existem operacionalmente. |
-| Carrinhos | KPIs usam o periodo completo; tabela carrega eventos recentes | Sim | Evita tela pesada sem distorcer os numeros principais. |
-| Financeiro | Pagina todos os pedidos pagos do periodo e calcula reversoes por evento financeiro | Sim | Corrige limite pratico de 1.000 linhas que podia reduzir a receita no legado. |
-| Estoque | Saldo e potes seguem estoque real; ofertas usam pedidos pagos reais | Sim na tabela | Substitui o extrato gigante por uma leitura de ofertas do produto. |
-| Funil | Usa as facts de funil diario e fonte; alertas voltam a ser por regras | Sim, pontual nos take rates | Mantem media ponderada para reduzir ruido de arredondamento por linha. |
+| Pagina | Diverge do legado? | Decisao atual |
+|---|---:|---|
+| Dashboard | Pouco | Preserva o contrato principal; corrige janela de analytics para 7 dias inclusivos. |
+| Pedidos | Nao no contrato principal | Mantem `data_pagamento` para pagos e `created_at` para pendentes. |
+| Carrinhos | Sim | KPIs usam o periodo completo; tabela limita eventos para performance. |
+| Financeiro | Sim | Pagina todos os pedidos pagos para evitar limite de 1.000 linhas. |
+| Estoque | Sim | Usa estoque real; abre em 30D por padrao; `Tudo` fica explicito. |
+| Analytics | Sim, pontual | Usa dados agregados reais e leitura ponderada quando melhora coerencia. |
+| Funil | Sim, pontual | Mantem facts principais; limita tabela a 2.000 linhas; take rate ponderado. |
+| Upsells | Sim, pontual | Consolida produto e canal para reduzir duplicidade e ruido. |
+| Canais | Sim, pontual | Prioriza agregacao coerente por canal/source e produto. |
 
 ## Dashboard
 
-O contrato principal foi preservado. Ele continua usando janelas diferentes conforme o tipo de dado: vendas do dia, estados operacionais atuais, carrinhos das ultimas 24h, alertas recentes e tendencia de 30 dias.
+Mantem a logica do legado: vendas do dia, estados operacionais atuais, carrinhos de 24h, alertas e tendencia de 30 dias.
 
-A mudanca foi mais visual e de clareza. Forcar todos os cards ao mesmo periodo deixaria alguns dados menos uteis, porque "em transito", "atrasados", "carrinhos" e "tendencia" respondem perguntas diferentes.
+Ajuste aplicado: janelas numericas de analytics agora sao inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores, nao 8 dias.
 
 ## Pedidos
 
-Tambem preserva o contrato principal do legado. Pedidos pagos entram pelo campo `data_pagamento`, enquanto pedidos pendentes entram por `created_at`.
+Contrato preservado. Pedidos pagos entram por `data_pagamento`; pedidos pendentes entram por `created_at`.
 
-Essa separacao evita esconder pedidos que ainda nao foram pagos, mas ja existem operacionalmente. Reembolsos e chargebacks seguem eventos financeiros do periodo, em vez de depender apenas do status atual do pedido.
+Motivo: pedido pendente ainda existe operacionalmente mesmo sem pagamento.
 
 ## Carrinhos
 
-Diverge do legado de forma intencional. Os KPIs e o funil usam todos os eventos do periodo, mas a tabela inicial carrega apenas eventos recentes para manter a tela rapida.
+Diverge de forma intencional. KPIs e funil consideram o periodo completo, mas a tabela carrega uma amostra limitada de eventos recentes.
 
-O legado podia ficar lento ou mostrar numeros parecidos em 7, 15 e 30 dias por causa de limites praticos de eventos. No novo contrato, o limite fica na tabela, nao nos KPIs.
+Motivo: manter a tela rapida sem distorcer os numeros principais.
 
 ## Financeiro
 
-Diverge do legado para corrigir uma distorcao. O legado podia bater no limite de 1.000 linhas do Supabase em periodos grandes, fazendo a receita parecer menor.
+Diverge para corrigir distorcao do legado. O novo frontend pagina todos os pedidos pagos do periodo antes de calcular receita, chargebacks e reembolsos.
 
-O novo frontend pagina todos os pedidos pagos do periodo e calcula receita, chargebacks e reembolsos com base no periodo completo. Assim, a leitura financeira fica mais fiel ao volume real.
+Motivo: evitar que o limite de 1.000 linhas reduza artificialmente a receita.
 
 ## Estoque
 
-A parte operacional de estoque segue os dados reais:
+Usa dados reais de `estoque_grupos`, `estoque_movimentacao` e `pedidos`.
 
-- `estoque_grupos` para saldo atual.
-- `estoque_movimentacao` para entradas, vendas de potes, ajustes e estornos.
-- normalizacao de grupo via `inferirGrupo`.
-- separacao de ajustes manuais e estornos automaticos para nao contaminar os movimentos operacionais.
+Divergencias mantidas:
 
-A tabela diverge do legado porque deixou de exibir o extrato de movimentacoes como foco principal. No lugar disso, o produto expande para mostrar ofertas/produtos vendidos ligados ao grupo.
+- A tela abre em `30D` por padrao para evitar carregar todo o historico.
+- `Tudo` continua disponivel, mas como escolha explicita.
+- O foco saiu do extrato gigante de movimentacoes e foi para ofertas/produtos relacionados ao grupo.
 
-Essa camada nova usa dados reais da tabela `pedidos`: `produto_nome`, `produto_grupo`, `qtd_potes`, `valor_total` e `data_pagamento`. A ressalva e que ainda nao existe uma tabela propria de ofertas no backend, entao a classificacao depende da qualidade dos nomes dos produtos no banco.
+Motivo: a leitura por produto fica mais util e a pagina inicial fica menos pesada.
+
+## Analytics
+
+Usa dados agregados reais de performance. Quando o legado tinha leitura menos estavel por arredondamento ou duplicidade, o novo frontend prioriza agregacao consolidada.
+
+Motivo: melhorar leitura de receita, investimento, ROAS e produtos sem depender de linhas fragmentadas.
 
 ## Funil
 
-O contrato principal segue o legado:
+Mantem as facts principais do legado:
 
-- KPIs e graficos usam `analytics.fact_funil_diario`.
-- resumo por fonte usa `analytics.fact_funil_por_fonte`.
-- com filtro de produto ativo, o resumo por fonte fica oculto porque a fact de fonte nao possui dimensao confiavel de produto.
-- alertas automaticos usam regras sobre os dados diarios do funil.
+- `analytics.fact_funil_diario`
+- `analytics.fact_funil_por_fonte`
+- alertas por regras sobre dados diarios
 
-A divergencia mantida esta nos take rates US1/US2. O legado estima aprovacoes arredondando cada linha antes de agregar. O novo frontend usa media ponderada por vendas diretas, que reduz pequenas distorcoes de arredondamento e deixa a leitura mais estavel.
+Divergencias mantidas:
 
-## Decisao Recomendada
+- tabela limitada a 2.000 linhas.
+- take rates por media ponderada, nao por soma de arredondamentos por linha.
 
-Manter os contratos novos onde eles corrigem problemas do legado, especialmente em Carrinhos, Financeiro, Estoque e no take rate do Funil. Preservar o legado onde ele ja representa bem a operacao, como em Dashboard, Pedidos e nas facts principais do Funil.
+Motivo: reduzir lentidao e pequenos erros de arredondamento.
 
-O ponto principal e que a meta nao e simplesmente "bater numero com o legado" quando o legado esta limitado. A meta e exibir dados mais coerentes para analise e tomada de decisao.
+## Upsells
 
-## Pontos a Alinhar
+Consolida leituras por produto/oferta para evitar duplicidade visual.
 
-- Criar endpoints agregados para paginas com alto volume de dados.
-- Documentar qual campo de data rege cada dominio.
-- Confirmar se `chargeback = null` em pedidos antigos deve ser tratado como falso ou desconhecido.
-- Criar uma estrutura oficial de ofertas, se a leitura por oferta se tornar parte fixa do produto.
-- Avaliar se a comparacao visual com o legado exige replicar o arredondamento antigo dos take rates.
+Motivo: facilitar comparacao entre produtos e reduzir poluicao da tela.
+
+## Canais
+
+Prioriza leitura por canal/source e produto com agregacao mais coerente.
+
+Motivo: o legado mistura granularidades em algumas partes; a nova tela tenta deixar a tomada de decisao mais clara.
+
+## Decisao Geral
+
+Preservar o legado quando ele ja representa bem a operacao. Divergir quando o legado sofre com limite de linhas, lentidao, duplicidade ou arredondamento ruim.
+
+Meta: exibir dados mais fieis para analise, nao apenas copiar numeros quando o contrato antigo e limitado.
