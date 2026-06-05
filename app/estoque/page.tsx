@@ -52,13 +52,18 @@ function signedMovementQuantity(item: EstoqueMovimentacao) {
 
 function MockEntryForm() {
   return (
-    <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_140px_minmax(220px,1fr)_auto]">
+    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_112px] 2xl:grid-cols-[minmax(0,1fr)_112px_minmax(0,1.1fr)_max-content]">
       {["Produto", "Qtd potes", "Observação"].map((label, index) => (
-        <label key={label} className="grid gap-1">
+        <label
+          key={label}
+          className={`grid min-w-0 gap-1 ${
+            index === 2 ? "md:col-span-2 2xl:col-span-1" : ""
+          }`}
+        >
           <span className="text-xs font-medium text-[var(--fly-text-muted)]">
             {label}
           </span>
-          <span className="flex h-10 items-center rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-dim)]">
+          <span className="flex h-10 min-w-0 items-center truncate rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-dim)]">
             {index === 0
               ? "Power 66"
               : index === 1
@@ -67,11 +72,11 @@ function MockEntryForm() {
           </span>
         </label>
       ))}
-      <div className="flex items-end">
+      <div className="flex min-w-0 items-end md:col-span-2 2xl:col-span-1">
         <button
           type="button"
           disabled
-          className="h-10 w-full rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 lg:w-auto"
+          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 2xl:w-auto"
         >
           Registrar Entrada
         </button>

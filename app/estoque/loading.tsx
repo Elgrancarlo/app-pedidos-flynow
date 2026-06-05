@@ -47,11 +47,11 @@ function EntryFormSkeleton() {
         <SkeletonLine className="h-4 w-52 rounded-md" />
         <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
       </div>
-      <div className="grid gap-3 p-3 sm:p-4 lg:grid-cols-[minmax(220px,1fr)_140px_minmax(220px,1fr)_auto]">
+      <div className="grid gap-3 p-3 sm:p-4 md:grid-cols-[minmax(0,1fr)_112px] 2xl:grid-cols-[minmax(0,1fr)_112px_minmax(0,1.1fr)_max-content]">
         <SkeletonLine className="h-10 rounded-[8px]" />
         <SkeletonLine className="h-10 rounded-[8px]" />
-        <SkeletonLine className="h-10 rounded-[8px]" />
-        <SkeletonLine className="h-10 rounded-[8px] lg:w-36" />
+        <SkeletonLine className="h-10 rounded-[8px] md:col-span-2 2xl:col-span-1" />
+        <SkeletonLine className="h-10 rounded-[8px] md:col-span-2 2xl:col-span-1 2xl:w-36" />
       </div>
     </SkeletonPanel>
   );

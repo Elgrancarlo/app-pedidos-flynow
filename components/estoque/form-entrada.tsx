@@ -56,16 +56,16 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_140px_minmax(220px,1fr)_auto]"
+      className="grid gap-3 md:grid-cols-[minmax(0,1fr)_112px] 2xl:grid-cols-[minmax(0,1fr)_112px_minmax(0,1.1fr)_max-content]"
     >
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         <label className="text-xs font-medium text-[var(--fly-text-muted)]">
           Produto
         </label>
         <select
           value={grupo}
           onChange={(e) => setGrupo(e.target.value)}
-          className="h-10 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
           required
         >
           <option value="">Selecionar produto...</option>
@@ -79,7 +79,7 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
       </div>
 
       {grupo === "__novo__" && (
-        <div className="grid gap-1 lg:col-span-2">
+        <div className="grid min-w-0 gap-1 md:col-span-2 2xl:col-span-2">
           <label className="text-xs font-medium text-[var(--fly-text-muted)]">
             Nome do produto
           </label>
@@ -88,13 +88,13 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
             value={novoGrupo}
             onChange={(e) => setNovoGrupo(e.target.value)}
             placeholder="Ex: GlicoRESET"
-            className="h-10 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+            className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
             required
           />
         </div>
       )}
 
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1">
         <label className="text-xs font-medium text-[var(--fly-text-muted)]">
           Qtd potes
         </label>
@@ -104,12 +104,12 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
           onChange={(e) => setQtd(e.target.value)}
           min="1"
           placeholder="0"
-          className="h-10 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
           required
         />
       </div>
 
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1 md:col-span-2 2xl:col-span-1">
         <label className="text-xs font-medium text-[var(--fly-text-muted)]">
           Observação (opcional)
         </label>
@@ -118,15 +118,15 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
           value={obs}
           onChange={(e) => setObs(e.target.value)}
           placeholder="Ex: NF 12345"
-          className="h-10 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
         />
       </div>
 
-      <div className="flex items-end">
+      <div className="flex min-w-0 items-end md:col-span-2 2xl:col-span-1">
         <button
           type="submit"
           disabled={loading}
-          className="h-10 w-full rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[#050607] shadow-[0_10px_24px_rgba(214,168,79,0.12)] transition-colors duration-150 hover:bg-[var(--fly-chart-revenue-active)] disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[#050607] shadow-[0_10px_24px_rgba(214,168,79,0.12)] transition-colors duration-150 hover:bg-[var(--fly-chart-revenue-active)] disabled:cursor-not-allowed disabled:opacity-50 2xl:w-auto"
         >
           {loading ? "Salvando..." : "Registrar Entrada"}
         </button>
