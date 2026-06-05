@@ -25,6 +25,7 @@ Ajustes aplicados:
 
 - janelas numericas de analytics agora sao inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores, nao 8 dias.
 - alertas ativos sao revalidados no frontend: data prometida precisa estar vencida e o pedido nao pode estar entregue/devolvido.
+- checkout de 24h usado nos KPIs nao aplica limite de tabela.
 
 ## Pedidos
 
@@ -42,6 +43,8 @@ Ajustes de confiabilidade:
 Diverge de forma intencional. KPIs e funil consideram o periodo completo, mas a tabela carrega uma amostra limitada de eventos recentes.
 
 Motivo: manter a tela rapida sem distorcer os numeros principais.
+
+O limite de eventos vale apenas para a tabela inicial, nao para os KPIs.
 
 ## Financeiro
 

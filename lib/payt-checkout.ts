@@ -41,6 +41,17 @@ export interface PaytCheckoutMonitorRow {
   rawCount: number;
 }
 
+type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
+
+type MonitorEvent = Omit<PaytCheckoutMonitorRow, "timeline" | "rawCount">;
+
+type PaytCheckoutMonitorOptions = {
+  includeRows?: boolean;
+  maxEvents?: number | null;
+};
+
+const PAYT_CHECKOUT_PAGE_SIZE = 1000;
+
 function textValue(value: unknown) {
   if (value == null) return null;
   const text = String(value).trim();
@@ -127,202 +138,187 @@ function eventSortValue(eventAt: string) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-export async function getPaytCheckoutMonitor(hours = 24) {
+function isMissingEventStream(error: unknown) {
+  const message =
+    error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("payt_event_stream");
+}
+
+function mergeMonitorEvent(
+  latestByKey: Map<string, PaytCheckoutMonitorRow>,
+  event: MonitorEvent,
+  normalizedKey = event.key
+) {
+  const current = latestByKey.get(normalizedKey);
+
+  if (!current) {
+    latestByKey.set(normalizedKey, {
+      ...event,
+      key: normalizedKey,
+      timeline: [event.status],
+      rawCount: 1,
+    });
+    return;
+  }
+
+  current.timeline.push(event.status);
+  current.rawCount += 1;
+  if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
+    latestByKey.set(normalizedKey, {
+      ...event,
+      key: normalizedKey,
+      timeline: current.timeline,
+      rawCount: current.rawCount,
+    });
+  }
+}
+
+async function fetchStreamEvents(
+  supabase: SupabaseServiceClient,
+  since: string,
+  maxEvents: number | null
+) {
+  const rows: StreamEventRow[] = [];
+
+  for (let offset = 0; ; offset += PAYT_CHECKOUT_PAGE_SIZE) {
+    if (maxEvents != null && offset >= maxEvents) break;
+
+    const to =
+      maxEvents == null
+        ? offset + PAYT_CHECKOUT_PAGE_SIZE - 1
+        : Math.min(offset + PAYT_CHECKOUT_PAGE_SIZE - 1, maxEvents - 1);
+    const { data, error } = await supabase
+      .from("payt_event_stream")
+      .select("transaction_id, cart_id, customer_name, customer_email, customer_phone, product_name, product_group, payment_method, total_price, event_status, event_group, event_at")
+      .gte("event_at", since)
+      .order("event_at", { ascending: false })
+      .range(offset, to);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as StreamEventRow[]));
+
+    if (maxEvents != null && offset + data.length >= maxEvents) break;
+    if (data.length < PAYT_CHECKOUT_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+async function fetchRawWebhookRowsByDate(
+  supabase: SupabaseServiceClient,
+  dateColumn: "created_at" | "received_at",
+  since: string,
+  maxEvents: number | null
+) {
+  const rows: RawWebhookRow[] = [];
+
+  for (let offset = 0; ; offset += PAYT_CHECKOUT_PAGE_SIZE) {
+    if (maxEvents != null && offset >= maxEvents) break;
+
+    const to =
+      maxEvents == null
+        ? offset + PAYT_CHECKOUT_PAGE_SIZE - 1
+        : Math.min(offset + PAYT_CHECKOUT_PAGE_SIZE - 1, maxEvents - 1);
+    const { data, error } = await supabase
+      .from("payt_webhooks_raw")
+      .select(`payload, ${dateColumn}`)
+      .gte(dateColumn, since)
+      .order(dateColumn, { ascending: false })
+      .range(offset, to);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    rows.push(
+      ...(data as Array<{
+        created_at?: string | null;
+        payload: PaytPayload;
+        received_at?: string | null;
+      }>).map((row) => ({
+        payload: row.payload,
+        created_at: row.created_at ?? null,
+        received_at: row.received_at ?? null,
+      }))
+    );
+
+    if (maxEvents != null && offset + data.length >= maxEvents) break;
+    if (data.length < PAYT_CHECKOUT_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+async function fetchRawWebhookRows(
+  supabase: SupabaseServiceClient,
+  since: string,
+  maxEvents: number | null
+) {
+  try {
+    return await fetchRawWebhookRowsByDate(
+      supabase,
+      "received_at",
+      since,
+      maxEvents
+    );
+  } catch {
+    return fetchRawWebhookRowsByDate(
+      supabase,
+      "created_at",
+      since,
+      maxEvents
+    );
+  }
+}
+
+function mergeRawWebhookRows(
+  latestByKey: Map<string, PaytCheckoutMonitorRow>,
+  rows: RawWebhookRow[],
+  since: string
+) {
+  for (const row of rows) {
+    const event = buildMonitorRow(row);
+    if (event.eventAt < since) continue;
+    const key = event.cartId ?? event.transactionId ?? event.key;
+    mergeMonitorEvent(latestByKey, event, key);
+  }
+}
+
+export async function getPaytCheckoutMonitor(
+  hours = 24,
+  options: PaytCheckoutMonitorOptions = {}
+) {
   const supabase = createServiceClient();
   const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  const queryLimit = Math.min(hours * 200, 10000);
+  const includeRows = options.includeRows ?? true;
+  const maxEvents = options.maxEvents ?? null;
   const latestByKey = new Map<string, PaytCheckoutMonitorRow>();
+  let triedRawFallback = false;
   let openCount = 0;
   let lostCount = 0;
   let abandonedCount = 0;
 
   try {
-    const PAGE = 1000;
-    let allStreamRows: StreamEventRow[] = [];
-    for (let offset = 0; offset < queryLimit; offset += PAGE) {
-      const { data, error } = await supabase
-        .from("payt_event_stream")
-        .select("transaction_id, cart_id, customer_name, customer_email, customer_phone, product_name, product_group, payment_method, total_price, event_status, event_group, event_at")
-        .gte("event_at", since)
-        .order("event_at", { ascending: false })
-        .range(offset, offset + PAGE - 1);
+    const streamRows = await fetchStreamEvents(supabase, since, maxEvents);
 
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      allStreamRows.push(...(data as StreamEventRow[]));
-      if (data.length < PAGE) break;
-    }
-
-    for (const row of allStreamRows) {
+    for (const row of streamRows) {
       const event = buildMonitorRowFromStream(row);
-      const key = event.key;
-      const current = latestByKey.get(key);
-
-      if (!current) {
-        latestByKey.set(key, { ...event, timeline: [event.status], rawCount: 1 });
-      } else {
-        current.timeline.push(event.status);
-        current.rawCount += 1;
-        if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
-          latestByKey.set(key, {
-            ...event,
-            timeline: current.timeline,
-            rawCount: current.rawCount,
-          });
-        }
-      }
+      mergeMonitorEvent(latestByKey, event);
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    if (!message.includes("payt_event_stream")) {
+    if (!isMissingEventStream(error)) {
       throw error;
     }
 
-    let data: RawWebhookRow[] | null = null;
-    const primaryQuery = await supabase
-      .from("payt_webhooks_raw")
-      .select("payload, received_at")
-      .gte("received_at", since)
-      .order("received_at", { ascending: false })
-      .limit(queryLimit);
-
-    if (primaryQuery.error) {
-      const fallbackQuery = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload, created_at")
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(queryLimit);
-
-      if (fallbackQuery.error) {
-        throw new Error(fallbackQuery.error.message);
-      }
-
-      data = (fallbackQuery.data ?? []).map((row: { payload: PaytPayload; created_at?: string | null }) => ({
-        payload: row.payload as PaytPayload,
-        created_at: row.created_at ?? null,
-      }));
-    } else {
-      data = ((primaryQuery.data ?? []) as Array<{ payload: PaytPayload; received_at?: string | null }>).map((row) => ({
-        payload: row.payload,
-        created_at: row.received_at ?? null,
-        received_at: row.received_at ?? null,
-      }));
-    }
-
-    for (const row of data ?? []) {
-      const event = buildMonitorRow(row);
-      if (event.eventAt < since) continue;
-      const key = event.cartId ?? event.transactionId ?? event.key;
-      const current = latestByKey.get(key);
-
-      if (!current) {
-        latestByKey.set(key, { ...event, key, timeline: [event.status], rawCount: 1 });
-      } else {
-        current.timeline.push(event.status);
-        current.rawCount += 1;
-        if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
-          latestByKey.set(key, {
-            ...event,
-            key,
-            timeline: current.timeline,
-            rawCount: current.rawCount,
-          });
-        }
-      }
-    }
+    triedRawFallback = true;
+    const rawRows = await fetchRawWebhookRows(supabase, since, maxEvents);
+    mergeRawWebhookRows(latestByKey, rawRows, since);
   }
 
-  // Fallback: if event_stream returned nothing, try payt_webhooks_raw
-  if (latestByKey.size === 0) {
-    try {
-      let rawRows: any[] = [];
-      const primaryQuery = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload, received_at")
-        .gte("received_at", since)
-        .order("received_at", { ascending: false })
-        .limit(queryLimit);
-
-      if (primaryQuery.error) {
-        const fallbackQuery = await supabase
-          .from("payt_webhooks_raw")
-          .select("payload, created_at")
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(queryLimit);
-
-        if (!fallbackQuery.error) {
-          rawRows = (fallbackQuery.data ?? []);
-        }
-      } else {
-        rawRows = (primaryQuery.data ?? []);
-      }
-
-      for (const row of rawRows) {
-        const event = buildMonitorRow({ payload: row.payload, received_at: row.received_at ?? null, created_at: row.created_at ?? null });
-        if (event.eventAt < since) continue;
-        const key = event.cartId ?? event.transactionId ?? event.key;
-        const current = latestByKey.get(key);
-        if (!current) {
-          latestByKey.set(key, { ...event, key, timeline: [event.status], rawCount: 1 });
-        } else {
-          current.timeline.push(event.status);
-          current.rawCount += 1;
-          if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
-            latestByKey.set(key, { ...event, key, timeline: current.timeline, rawCount: current.rawCount });
-          }
-        }
-      }
-    } catch (_) {
-      // ignore fallback errors
-    }
-  }
-
-  // Fallback: if event_stream returned nothing, try payt_webhooks_raw
-  if (latestByKey.size === 0) {
-    try {
-      let rawRows: any[] = [];
-      const primaryQuery = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload, received_at")
-        .gte("received_at", since)
-        .order("received_at", { ascending: false })
-        .limit(queryLimit);
-
-      if (primaryQuery.error) {
-        const fallbackQuery = await supabase
-          .from("payt_webhooks_raw")
-          .select("payload, created_at")
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(queryLimit);
-
-        if (!fallbackQuery.error) {
-          rawRows = (fallbackQuery.data ?? []);
-        }
-      } else {
-        rawRows = (primaryQuery.data ?? []);
-      }
-
-      for (const row of rawRows) {
-        const event = buildMonitorRow({ payload: row.payload, received_at: row.received_at ?? null, created_at: row.created_at ?? null });
-        if (event.eventAt < since) continue;
-        const key = event.cartId ?? event.transactionId ?? event.key;
-        const current = latestByKey.get(key);
-        if (!current) {
-          latestByKey.set(key, { ...event, key, timeline: [event.status], rawCount: 1 });
-        } else {
-          current.timeline.push(event.status);
-          current.rawCount += 1;
-          if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
-            latestByKey.set(key, { ...event, key, timeline: current.timeline, rawCount: current.rawCount });
-          }
-        }
-      }
-    } catch (_) {
-      // ignore fallback errors
-    }
+  if (latestByKey.size === 0 && !triedRawFallback) {
+    const rawRows = await fetchRawWebhookRows(supabase, since, maxEvents);
+    mergeRawWebhookRows(latestByKey, rawRows, since);
   }
 
   const allRows = Array.from(latestByKey.values());
@@ -330,11 +326,11 @@ export async function getPaytCheckoutMonitor(hours = 24) {
     (row) => row.status === "paid" && row.timeline.some((item) => item !== "paid"),
   ).length;
 
-  const rows = allRows
+  const monitorRows = allRows
     .filter((row) => row.status !== "paid" && ["checkout", "loss", "abandonment"].includes(row.eventGroup))
     .sort((left, right) => eventSortValue(right.eventAt) - eventSortValue(left.eventAt));
 
-  for (const row of rows) {
+  for (const row of monitorRows) {
     if (row.eventGroup === "checkout") openCount += 1;
     if (row.eventGroup === "loss") lostCount += 1;
     if (row.eventGroup === "abandonment") abandonedCount += 1;
@@ -343,7 +339,7 @@ export async function getPaytCheckoutMonitor(hours = 24) {
   return {
     windowHours: hours,
     totalEvents: allRows.reduce((sum, row) => sum + row.rawCount, 0),
-    rows,
+    rows: includeRows ? monitorRows : [],
     summary: {
       openCount,
       lostCount,

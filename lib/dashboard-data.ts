@@ -427,7 +427,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     supabase.rpc("pedidos_em_transito"),
     supabase.rpc("pedidos_atrasados"),
     import("@/lib/payt-checkout").then(({ getPaytCheckoutMonitor }) =>
-      getPaytCheckoutMonitor(24)
+      getPaytCheckoutMonitor(24, { includeRows: false })
     ),
     supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs }),
     supabase.rpc("tendencia_30_dias"),
