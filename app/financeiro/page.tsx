@@ -9,16 +9,20 @@ import {
   StatGrid,
 } from "@/components/workspace/operational-ui";
 import {
-  getDefaultFinanceiroRange,
   getFinanceiroPageData,
   type FinanceiroRange,
 } from "@/lib/financeiro";
+import { getTodayInAppTimezone } from "@/lib/app-dates";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 function resolveRange(params: { startDate?: string; endDate?: string }) {
-  const defaults = getDefaultFinanceiroRange(1);
+  const today = getTodayInAppTimezone();
+  const defaults = {
+    startDate: `${today.slice(0, 8)}01`,
+    endDate: today,
+  } satisfies FinanceiroRange;
   const startDate = params.startDate ?? defaults.startDate;
   const endDate = params.endDate ?? defaults.endDate;
 
@@ -134,7 +138,7 @@ export default async function FinanceiroPage({
 
         <Panel
           title="Composição financeira"
-          description="Como a receita bruta vira receita líquida no período"
+          description="Receita por data de pagamento; reversões por data do evento financeiro"
         >
           <FinanceCompositionChart data={data} />
         </Panel>
