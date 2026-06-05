@@ -18,6 +18,8 @@ type StockMovementParams = {
 
 export type EstoquePeriodoPreset = "7" | "15" | "30" | "90" | "all";
 
+export const DEFAULT_ESTOQUE_PERIODO_PRESET: EstoquePeriodoPreset = "30";
+
 export type EstoqueProdutoStatus = "critico" | "baixo" | "ok" | "excesso";
 
 export type EstoqueProdutoOferta = {
@@ -185,11 +187,11 @@ function normalizePreset(value?: string | null): EstoquePeriodoPreset {
     return value;
   }
 
-  if (value === "all" || value === "" || value == null) {
+  if (value === "all") {
     return "all";
   }
 
-  return "all";
+  return DEFAULT_ESTOQUE_PERIODO_PRESET;
 }
 
 function buildPeriodo(preset: EstoquePeriodoPreset) {
@@ -585,7 +587,7 @@ function buildEstoqueData({
 }
 
 export function createMockEstoqueData(
-  preset: EstoquePeriodoPreset = "all"
+  preset: EstoquePeriodoPreset = DEFAULT_ESTOQUE_PERIODO_PRESET
 ): EstoquePageData {
   const now = new Date().toISOString();
   const movimentos = buildMockMovimentacoes();
