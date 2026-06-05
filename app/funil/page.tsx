@@ -317,35 +317,54 @@ function buildFunilHref({
 }
 
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
-  const toneByLevel: Record<PerformanceAlert["level"], string> = {
-    danger: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)]",
-    info: "border-[var(--fly-info-border)] bg-[var(--fly-info-bg)]",
-    ok: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)]",
-    warning: "border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)]",
+  const toneByLevel: Record<
+    PerformanceAlert["level"],
+    { border: string; dot: string }
+  > = {
+    danger: {
+      border: "border-[var(--fly-danger-border)]",
+      dot: "bg-[#F87171]",
+    },
+    info: {
+      border: "border-[var(--fly-info-border)]",
+      dot: "bg-[var(--fly-chart-investment)]",
+    },
+    ok: {
+      border: "border-[var(--fly-success-border)]",
+      dot: "bg-[var(--fly-success)]",
+    },
+    warning: {
+      border: "border-[var(--fly-warning-border)]",
+      dot: "bg-[var(--fly-warning-strong)]",
+    },
   };
 
   return (
     <div className="grid gap-2">
       {alerts.length ? (
-        alerts.map((alert) => (
-          <article
-            key={`${alert.level}-${alert.title}`}
-            className={cn(
-              "rounded-[8px] border px-3 py-3",
-              toneByLevel[alert.level]
-            )}
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="size-1.5 shrink-0 rounded-full bg-[var(--fly-brand-strong)]" />
-              <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
-                {alert.title}
+        alerts.map((alert) => {
+          const tone = toneByLevel[alert.level];
+
+          return (
+            <article
+              key={`${alert.level}-${alert.title}`}
+              className={cn(
+                "rounded-[8px] border bg-[var(--fly-row-bg)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]",
+                tone.border
+              )}
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={cn("size-1.5 shrink-0 rounded-full", tone.dot)} />
+                <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+                  {alert.title}
+                </p>
+              </div>
+              <p className="mt-1.5 text-sm leading-5 text-[var(--fly-text-muted)]">
+                {alert.detail}
               </p>
-            </div>
-            <p className="mt-1.5 text-sm leading-5 text-[var(--fly-text-muted)]">
-              {alert.detail}
-            </p>
-          </article>
-        ))
+            </article>
+          );
+        })
       ) : (
         <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
           Nenhum alerta registrado no periodo.
