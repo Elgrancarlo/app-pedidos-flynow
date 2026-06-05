@@ -307,22 +307,6 @@ function getOriginOptions(carrinhos: Carrinho[]) {
   ];
 }
 
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(query);
-    const updateMatch = () => setMatches(mediaQuery.matches);
-
-    updateMatch();
-    mediaQuery.addEventListener("change", updateMatch);
-
-    return () => mediaQuery.removeEventListener("change", updateMatch);
-  }, [query]);
-
-  return matches;
-}
-
 function StatusBadge({
   label,
   className,
@@ -1063,15 +1047,13 @@ function CartsTable({
 
 function MobileCartsList({
   carrinhos,
-  referenceDate,
   onDetail,
 }: {
   carrinhos: Carrinho[];
-  referenceDate: string;
   onDetail: (carrinho: Carrinho) => void;
 }) {
   return (
-    <div className="min-h-[520px] divide-y divide-white/[0.055] lg:hidden">
+    <div className="min-h-[520px] divide-y divide-[var(--fly-divider-subtle)] lg:hidden">
       {carrinhos.map((carrinho) => {
         const phone = formatPhone(carrinho.customerPhone);
         const contato = phone ?? carrinho.customerEmail ?? "Sem contato";
@@ -1080,51 +1062,60 @@ function MobileCartsList({
         return (
           <article
             key={carrinho.id}
-            className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-3 py-3"
+            className="min-w-0 px-3.5 py-3.5"
           >
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold leading-5 text-[var(--fly-text)]">
-                {carrinho.customerName}
-              </p>
-              <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
-                {contato}
-              </p>
-            </div>
-
-            <div className="flex min-w-0 flex-col items-end gap-1 pt-0.5">
-              <span className="shrink-0 text-[13px] font-semibold leading-4 tabular-nums text-[var(--fly-text)]">
-                {formatCurrency(carrinho.potentialValue)}
-              </span>
-              <span className="text-[10px] font-medium leading-none text-[var(--fly-text-muted)]">
-                {formatDateTime(carrinho.lastActivityAt)}
-              </span>
-            </div>
-
-            <div className="col-span-2 flex min-w-0 items-start justify-between gap-3">
-              <div className="min-w-0 space-y-1">
-                <div className="flex min-w-0 items-center gap-2">
-                  <StatusBadge
-                    label={CARRINHO_STATUS_LABELS[carrinho.status]}
-                    className={STATUS_BADGE_STYLES[carrinho.status]}
-                    dotClassName={getStatusDotClass(carrinho.status)}
-                  />
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <StatusBadge
+                  label={CARRINHO_STATUS_LABELS[carrinho.status]}
+                  className={STATUS_BADGE_STYLES[carrinho.status]}
+                  dotClassName={getStatusDotClass(carrinho.status)}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold leading-5 text-[var(--fly-text)]">
+                    {carrinho.customerName}
+                  </p>
+                  <p className="truncate text-xs leading-4 text-[var(--fly-text-muted)]">
+                    {contato}
+                  </p>
                 </div>
-                <p className="truncate text-[11px] leading-4 text-[var(--fly-text-muted)]">
-                  {carrinho.productGroup} · {eventCount} evento
-                  {eventCount === 1 ? "" : "s"} no historico
-                </p>
-                <p className="truncate font-mono text-[10px] text-[var(--fly-text-dim)]">
-                  Cart: {formatIdentifier(carrinho.externalCartId)}
-                </p>
               </div>
               <button
                 type="button"
                 aria-label={`Ver detalhes de ${carrinho.customerName}`}
                 onClick={() => onDetail(carrinho)}
-                className="shrink-0 pt-0.5 text-[10px] font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
               >
-                Ver
+                Detalhes
               </button>
+            </div>
+
+            <div className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
+                  {carrinho.productGroup}
+                </p>
+                <p className="mt-1 text-[11px] leading-4 text-[var(--fly-text-muted)]">
+                  {eventCount} evento{eventCount === 1 ? "" : "s"} no histórico
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                  {formatCurrency(carrinho.potentialValue)}
+                </p>
+                {carrinho.recoveredValue ? (
+                  <p className="mt-1 text-[11px] font-medium text-[var(--fly-success)]">
+                    recuperado
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] leading-4 text-[var(--fly-text-muted)]">
+              <span>Último evento</span>
+              <span className="font-medium tabular-nums text-[var(--fly-text-soft)]">
+                {formatDateTime(carrinho.lastActivityAt)}
+              </span>
             </div>
           </article>
         );
@@ -1809,7 +1800,6 @@ export default function CarrinhosClientView({
   const [actionNotice, setActionNotice] = useState<string | null>(
     dataWarning ?? null
   );
-  const isCompactLayout = useMediaQuery("(max-width: 1023px)");
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -2134,19 +2124,14 @@ export default function CarrinhosClientView({
                     />
                   ) : view === "tabela" ? (
                     <div id="carrinhos-view-tabela" role="tabpanel">
-                      {isCompactLayout === true ? (
-                        <MobileCartsList
-                          carrinhos={visibleCarrinhos}
-                          referenceDate={referenceDate}
-                          onDetail={setSelectedCarrinho}
-                        />
-                      ) : null}
-                      {isCompactLayout !== true ? (
-                        <CartsTable
-                          carrinhos={visibleCarrinhos}
-                          onDetail={setSelectedCarrinho}
-                        />
-                      ) : null}
+                      <MobileCartsList
+                        carrinhos={visibleCarrinhos}
+                        onDetail={setSelectedCarrinho}
+                      />
+                      <CartsTable
+                        carrinhos={visibleCarrinhos}
+                        onDetail={setSelectedCarrinho}
+                      />
                     </div>
                   ) : (
                     <div id="carrinhos-view-kanban" role="tabpanel">
