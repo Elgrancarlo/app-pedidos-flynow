@@ -56,7 +56,7 @@ const toneChartColor: Record<DashboardTone, string> = {
 
 const kpiDotColorByLabel: Record<string, string> = {
   "Alertas ativos": "var(--fly-warning-strong)",
-  "Alertas de funil": "var(--fly-kpi-funnel-alert)",
+  "Alertas de funil": "var(--fly-danger-strong)",
   Carrinhos: "var(--fly-kpi-carts)",
   "Receita líquida": "var(--fly-chart-revenue)",
   "Taxa de reembolso": "var(--fly-kpi-refund)",
@@ -821,7 +821,7 @@ function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
           >
             <span
               aria-hidden="true"
-              className="mt-1.5 size-1.5 rounded-full bg-[var(--fly-kpi-funnel-alert)]"
+              className="mt-1.5 size-1.5 rounded-full bg-[var(--fly-danger-strong)]"
             />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[var(--fly-text)]">
