@@ -1,3 +1,8 @@
+import {
+  getTodayInAppTimezone,
+  shiftDateString,
+} from "@/lib/app-dates";
+
 export type PedidoPeriodoPreset = "today" | "7d" | "15d" | "30d" | "month";
 
 export type PedidoStatusPagamento =
@@ -276,33 +281,33 @@ function issueForPedido(
 }
 
 export function getDefaultPedidosRange() {
-  const today = new Date();
-  const start = addDays(today, -7);
+  const today = getTodayInAppTimezone();
 
   return {
-    startDate: toISODate(start),
-    endDate: toISODate(today),
+    startDate: shiftDateString(today, -6),
+    endDate: today,
   };
 }
 
 export function getPresetPedidosRange(preset: PedidoPeriodoPreset) {
-  const today = new Date();
+  const today = getTodayInAppTimezone();
 
   if (preset === "today") {
-    return { startDate: toISODate(today), endDate: toISODate(today) };
+    return { startDate: today, endDate: today };
   }
 
   if (preset === "month") {
+    const monthStart = `${today.slice(0, 8)}01`;
     return {
-      startDate: toISODate(new Date(today.getFullYear(), today.getMonth(), 1)),
-      endDate: toISODate(today),
+      startDate: monthStart,
+      endDate: today,
     };
   }
 
   const days = Number(preset.replace("d", ""));
   return {
-    startDate: toISODate(addDays(today, -days)),
-    endDate: toISODate(today),
+    startDate: shiftDateString(today, -(days - 1)),
+    endDate: today,
   };
 }
 

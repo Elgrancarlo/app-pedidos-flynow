@@ -209,7 +209,7 @@ export async function getPedidosForFrontend({
 
     if (error) {
       console.error("[pedidos] Erro ao buscar pedidos:", error.message);
-      break;
+      throw error;
     }
 
     if (!data || data.length === 0) break;
@@ -231,7 +231,7 @@ export async function getPedidosForFrontend({
 
     if (error) {
       console.error("[pedidos] Erro ao buscar pedidos pendentes:", error.message);
-      break;
+      throw error;
     }
 
     if (!data || data.length === 0) break;
@@ -265,40 +265,14 @@ async function getPedidosFinanceiroReal(
 
 export async function getPedidosRealInitialMetrics(
   range: PedidosDataRange,
-  fallbackPedidos: Pedido[]
+  pedidos: Pedido[]
 ): Promise<PedidosRealInitialMetrics> {
-  const periodPedidos = fallbackPedidos.filter((pedido) =>
+  const periodPedidos = pedidos.filter((pedido) =>
     isPedidoInRange(pedido, range)
   );
   const contagem = getStatusCountsFromPedidos(periodPedidos);
   const valorPago = getPaidValueFromPedidos(periodPedidos);
+  const financeiro = await getPedidosFinanceiroReal(range);
 
-  try {
-    const financeiro = await getPedidosFinanceiroReal(range);
-
-    return { contagem, financeiro, valorPago };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[pedidos] Erro ao buscar métricas financeiras:", message);
-
-    const financeiro: PedidoFinanceiroResumo = {
-      chargebacks: 0,
-      valorChargebacks: 0,
-      reembolsos: 0,
-      valorReembolsos: 0,
-    };
-
-    for (const pedido of periodPedidos) {
-      if (pedido.paymentStatus === "chargeback") {
-        financeiro.chargebacks += 1;
-        financeiro.valorChargebacks += pedido.amount ?? 0;
-      }
-      if (pedido.paymentStatus === "refunded") {
-        financeiro.reembolsos += 1;
-        financeiro.valorReembolsos += pedido.amount ?? 0;
-      }
-    }
-
-    return { contagem, financeiro, valorPago };
-  }
+  return { contagem, financeiro, valorPago };
 }

@@ -233,10 +233,12 @@ export async function getFinancialEventMetrics(startDate: string, endDate: strin
   } catch (error) {
     if (!isMissingEventStream(error)) throw error;
 
-    const { data } = await supabase.rpc("metricas_financeiras", {
+    const { data, error: rpcError } = await supabase.rpc("metricas_financeiras", {
       p_start: startTs,
       p_end: endTs,
     });
+
+    if (rpcError) throw rpcError;
 
     return {
       chargebacks: Number((data as FinancialMetrics | null)?.chargebacks ?? 0),

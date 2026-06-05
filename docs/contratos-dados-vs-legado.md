@@ -32,6 +32,11 @@ Contrato preservado. Pedidos pagos entram por `data_pagamento`; pedidos pendente
 
 Motivo: pedido pendente ainda existe operacionalmente mesmo sem pagamento.
 
+Ajustes de confiabilidade:
+
+- presets usam janelas inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores.
+- no modo real, erro de paginação ou métrica financeira interrompe o carregamento em vez de exibir dado parcial.
+
 ## Carrinhos
 
 Diverge de forma intencional. KPIs e funil consideram o periodo completo, mas a tabela carrega uma amostra limitada de eventos recentes.
@@ -43,6 +48,8 @@ Motivo: manter a tela rapida sem distorcer os numeros principais.
 Diverge para corrigir distorcao do legado. O novo frontend pagina todos os pedidos pagos do periodo antes de calcular receita, chargebacks e reembolsos.
 
 Motivo: evitar que o limite de 1.000 linhas reduza artificialmente a receita.
+
+Erros na fonte financeira real nao sao convertidos em zero silenciosamente.
 
 ## Estoque
 
