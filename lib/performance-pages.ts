@@ -59,6 +59,7 @@ export type PerformanceFunnelDay = {
   channel: string;
   directSales: number;
   revenueTotal: number;
+  totalApproved: number;
   upsellRevenue: number;
   aov: number;
   takeRateUs1: number;
@@ -300,6 +301,7 @@ function createMockPerformanceData(range = getDefaultRange()): PerformancePageDa
         channel: channels[(index + productIndex) % channels.length].channel,
         directSales: direct,
         revenueTotal: roundCurrency(direct * product.aov),
+        totalApproved: Math.round(direct * (takeRateUs1 + takeRateUs2)),
         upsellRevenue: roundCurrency(direct * product.aov * 0.24),
         aov: roundCurrency(product.aov),
         takeRateUs1,
@@ -501,6 +503,7 @@ export async function getPerformancePageData(
       channel: item.canal,
       directSales: numberValue(item.qtd_vendas_diretas),
       revenueTotal: numberValue(item.receita_total),
+      totalApproved: numberValue(item.qtd_upsells_aprovados),
       upsellRevenue: numberValue(item.receita_upsells),
       aov: numberValue(item.aov),
       takeRateUs1: numberValue(item.take_rate_us1),

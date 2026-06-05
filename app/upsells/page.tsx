@@ -159,7 +159,7 @@ function groupDailyRows(rows: PerformanceFunnelDay[]) {
     current.upsellRevenue += row.upsellRevenue;
     current.us1Wins += us1Wins;
     current.us2Wins += us2Wins;
-    current.totalApproved += us1Wins + us2Wins;
+    current.totalApproved += row.totalApproved;
     current.takeRateUs1Base += row.directSales * row.takeRateUs1;
     current.takeRateUs2Base += row.directSales * row.takeRateUs2;
 
@@ -265,7 +265,10 @@ function buildProductCards(
         );
         const us1Wins = dailyRows.reduce((total, row) => total + row.us1Wins, 0);
         const us2Wins = dailyRows.reduce((total, row) => total + row.us2Wins, 0);
-        const totalApproved = us1Wins + us2Wins;
+        const totalApproved = dailyRows.reduce(
+          (total, row) => total + row.totalApproved,
+          0
+        );
         const upsellRevenue = dailyRows.reduce(
           (total, row) => total + row.upsellRevenue,
           0
