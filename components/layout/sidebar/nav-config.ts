@@ -9,6 +9,7 @@ import {
   Radio,
   ShoppingCart,
   SlidersHorizontal,
+  Target,
   TrendingUp,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ export const WORKSPACE_NAV_SECTIONS: NavSection[] = [
         label: "Analytics",
         Icone: ChartNoAxesColumnIncreasing,
       },
+      { href: "/metas", label: "Metas", Icone: Target },
       { href: "/funil", label: "Funil", Icone: Funnel },
       { href: "/upsells", label: "Upsells", Icone: TrendingUp },
       { href: "/canais", label: "Canais", Icone: Radio },
