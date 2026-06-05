@@ -246,13 +246,68 @@ function KpiCard({ detail, label, period, tone, value }: DashboardKpi) {
   );
 }
 
+function FeaturedKpiGrid({ cards }: { cards: DashboardKpi[] }) {
+  return (
+    <section className="relative min-w-0 overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] shadow-[var(--fly-panel-shadow)]">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--fly-chart-revenue)] to-transparent opacity-75"
+      />
+      <div className="grid md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card, index) => (
+          <article
+            key={`${card.label}-${card.period}`}
+            className={cn(
+              "min-w-0 border-[var(--fly-divider-subtle)] p-3 sm:p-4 xl:p-5",
+              index > 0 && "border-t md:border-t-0",
+              index % 2 === 1 && "md:border-l",
+              index >= 2 && "md:border-t xl:border-t-0",
+              index > 0 && "xl:border-l"
+            )}
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    toneDotClass[card.tone]
+                  )}
+                />
+                <p className="truncate text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+                  {card.label}
+                </p>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+                {card.period}
+              </span>
+            </div>
+            <p className="mt-4 text-[27px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[30px] 2xl:text-[34px]">
+              {card.value}
+            </p>
+            <p className="mt-3 max-w-[260px] text-xs leading-5 text-[var(--fly-text-muted)]">
+              {card.detail}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function KpiGrid({
   cards,
   columns = "xl:grid-cols-4",
+  featured = false,
 }: {
   cards: DashboardKpi[];
   columns?: string;
+  featured?: boolean;
 }) {
+  if (featured) {
+    return <FeaturedKpiGrid cards={cards} />;
+  }
+
   return (
     <div className={cn("grid gap-3 md:grid-cols-2", columns)}>
       {cards.map((card) => (
@@ -648,7 +703,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
               description="Venda e reversão financeira do dia atual"
               period="Hoje"
             >
-              <KpiGrid cards={data.overviewCards} />
+              <KpiGrid cards={data.overviewCards} featured />
             </SectionGroup>
           </div>
 
