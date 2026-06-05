@@ -62,6 +62,8 @@ const toneChartColor: Record<DashboardTone, string> = {
   red: "var(--fly-danger-strong)",
 };
 
+const featuredFinancialKpiLabels = ["Vendas hoje", "Receita líquida"];
+
 function compactCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -290,7 +292,11 @@ function FeaturedKpiGrid({ cards }: { cards: DashboardKpi[] }) {
                   aria-hidden="true"
                   className={cn(
                     "size-1.5 shrink-0 rounded-full",
-                    toneDotClass[card.tone]
+                    toneDotClass[
+                      featuredFinancialKpiLabels.includes(card.label)
+                        ? "gold"
+                        : card.tone
+                    ]
                   )}
                 />
                 <p className="truncate text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
@@ -516,12 +522,12 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
                   animationEasing="ease-out"
                   type="monotone"
                   dataKey="receita"
-                  stroke="var(--fly-success)"
+                  stroke="var(--fly-chart-revenue)"
                   strokeWidth={isCompact ? 2.4 : 2.25}
                   dot={false}
                   activeDot={{
                     r: isCompact ? 3.75 : 4,
-                    fill: "var(--fly-success)",
+                    fill: "var(--fly-chart-revenue)",
                     stroke: "var(--fly-surface)",
                   }}
                 />
