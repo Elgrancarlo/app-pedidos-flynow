@@ -33,7 +33,8 @@ export function defaultAnalyticsDates(days?: number) {
   const start = new Date(`${endDate}T12:00:00Z`);
 
   if (typeof days === "number") {
-    start.setUTCDate(start.getUTCDate() - days);
+    const inclusiveDays = Math.max(Math.floor(days), 1);
+    start.setUTCDate(start.getUTCDate() - (inclusiveDays - 1));
   } else {
     start.setUTCDate(1);
   }
