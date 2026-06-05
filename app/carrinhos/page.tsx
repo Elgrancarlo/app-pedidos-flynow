@@ -11,7 +11,7 @@ import {
   type CarrinhoPeriodoPreset,
 } from "@/lib/carrinhos";
 import {
-  getCarrinhosInitialEventLimit,
+  getCarrinhosInitialCartLimit,
   getCarrinhosDatasetRange,
   getCarrinhosForFrontendData,
 } from "@/lib/carrinhos-data";
@@ -107,7 +107,7 @@ async function CarrinhosDataView({
         warning: "Modo mock ativo; carrinhos simulados para revisão visual.",
       }
     : await getCarrinhosForFrontendData(datasetRange, {
-        maxEvents: getCarrinhosInitialEventLimit(),
+        maxTableCarts: getCarrinhosInitialCartLimit(),
       });
   const { carrinhos } = data;
   const metricCarrinhos = useMockData

@@ -18,7 +18,7 @@ Este documento resume as regras escolhidas para exibir dados no novo frontend. A
 |---|---|
 | Dashboard | Mantem a logica do legado: vendas do dia, estados operacionais atuais, carrinhos de 24h, alertas e tendencia de 30 dias. Vendas/receita do dia sao paginadas para nao cortar acima de 1.000 pedidos pagos. |
 | Pedidos | Pedidos pagos entram por `data_pagamento`; pedidos pendentes entram por `created_at`. Isso evita esconder pedidos que ainda existem operacionalmente. |
-| Carrinhos | KPIs e funil usam o periodo completo. A tabela inicial carrega apenas eventos recentes por performance. |
+| Carrinhos | KPIs e funil usam o periodo completo. A tabela inicial carrega os 1.000 carrinhos mais recentes por performance. |
 | Financeiro | Receita usa todos os pedidos pagos do periodo, com paginacao completa. Chargebacks e reembolsos tambem sao paginados quando vêm de `payt_event_stream`. |
 | Estoque | Usa estoque real de `estoque_grupos`, `estoque_movimentacao` e `pedidos`. A tela abre em `30D` por padrao; `Tudo` e uma escolha explicita. |
 | Analytics | Usa agregacoes reais. Falha ou ausencia do schema `analytics` em modo real nao vira tela zerada. |

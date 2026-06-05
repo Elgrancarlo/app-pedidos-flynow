@@ -25,7 +25,7 @@ const CARRINHOS_SELECT =
   "event_key, transaction_id, cart_id, event_status, event_name, event_group, customer_name, customer_email, customer_phone, customer_doc, product_name, product_group, product_quantity, payment_method, total_price, paid_at, payload, event_at, created_at";
 
 const PAGE_SIZE = 1000;
-const DEFAULT_TABLE_EVENT_LIMIT = 100;
+const DEFAULT_TABLE_CART_LIMIT = 1000;
 
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
@@ -63,7 +63,7 @@ type CarrinhosDataRange = {
 };
 
 type CarrinhosFetchOptions = {
-  maxEvents?: number;
+  maxTableCarts?: number;
 };
 
 type CarrinhosEventFetchResult = {
@@ -734,7 +734,7 @@ async function fetchCarrinhosFromPaytEvents({
   endDate,
 }: CarrinhosDataRange, options: CarrinhosFetchOptions = {}) {
   const supabase = createServiceClient();
-  const maxEvents = options.maxEvents ?? null;
+  const maxTableCarts = options.maxTableCarts ?? null;
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
   const eventResult = await fetchCurrentPeriodEvents(
     supabase,
@@ -743,8 +743,6 @@ async function fetchCarrinhosFromPaytEvents({
     null
   );
   const rows = sortPaytEventsByNewest(eventResult.rows);
-  const tableRows = maxEvents == null ? rows : rows.slice(0, maxEvents);
-  const reachedEventLimit = maxEvents != null && rows.length > maxEvents;
 
   const groupedEvents = Array.from(groupPaytEvents(rows).values());
   const monitorGroups = groupedEvents.filter(isLegacyMonitorGroup);
@@ -753,9 +751,10 @@ async function fetchCarrinhosFromPaytEvents({
     ...groupedEvents.filter(isLegacyRecoveredGroup),
   ];
   const metrics = buildMetricsFromGroups(metricGroups);
-  const tableGroups = Array.from(groupPaytEvents(tableRows).values()).filter(
-    isLegacyMonitorGroup
-  );
+  const tableGroups =
+    maxTableCarts == null ? monitorGroups : monitorGroups.slice(0, maxTableCarts);
+  const reachedTableLimit =
+    maxTableCarts != null && monitorGroups.length > maxTableCarts;
   const carrinhos = tableGroups
     .map(mapEventsToCarrinho)
     .map(compactCarrinhoForTable)
@@ -767,7 +766,7 @@ async function fetchCarrinhosFromPaytEvents({
 
   return {
     carrinhos,
-    reachedEventLimit,
+    reachedTableLimit,
     metrics,
   };
 }
@@ -777,7 +776,7 @@ export async function getCarrinhosForFrontendData(
   options: CarrinhosFetchOptions = {}
 ): Promise<CarrinhosFrontendData> {
   try {
-    const maxEvents = options.maxEvents ?? null;
+    const maxTableCarts = options.maxTableCarts ?? null;
     const result = await fetchCarrinhosFromPaytEvents(range, options);
 
     return {
@@ -785,8 +784,8 @@ export async function getCarrinhosForFrontendData(
       metrics: result.metrics,
       source: "real",
       warning:
-        maxEvents != null && result.reachedEventLimit
-          ? `A tabela exibe os carrinhos a partir dos ${maxEvents.toLocaleString("pt-BR")} eventos mais recentes do recorte. Os KPIs consideram o período completo.`
+        maxTableCarts != null && result.reachedTableLimit
+          ? `A tabela exibe os ${maxTableCarts.toLocaleString("pt-BR")} carrinhos mais recentes do recorte. Os KPIs consideram o período completo.`
           : undefined,
     };
   } catch (error) {
@@ -815,6 +814,6 @@ export async function getCarrinhosForFrontend(
   return data.carrinhos;
 }
 
-export function getCarrinhosInitialEventLimit() {
-  return DEFAULT_TABLE_EVENT_LIMIT;
+export function getCarrinhosInitialCartLimit() {
+  return DEFAULT_TABLE_CART_LIMIT;
 }
