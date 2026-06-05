@@ -83,10 +83,9 @@ function ChannelsTable({ channels }: { channels: PerformanceChannel[] }) {
       <table className="w-full min-w-[760px] table-fixed text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[42%] px-3 py-3">Canal</th>
-            <th className="w-[24%] px-3 py-3 text-right">Receita</th>
-            <th className="w-[18%] px-3 py-3 text-right">Vendas diretas</th>
-            <th className="w-[16%] px-3 py-3 text-right">ROAS</th>
+            <th className="w-[48%] px-3 py-3">Canal</th>
+            <th className="w-[28%] px-3 py-3 text-right">Receita</th>
+            <th className="w-[24%] px-3 py-3 text-right">Vendas diretas</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
@@ -103,9 +102,6 @@ function ChannelsTable({ channels }: { channels: PerformanceChannel[] }) {
               </td>
               <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
                 {formatNumber(channel.directSales)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-brand-strong)]">
-                {formatDecimal(channel.roas)}
               </td>
             </tr>
           ))}
@@ -214,7 +210,7 @@ export default async function AnalyticsPage({
 
         <Panel
           title="Canais com mais receita"
-          description="Receita, vendas diretas e retorno por canal"
+          description="Receita e vendas diretas por origem PayT"
           action={<ActionText href="/canais">Ver detalhes</ActionText>}
         >
           <ChannelsTable channels={data.channels} />
