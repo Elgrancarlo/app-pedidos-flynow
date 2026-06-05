@@ -357,7 +357,7 @@ function StatusBadge({
   return (
     <span
       className={cn(
-        "flynow-status-badge inline-flex max-w-full items-center gap-1.5 rounded-[7px] border px-2 py-1 text-[11px] font-semibold leading-none",
+        "flynow-status-badge inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-[7px] border px-2 py-1 text-[11px] font-semibold leading-none",
         className
       )}
     >
@@ -384,7 +384,7 @@ function PaymentStatusInline({
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 items-center gap-2 text-xs font-medium text-[var(--fly-text-muted)]",
+        "inline-flex min-w-0 max-w-full items-center gap-2 text-xs font-medium text-[var(--fly-text-muted)]",
         className
       )}
     >
@@ -396,7 +396,7 @@ function PaymentStatusInline({
         {PEDIDO_STATUS_PAGAMENTO_LABELS[status]}
       </span>
       {referenceDate ? (
-        <span className="hidden shrink-0 text-[11px] text-[var(--fly-text-dim)] xl:inline">
+        <span className="hidden shrink-0 text-[11px] text-[var(--fly-text-dim)] 2xl:inline">
           {formatDate(referenceDate)}
         </span>
       ) : null}
@@ -1267,14 +1267,14 @@ function OrdersTable({
 }) {
   return (
     <div className="hidden min-h-[520px] overflow-x-auto lg:block">
-      <table className="w-full min-w-[1180px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[1240px] table-fixed text-left text-sm">
         <colgroup>
-          <col className="w-[24%]" />
-          <col className="w-[13%]" />
+          <col className="w-[23%]" />
+          <col className="w-[12%]" />
           <col className="w-[18%]" />
-          <col className="w-[16%]" />
-          <col className="w-[20%]" />
-          <col className="w-[9%]" />
+          <col className="w-[17%]" />
+          <col className="w-[22%]" />
+          <col className="w-[8%]" />
         </colgroup>
         <thead>
           <tr className="border-b border-white/[0.06] bg-white/[0.018] text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
@@ -1334,18 +1334,20 @@ function OrdersTable({
                     </span>
                   </div>
                 </td>
-                <td className="px-4 py-3">
-                  <p className="text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                    {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
-                  </p>
-                  <PaymentStatusInline
-                    status={pedido.paymentStatus}
-                    referenceDate={pedido.paidAt ?? pedido.createdAt}
-                    className="mt-1"
-                  />
+                <td className="overflow-hidden px-4 py-3 align-middle">
+                  <div className="min-w-0 max-w-full">
+                    <p className="truncate text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                      {pedido.amount == null ? "-" : formatCurrency(pedido.amount)}
+                    </p>
+                    <PaymentStatusInline
+                      status={pedido.paymentStatus}
+                      referenceDate={pedido.paidAt ?? pedido.createdAt}
+                      className="mt-1 flex"
+                    />
+                  </div>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <td className="overflow-hidden px-4 py-3 align-middle">
+                  <div className="flex min-w-0 max-w-full flex-col items-start gap-1.5">
                     <div className="flex min-w-0 max-w-full items-center gap-2">
                       <StatusBadge
                         label={PEDIDO_STATUS_LOGISTICO_LABELS[pedido.logisticsStatus]}
@@ -1603,7 +1605,7 @@ function PedidosSkeleton() {
           </div>
         </div>
         <div className="hidden lg:block">
-          <div className="grid grid-cols-[24%_13%_18%_16%_20%_9%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
+          <div className="grid grid-cols-[23%_12%_18%_17%_22%_8%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
             {Array.from({ length: 6 }).map((_, index) => (
               <span
                 key={index}
@@ -1615,7 +1617,7 @@ function PedidosSkeleton() {
             {Array.from({ length: 8 }).map((_, index) => (
               <div
                 key={index}
-                className="grid grid-cols-[24%_13%_18%_16%_20%_9%] items-center gap-0 py-4"
+                className="grid grid-cols-[23%_12%_18%_17%_22%_8%] items-center gap-0 py-4"
               >
                 <div className="space-y-2">
                   <span className="block h-3.5 w-36 rounded-full bg-white/[0.07]" />
