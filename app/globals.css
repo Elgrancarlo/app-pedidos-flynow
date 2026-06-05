@@ -382,6 +382,9 @@ html[data-flynow-theme="dark"],
   --fly-warning-border-hover: rgba(251, 143, 103, 0.34);
   --fly-warning-text: #ffb199;
   --fly-warning-strong: #fb8f67;
+  --fly-kpi-refund: #fb7185;
+  --fly-kpi-carts: #38bdf8;
+  --fly-kpi-funnel-alert: #a78bfa;
   --fly-panel-shadow:
     0 1px 0 rgba(255, 255, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
@@ -462,6 +465,9 @@ html[data-flynow-theme="light"],
   --fly-warning-border-hover: rgba(184, 74, 47, 0.32);
   --fly-warning-text: #b84a2f;
   --fly-warning-strong: #7c2d12;
+  --fly-kpi-refund: #be123c;
+  --fly-kpi-carts: #0369a1;
+  --fly-kpi-funnel-alert: #6d28d9;
   --fly-panel-shadow:
     0 10px 24px rgba(15, 23, 42, 0.06),
     0 1px 0 rgba(255, 255, 255, 0.86),

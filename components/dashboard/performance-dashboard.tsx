@@ -46,14 +46,6 @@ type PerformanceDashboardProps = {
   data: DashboardPageData;
 };
 
-const toneDotClass: Record<DashboardTone, string> = {
-  blue: "bg-[var(--fly-chart-investment)]",
-  gold: "bg-[var(--fly-chart-revenue)]",
-  green: "bg-[var(--fly-success)]",
-  neutral: "bg-[var(--fly-text-muted)]",
-  red: "bg-[var(--fly-danger-strong)]",
-};
-
 const toneChartColor: Record<DashboardTone, string> = {
   blue: "var(--fly-chart-investment)",
   gold: "var(--fly-chart-revenue)",
@@ -62,7 +54,18 @@ const toneChartColor: Record<DashboardTone, string> = {
   red: "var(--fly-danger-strong)",
 };
 
-const featuredFinancialKpiLabels = ["Vendas hoje", "Receita líquida"];
+const kpiDotColorByLabel: Record<string, string> = {
+  "Alertas ativos": "var(--fly-warning-strong)",
+  "Alertas de funil": "var(--fly-kpi-funnel-alert)",
+  Carrinhos: "var(--fly-kpi-carts)",
+  "Receita líquida": "var(--fly-chart-revenue)",
+  "Taxa de reembolso": "var(--fly-kpi-refund)",
+  "Vendas hoje": "var(--fly-chart-revenue)",
+};
+
+function getKpiDotColor({ label, tone }: Pick<DashboardKpi, "label" | "tone">) {
+  return kpiDotColorByLabel[label] ?? toneChartColor[tone];
+}
 
 function compactCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -109,6 +112,12 @@ function isAwaitingShipmentLabel(label: string) {
 
 function isPostedLabel(label: string) {
   return normalizeFunnelLabel(label) === "postado";
+}
+
+function getFunnelRowColor(row: DashboardFunnelRow) {
+  return isAwaitingShipmentLabel(row.label)
+    ? "var(--fly-warning-strong)"
+    : toneChartColor[row.tone];
 }
 
 function formatDateLabel(value: string) {
@@ -247,7 +256,8 @@ function KpiCard({ detail, label, period, tone, value }: DashboardKpi) {
         <div className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden="true"
-            className={cn("size-1.5 shrink-0 rounded-full", toneDotClass[tone])}
+            className="size-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: getKpiDotColor({ label, tone }) }}
           />
           <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
             {label}
@@ -290,14 +300,8 @@ function FeaturedKpiGrid({ cards }: { cards: DashboardKpi[] }) {
               <div className="flex min-w-0 items-center gap-2">
                 <span
                   aria-hidden="true"
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    toneDotClass[
-                      featuredFinancialKpiLabels.includes(card.label)
-                        ? "gold"
-                        : card.tone
-                    ]
-                  )}
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: getKpiDotColor(card) }}
                 />
                 <p className="truncate text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
                   {card.label}
@@ -641,7 +645,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                   animationEasing="ease-out"
                 >
                   {chartRows.map((row) => (
-                    <Cell key={row.label} fill={toneChartColor[row.tone]} />
+                    <Cell key={row.label} fill={getFunnelRowColor(row)} />
                   ))}
                 </Pie>
               </PieChart>
@@ -665,7 +669,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                   <span
                     aria-hidden="true"
                     className="size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: toneChartColor[row.tone] }}
+                    style={{ backgroundColor: getFunnelRowColor(row) }}
                   />
                   <span className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
                     {row.label}
@@ -691,7 +695,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                     <span
                       aria-hidden="true"
                       className="size-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: toneChartColor[row.tone] }}
+                      style={{ backgroundColor: getFunnelRowColor(row) }}
                     />
                     <span className="truncate text-xs text-[var(--fly-text-muted)]">
                       {row.label}
@@ -753,7 +757,7 @@ function ActiveAlertsPanel({
               key={alert.id}
               className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-transparent bg-transparent px-3 py-2.5 max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
             >
-              <span className="text-xs font-medium tabular-nums text-white/65">
+              <span className="text-xs font-medium tabular-nums text-[var(--fly-text-dim)]">
                 {alert.orderNumber ? `#${alert.orderNumber}` : "-"}
               </span>
               <div className="min-w-0">
@@ -764,7 +768,7 @@ function ActiveAlertsPanel({
                   {alert.productGroup} · {alert.statusLabel}
                 </p>
               </div>
-              <span className="max-w-[120px] truncate text-xs font-medium tabular-nums text-[var(--fly-brand-strong)] max-md:hidden">
+              <span className="max-w-[120px] truncate text-xs font-medium tabular-nums text-white/65 max-md:hidden">
                 {alert.trackingCode ?? "Sem rastreio"}
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-[var(--fly-warning-strong)]">
@@ -817,7 +821,7 @@ function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
           >
             <span
               aria-hidden="true"
-              className="mt-1.5 size-1.5 rounded-full bg-[var(--fly-danger-strong)]"
+              className="mt-1.5 size-1.5 rounded-full bg-[var(--fly-kpi-funnel-alert)]"
             />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[var(--fly-text)]">
