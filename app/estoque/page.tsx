@@ -72,13 +72,13 @@ function MockEntryForm() {
           </span>
         </label>
       ))}
-      <div className="flex min-w-0 items-end md:col-span-2 2xl:col-span-1">
+      <div className="flex min-w-0 items-end justify-end md:col-span-2 2xl:col-span-1">
         <button
           type="button"
           disabled
-          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 2xl:w-auto"
+          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-4 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 sm:w-auto"
         >
-          Registrar Entrada
+          Registrar
         </button>
       </div>
     </div>

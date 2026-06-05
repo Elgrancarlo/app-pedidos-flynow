@@ -122,18 +122,19 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
         />
       </div>
 
-      <div className="flex min-w-0 items-end md:col-span-2 2xl:col-span-1">
+      <div className="flex min-w-0 items-end justify-end md:col-span-2 2xl:col-span-1">
         <button
           type="submit"
+          aria-label="Registrar entrada de estoque"
           disabled={loading}
-          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[#050607] shadow-[0_10px_24px_rgba(214,168,79,0.12)] transition-colors duration-150 hover:bg-[var(--fly-chart-revenue-active)] disabled:cursor-not-allowed disabled:opacity-50 2xl:w-auto"
+          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[#050607] shadow-[0_10px_24px_rgba(214,168,79,0.12)] transition-colors duration-150 hover:bg-[var(--fly-chart-revenue-active)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
-          {loading ? "Salvando..." : "Registrar Entrada"}
+          {loading ? "Salvando..." : "Registrar"}
         </button>
       </div>
 
       {erro ? (
-        <p className="text-sm text-[var(--fly-danger-strong)] lg:col-span-4">
+        <p className="text-sm text-[var(--fly-danger-strong)] md:col-span-2 2xl:col-span-4">
           {erro}
         </p>
       ) : null}

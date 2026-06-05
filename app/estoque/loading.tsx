@@ -51,7 +51,7 @@ function EntryFormSkeleton() {
         <SkeletonLine className="h-10 rounded-[8px]" />
         <SkeletonLine className="h-10 rounded-[8px]" />
         <SkeletonLine className="h-10 rounded-[8px] md:col-span-2 2xl:col-span-1" />
-        <SkeletonLine className="h-10 rounded-[8px] md:col-span-2 2xl:col-span-1 2xl:w-36" />
+        <SkeletonLine className="h-10 w-full rounded-[8px] sm:w-28 md:col-span-2 md:justify-self-end 2xl:col-span-1" />
       </div>
     </SkeletonPanel>
   );
