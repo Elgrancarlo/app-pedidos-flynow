@@ -496,13 +496,24 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
   );
 }
 
-function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
+function OrdersFunnelCard({
+  compact = false,
+  rows,
+}: {
+  compact?: boolean;
+  rows: DashboardFunnelRow[];
+}) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
   const max = Math.max(...rows.map((row) => row.count), 1);
 
   return (
-    <section className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
-      <div className="mb-5">
+    <section
+      className={cn(
+        "min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)]",
+        compact ? "sm:p-4" : "sm:p-5"
+      )}
+    >
+      <div className={compact ? "mb-3" : "mb-5"}>
         <SectionHeader
           title="Funil de pedidos"
           description={`${formatNumber(total)} pedidos pagos no dia`}
@@ -511,21 +522,43 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
       </div>
 
       {rows.length > 0 ? (
-        <div className="space-y-4">
+        <div className={compact ? "space-y-2.5" : "space-y-4"}>
           {rows.map((row) => (
             <div
               key={row.label}
-              className="grid grid-cols-[minmax(112px,0.7fr)_minmax(120px,1fr)_auto] items-center gap-3 text-sm max-sm:grid-cols-1"
+              className={cn(
+                "grid items-center gap-3 text-sm max-sm:grid-cols-1",
+                compact
+                  ? "grid-cols-[minmax(96px,0.66fr)_minmax(80px,1fr)_auto]"
+                  : "grid-cols-[minmax(112px,0.7fr)_minmax(120px,1fr)_auto]"
+              )}
             >
-              <p className="truncate text-[var(--fly-text-soft)]">{row.label}</p>
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+              <p
+                className={cn(
+                  "truncate text-[var(--fly-text-soft)]",
+                  compact && "text-[13px]"
+                )}
+              >
+                {row.label}
+              </p>
+              <div
+                className={cn(
+                  "overflow-hidden rounded-full bg-[var(--fly-divider)]",
+                  compact ? "h-1.5" : "h-2"
+                )}
+              >
                 <span
                   aria-hidden="true"
                   className={cn("flynow-conversion-bar block h-full rounded-full", toneBarClass[row.tone])}
                   style={{ width: `${Math.max((row.count / max) * 100, 5)}%` }}
                 />
               </div>
-              <div className="flex min-w-[132px] items-center justify-end gap-5 tabular-nums max-sm:justify-between">
+              <div
+                className={cn(
+                  "flex items-center justify-end tabular-nums max-sm:justify-between",
+                  compact ? "min-w-[112px] gap-3" : "min-w-[132px] gap-5"
+                )}
+              >
                 <span className="font-semibold text-[var(--fly-text)]">
                   {formatNumber(row.count)}
                 </span>
@@ -739,30 +772,22 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
           >
             <SectionGroup
               title="Análise recente"
-              description="Funil do dia e curva consolidada dos últimos 30 dias"
+              description="Funil do dia, alertas e curva consolidada dos últimos 30 dias"
             >
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-                <OrdersFunnelCard rows={data.funnelRows} />
-                <TrendChart data={data.trend} />
+              <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.78fr)_minmax(0,1.22fr)] xl:items-start">
+                <div className="space-y-5">
+                  <OrdersFunnelCard compact rows={data.funnelRows} />
+                  <FunnelAlertsPanel alerts={data.alertasFunil} />
+                </div>
+                <div className="space-y-5">
+                  <TrendChart data={data.trend} />
+                  <ActiveAlertsPanel
+                    alerts={data.activeAlerts}
+                    count={data.activeAlerts.length}
+                  />
+                </div>
               </div>
             </SectionGroup>
-          </div>
-
-          <div
-            className="flynow-dashboard-enter-item"
-            style={{ "--flynow-enter-delay": "280ms" } as CSSProperties}
-          >
-            <ActiveAlertsPanel
-              alerts={data.activeAlerts}
-              count={data.activeAlerts.length}
-            />
-          </div>
-
-          <div
-            className="flynow-dashboard-enter-item"
-            style={{ "--flynow-enter-delay": "350ms" } as CSSProperties}
-          >
-            <FunnelAlertsPanel alerts={data.alertasFunil} />
           </div>
         </div>
       </div>
