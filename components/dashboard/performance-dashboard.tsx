@@ -753,7 +753,7 @@ function ActiveAlertsPanel({
               key={alert.id}
               className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-[8px] border border-transparent bg-transparent px-3 py-2.5 max-md:grid-cols-[auto_minmax(0,1fr)_auto]"
             >
-              <span className="text-xs font-medium tabular-nums text-[var(--fly-text-dim)]">
+              <span className="text-xs font-medium tabular-nums text-white/65">
                 {alert.orderNumber ? `#${alert.orderNumber}` : "-"}
               </span>
               <div className="min-w-0">
