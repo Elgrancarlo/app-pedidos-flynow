@@ -110,6 +110,8 @@ const OPEN_LOGISTICS_STATUSES: PedidoStatusLogistico[] = [
   "aguardando_retirada",
 ];
 
+const DASHBOARD_PAGE_SIZE = 1000;
+
 function numberValue(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
@@ -117,6 +119,35 @@ function numberValue(value: unknown) {
     return Number.isFinite(parsed) ? parsed : 0;
   }
   return 0;
+}
+
+async function fetchPaidSalesRowsForRange(
+  supabase: ReturnType<typeof createServiceClient>,
+  startTs: string,
+  endTs: string
+) {
+  const rows: VendasHojeRow[] = [];
+
+  for (let offset = 0; ; offset += DASHBOARD_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .select("valor_total")
+      .eq("status_pagamento", "paid")
+      .not("data_pagamento", "is", null)
+      .gte("data_pagamento", startTs)
+      .lte("data_pagamento", endTs)
+      .order("data_pagamento", { ascending: false })
+      .range(offset, offset + DASHBOARD_PAGE_SIZE - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as VendasHojeRow[]));
+
+    if (data.length < DASHBOARD_PAGE_SIZE) break;
+  }
+
+  return rows;
 }
 
 function formatCurrency(value: number) {
@@ -416,13 +447,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     tendencia,
     funilAnalytics,
   ] = await Promise.all([
-    supabase
-      .from("pedidos")
-      .select("valor_total")
-      .eq("status_pagamento", "paid")
-      .not("data_pagamento", "is", null)
-      .gte("data_pagamento", startTs)
-      .lte("data_pagamento", endTs),
+    fetchPaidSalesRowsForRange(supabase, startTs, endTs),
     getFinancialEventMetrics(today, today),
     supabase.rpc("pedidos_em_transito"),
     supabase.rpc("pedidos_atrasados"),
@@ -440,13 +465,12 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     ),
   ]);
 
-  if (vendasHojeRows.error) throw vendasHojeRows.error;
   if (emTransito.error) throw emTransito.error;
   if (atrasados.error) throw atrasados.error;
   if (funilPedidos.error) throw funilPedidos.error;
   if (tendencia.error) throw tendencia.error;
 
-  const salesRows = (vendasHojeRows.data ?? []) as VendasHojeRow[];
+  const salesRows = vendasHojeRows;
   const salesCount = salesRows.length;
   const salesValue = salesRows.reduce(
     (sum, pedido) => sum + numberValue(pedido.valor_total),

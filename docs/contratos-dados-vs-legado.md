@@ -26,6 +26,7 @@ Ajustes aplicados:
 - janelas numericas de analytics agora sao inclusivas. Exemplo: `7 dias` = hoje + 6 dias anteriores, nao 8 dias.
 - alertas ativos sao revalidados no frontend: data prometida precisa estar vencida e o pedido nao pode estar entregue/devolvido.
 - checkout de 24h usado nos KPIs nao aplica limite de tabela.
+- vendas e receita do dia sao paginadas para nao cortar acima de 1.000 pedidos pagos.
 
 ## Pedidos
 
@@ -48,11 +49,11 @@ O limite de eventos vale apenas para a tabela inicial, nao para os KPIs.
 
 ## Financeiro
 
-Diverge para corrigir distorcao do legado. O novo frontend pagina todos os pedidos pagos do periodo antes de calcular receita, chargebacks e reembolsos.
+Diverge para corrigir distorcao do legado. O novo frontend pagina todos os pedidos pagos do periodo antes de calcular receita.
 
 Motivo: evitar que o limite de 1.000 linhas reduza artificialmente a receita.
 
-Erros na fonte financeira real nao sao convertidos em zero silenciosamente.
+Chargebacks e reembolsos tambem sao paginados quando vêm de `payt_event_stream`. Erros na fonte financeira real nao sao convertidos em zero silenciosamente.
 
 ## Estoque
 

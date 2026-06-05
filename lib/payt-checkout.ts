@@ -83,16 +83,17 @@ function buildMonitorRow(raw: RawWebhookRow) {
   const rawGroup = physicalItems[0]?.name ?? productName;
   const totalPriceCents = numberValue(payload["transaction.total_price"]);
   const status = normalizePaytEventStatus(payload.status);
+  const rawTimestamp = raw.created_at ?? raw.received_at ?? new Date().toISOString();
   const eventAt = toIsoTimestamp(
     payload["transaction.updated_at"] ??
       payload["transaction.paid_at"] ??
       payload.updated_at ??
       payload.created_at,
-    raw.created_at ?? new Date().toISOString(),
+    rawTimestamp,
   );
 
   return {
-    key: textValue(payload.transaction_id) ?? textValue(payload.cart_id) ?? `${status}:${raw.created_at}`,
+    key: textValue(payload.transaction_id) ?? textValue(payload.cart_id) ?? `${status}:${rawTimestamp}`,
     transactionId: textValue(payload.transaction_id),
     cartId: textValue(payload.cart_id),
     customerName: textValue(payload["customer.name"]),

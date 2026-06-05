@@ -38,6 +38,13 @@ type FinanceiroPedidoRow = {
   chargeback: boolean | null;
 };
 
+type FinancialEventRow = {
+  transaction_id: string | null;
+  event_status: string | null;
+  total_price: number | string | null;
+  event_at: string | null;
+};
+
 export type FinanceiroRange = {
   startDate: string;
   endDate: string;
@@ -195,25 +202,45 @@ async function getFinanceiroPedidosForFrontend(
   return rows.map(mapFinanceiroPedidoRow);
 }
 
-export async function getFinancialEventMetrics(startDate: string, endDate: string): Promise<FinancialMetrics> {
-  const supabase = createServiceClient();
-  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
+async function getFinancialEventRows(
+  supabase: ReturnType<typeof createServiceClient>,
+  startTs: string,
+  endTs: string
+) {
+  const rows: FinancialEventRow[] = [];
 
-  try {
+  for (let offset = 0; ; offset += FINANCEIRO_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("payt_event_stream")
       .select("transaction_id, event_status, total_price, event_at")
       .gte("event_at", startTs)
       .lte("event_at", endTs)
       .order("event_at", { ascending: false })
-      .in("event_status", ["refunded", "chargeback", "charged_back"]);
+      .in("event_status", ["refunded", "chargeback", "charged_back"])
+      .range(offset, offset + FINANCEIRO_PAGE_SIZE - 1);
 
     if (error) throw error;
+    if (!data || data.length === 0) break;
+
+    rows.push(...(data as FinancialEventRow[]));
+
+    if (data.length < FINANCEIRO_PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+export async function getFinancialEventMetrics(startDate: string, endDate: string): Promise<FinancialMetrics> {
+  const supabase = createServiceClient();
+  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
+
+  try {
+    const rows = await getFinancialEventRows(supabase, startTs, endTs);
 
     const latestRefundByTransaction = new Map<string, number>();
     const latestChargebackByTransaction = new Map<string, number>();
 
-    for (const row of data ?? []) {
+    for (const row of rows) {
       const transactionId = String(row.transaction_id ?? "").trim();
       if (!transactionId) continue;
 
