@@ -59,14 +59,6 @@ const toneBarClass: Record<DashboardTone, string> = {
   red: "bg-[var(--fly-danger-strong)]",
 };
 
-const toneBadgeClass: Record<DashboardTone, string> = {
-  blue: "border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-[var(--fly-chart-investment)]",
-  gold: "border-[var(--fly-warning-border)] bg-[var(--fly-warning-bg)] text-[var(--fly-warning-strong)]",
-  green: "border-[var(--fly-success-border)] bg-[var(--fly-success-surface)] text-[var(--fly-success-strong)]",
-  neutral: "border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] text-[var(--fly-text-muted)]",
-  red: "border-[var(--fly-danger-border)] bg-[var(--fly-danger-bg)] text-[var(--fly-danger-strong)]",
-};
-
 function compactCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -200,7 +192,7 @@ function SectionHeader({
         </div>
       </div>
       {period ? (
-        <span className="ml-3 inline-flex h-7 w-fit shrink-0 items-center rounded-full border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-2.5 text-[11px] font-medium text-[var(--fly-text-muted)]">
+        <span className="ml-3 inline-flex w-fit shrink-0 items-center text-[11px] font-medium text-[var(--fly-text-dim)]">
           {period}
         </span>
       ) : null}
@@ -240,12 +232,7 @@ function KpiCard({ detail, label, period, tone, value }: DashboardKpi) {
             {label}
           </p>
         </div>
-        <span
-          className={cn(
-            "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[10px] font-semibold uppercase",
-            toneBadgeClass[tone]
-          )}
-        >
+        <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
           {period}
         </span>
       </div>
