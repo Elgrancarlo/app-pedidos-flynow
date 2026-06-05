@@ -4,13 +4,12 @@ import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Inbox } from "lucide-react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
-  LabelList,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -99,18 +98,6 @@ function formatDateLabel(value: string) {
     day: "2-digit",
     month: "2-digit",
   });
-}
-
-function shortFunnelLabel(value: string) {
-  const normalized = value.toLowerCase();
-
-  if (normalized.includes("aguardando")) return "Aguard.";
-  if (normalized.includes("transporte")) return "Transp.";
-  if (normalized.includes("postado")) return "Postado";
-  if (normalized.includes("entregue")) return "Entregue";
-  if (normalized.includes("devolvido")) return "Devolv.";
-
-  return value.length > 10 ? `${value.slice(0, 9)}.` : value;
 }
 
 function getCompactChartTicks(data: DashboardTrendPoint[]) {
@@ -381,9 +368,7 @@ function TrendChartTooltip({
 }
 
 type FunnelChartTooltipPayload = {
-  payload?: DashboardFunnelRow & {
-    shortLabel: string;
-  };
+  payload?: DashboardFunnelRow;
 };
 
 function FunnelChartTooltip({
@@ -556,10 +541,6 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
 
 function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.count, 0);
-  const chartRows = rows.map((row) => ({
-    ...row,
-    shortLabel: shortFunnelLabel(row.label),
-  }));
 
   return (
     <section className="flex h-full min-w-0 flex-col rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
@@ -572,41 +553,20 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
       </div>
 
       {rows.length > 0 ? (
-        <div
-          role="img"
-          aria-label="Gráfico de barras do funil de pedidos por status"
-          className="flynow-chart-stage min-h-[248px] flex-1"
-        >
-          <div className="flynow-chart-plot h-full min-w-0">
+        <div className="flex flex-1 flex-col">
+          <div
+            role="img"
+            aria-label="Gráfico meia lua do funil de pedidos por status"
+            className="flynow-chart-stage relative min-h-[214px] flex-1"
+          >
             <ResponsiveContainer
               width="100%"
               height="100%"
               minWidth={1}
-              minHeight={220}
-              initialDimension={{ width: 420, height: 280 }}
+              minHeight={210}
+              initialDimension={{ width: 420, height: 240 }}
             >
-              <BarChart
-                data={chartRows}
-                margin={{ top: 24, right: 6, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid
-                  stroke="var(--fly-border-subtle)"
-                  strokeDasharray="3 3"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="shortLabel"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{
-                    fill: "var(--fly-text-muted)",
-                    fontSize: 11,
-                  }}
-                  interval={0}
-                  minTickGap={8}
-                  tickMargin={10}
-                />
-                <YAxis hide domain={[0, "dataMax"]} />
+              <PieChart margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
                 <Tooltip
                   content={<FunnelChartTooltip />}
                   cursor={{ fill: "var(--fly-row-bg-strong)" }}
@@ -616,33 +576,60 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
                     zIndex: 20,
                   }}
                 />
-                <Bar
+                <Pie
+                  data={rows}
                   dataKey="count"
-                  maxBarSize={46}
-                  radius={[6, 6, 0, 0]}
+                  nameKey="label"
+                  cx="50%"
+                  cy="78%"
+                  startAngle={180}
+                  endAngle={0}
+                  innerRadius={76}
+                  outerRadius={114}
+                  paddingAngle={2}
+                  cornerRadius={6}
+                  stroke="var(--fly-surface)"
+                  strokeWidth={2}
                   animationBegin={160}
                   animationDuration={760}
                   animationEasing="ease-out"
                 >
-                  <LabelList
-                    dataKey="count"
-                    position="top"
-                    formatter={(value) =>
-                      typeof value === "number" ? formatNumber(value) : ""
-                    }
-                    fill="var(--fly-text-soft)"
-                    fontSize={11}
-                    fontWeight={600}
-                  />
-                  {chartRows.map((row) => (
-                    <Cell
-                      key={row.label}
-                      fill={toneChartColor[row.tone]}
-                    />
+                  {rows.map((row) => (
+                    <Cell key={row.label} fill={toneChartColor[row.tone]} />
                   ))}
-                </Bar>
-              </BarChart>
+                </Pie>
+              </PieChart>
             </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-x-0 bottom-5 text-center">
+              <p className="text-[26px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
+                {formatNumber(total)}
+              </p>
+              <p className="mt-1 text-[11px] font-medium text-[var(--fly-text-muted)]">
+                pedidos no dia
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+            {rows.map((row) => (
+              <div
+                key={row.label}
+                className="flex min-w-0 items-center justify-between gap-3"
+              >
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: toneChartColor[row.tone] }}
+                  />
+                  <span className="truncate text-xs text-[var(--fly-text-muted)]">
+                    {row.label}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatNumber(row.count)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       ) : (
