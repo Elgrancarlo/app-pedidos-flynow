@@ -18,15 +18,13 @@ import {
   StatCard,
   StatGrid,
 } from "@/components/workspace/operational-ui";
-import { defaultAnalyticsDates } from "@/lib/analytics";
+import { defaultAnalyticsDates, getChannelAnalytics } from "@/lib/analytics";
 import {
-  getPerformancePageData,
-  type PerformanceCampaign,
-  type PerformanceChannel,
-  type PerformancePageData,
-  type PerformanceRange,
-} from "@/lib/performance-pages";
-import { cn, formatCurrency } from "@/lib/utils";
+  ANALYTICS_CHANNEL_LABELS,
+  type AnalyticsCanal,
+  type AnalyticsFunilSourceRow,
+} from "@/lib/supabase";
+import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +40,8 @@ type SelectOption = {
   value: string;
   label: string;
 };
+
+type ChannelAnalyticsData = Awaited<ReturnType<typeof getChannelAnalytics>>;
 
 type ChannelSummary = {
   clicksTotal: number;
@@ -66,6 +66,11 @@ type RedtrackProductRow = {
 
 const pageSizeOptions = [10, 25, 50, 100];
 
+type PerformanceRange = {
+  startDate: string;
+  endDate: string;
+};
+
 function formatNumber(value: number, maximumFractionDigits = 0) {
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits,
@@ -81,15 +86,6 @@ function formatDecimal(value: number) {
 
 function isDateString(value: string | undefined) {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
-}
-
-function normalizeKey(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .toUpperCase();
 }
 
 function resolveRange(params: CanaisPageParams): PerformanceRange {
@@ -116,18 +112,21 @@ function resolvePage(value: string | undefined) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
 }
 
-function buildChannelOptions(data: PerformancePageData): SelectOption[] {
-  const values = [
-    ...data.channels.map((item) => item.label),
-    ...data.campaigns.map((item) => item.source),
-  ];
-  const uniqueValues = Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b, "pt-BR")
+function buildChannelOptions(rows: AnalyticsFunilSourceRow[]): SelectOption[] {
+  const uniqueValues = Array.from(new Set(rows.map((item) => item.canal))).sort(
+    (first, second) =>
+      (ANALYTICS_CHANNEL_LABELS[first] ?? first).localeCompare(
+        ANALYTICS_CHANNEL_LABELS[second] ?? second,
+        "pt-BR"
+      )
   );
 
   return [
     { value: "all", label: "Todos os canais" },
-    ...uniqueValues.map((value) => ({ value, label: value })),
+    ...uniqueValues.map((value) => ({
+      value,
+      label: ANALYTICS_CHANNEL_LABELS[value] ?? value,
+    })),
   ];
 }
 
@@ -137,181 +136,80 @@ function resolveFilter(value: string | undefined, options: SelectOption[]) {
   return options.some((option) => option.value === value) ? value : "all";
 }
 
-function matchesSelectedChannel(selectedChannel: string, values: string[]) {
-  if (selectedChannel === "all") return true;
-
-  const selected = normalizeKey(selectedChannel);
-
-  return values.some((value) => normalizeKey(value) === selected);
-}
-
-function summarizeChannels({
-  campaigns,
-  channels,
-  data,
-  selectedChannel,
-}: {
-  campaigns: PerformanceCampaign[];
-  channels: PerformanceChannel[];
-  data: PerformancePageData;
-  selectedChannel: string;
-}): ChannelSummary {
-  if (selectedChannel === "all") {
-    return {
-      clicksTotal: data.summary.clicksTotal,
-      conversionsTotal: data.summary.conversionsTotal,
-      revenueTotal: data.summary.revenueTotal,
-      roas: data.summary.roas,
-      spendTotal: data.summary.spendTotal,
-      upsellRevenue: data.summary.upsellRevenue,
-    };
-  }
-
-  const revenueTotal = channels.reduce((total, item) => total + item.revenue, 0);
-  const spendTotal =
-    campaigns.length > 0
-      ? campaigns.reduce((total, item) => total + item.spend, 0)
-      : channels.reduce((total, item) => total + item.spend, 0);
-  const clicksTotal =
-    campaigns.length > 0
-      ? campaigns.reduce((total, item) => total + item.clicks, 0)
-      : channels.reduce((total, item) => total + item.clicks, 0);
-  const conversionsTotal =
-    campaigns.length > 0
-      ? campaigns.reduce((total, item) => total + item.conversions, 0)
-      : channels.reduce((total, item) => total + item.conversions, 0);
-  const revenueRatio =
-    data.summary.revenueTotal > 0 ? revenueTotal / data.summary.revenueTotal : 0;
-
+function summarizeChannels(data: ChannelAnalyticsData): ChannelSummary {
   return {
-    clicksTotal,
-    conversionsTotal,
-    revenueTotal,
-    roas: spendTotal > 0 ? revenueTotal / spendTotal : 0,
-    spendTotal,
-    upsellRevenue: data.summary.upsellRevenue * revenueRatio,
+    clicksTotal: data.summary.clicksTotal,
+    conversionsTotal: data.summary.conversionsTotal,
+    revenueTotal: data.summary.revenueTotal,
+    roas: data.summary.roas,
+    spendTotal: data.summary.spendTotal,
+    upsellRevenue: data.summary.upsellRevenue,
   };
 }
 
 function buildChannelRevenueRows(
-  channels: PerformanceChannel[]
+  sourceRows: AnalyticsFunilSourceRow[]
 ): ChannelRevenueDatum[] {
-  return [...channels]
+  const grouped = new Map<
+    AnalyticsCanal,
+    {
+      directSales: number;
+      name: string;
+      revenue: number;
+    }
+  >();
+
+  sourceRows.forEach((row) => {
+    const current =
+      grouped.get(row.canal) ??
+      ({
+        directSales: 0,
+        name: ANALYTICS_CHANNEL_LABELS[row.canal] ?? row.canal,
+        revenue: 0,
+      } satisfies { directSales: number; name: string; revenue: number });
+
+    current.directSales += row.qtd_vendas;
+    current.revenue += row.receita_total;
+    grouped.set(row.canal, current);
+  });
+
+  return Array.from(grouped.values())
     .sort((first, second) => second.revenue - first.revenue)
     .map((item) => ({
       directSales: item.directSales,
-      name: item.label,
+      name: item.name,
       revenue: item.revenue,
-      roas: item.roas,
+      roas: null,
     }));
 }
 
 function buildSourceSpendRows(
-  campaigns: PerformanceCampaign[],
-  channels: PerformanceChannel[]
+  mediaBySource: ChannelAnalyticsData["mediaBySource"]
 ): SourceSpendDatum[] {
-  if (!campaigns.length) {
-    return channels
-      .filter((item) => item.spend > 0)
-      .sort((first, second) => second.spend - first.spend)
-      .map((item) => ({
-        clicks: item.clicks,
-        conversions: item.conversions,
-        name: item.label,
-        roas: item.roas,
-        spend: item.spend,
-      }));
-  }
-
-  const grouped = new Map<string, SourceSpendDatum & { weightedReturn: number }>();
-
-  campaigns.forEach((campaign) => {
-    const current =
-      grouped.get(campaign.source) ??
-      ({
-        clicks: 0,
-        conversions: 0,
-        name: campaign.source,
-        roas: 0,
-        spend: 0,
-        weightedReturn: 0,
-      } satisfies SourceSpendDatum & { weightedReturn: number });
-
-    current.clicks += campaign.clicks;
-    current.conversions += campaign.conversions;
-    current.spend += campaign.spend;
-    current.weightedReturn += campaign.spend * campaign.roas;
-    grouped.set(campaign.source, current);
-  });
-
-  return Array.from(grouped.values())
+  return mediaBySource
     .map((item) => ({
       clicks: item.clicks,
       conversions: item.conversions,
-      name: item.name,
-      roas: item.spend > 0 ? item.weightedReturn / item.spend : 0,
+      name: item.source,
+      roas: item.spend > 0 ? item.revenue / item.spend : 0,
       spend: item.spend,
     }))
     .sort((first, second) => second.spend - first.spend);
 }
 
 function buildRedtrackProductRows(
-  campaigns: PerformanceCampaign[]
+  topCampaigns: ChannelAnalyticsData["topCampaigns"]
 ): RedtrackProductRow[] {
-  const grouped = new Map<
-    string,
-    RedtrackProductRow & {
-      leaderSpend: number;
-      weightedReturn: number;
-    }
-  >();
-
-  campaigns.forEach((campaign) => {
-    const product = campaign.product || "SEM PRODUTO";
-    const current =
-      grouped.get(product) ??
-      ({
-        campaignCount: 0,
-        clicks: 0,
-        conversions: 0,
-        id: normalizeKey(product),
-        leaderCampaign: "-",
-        leaderSource: "-",
-        leaderSpend: -1,
-        product,
-        roas: 0,
-        spend: 0,
-        weightedReturn: 0,
-      } satisfies RedtrackProductRow & {
-        leaderSpend: number;
-        weightedReturn: number;
-      });
-
-    current.campaignCount += 1;
-    current.clicks += campaign.clicks;
-    current.conversions += campaign.conversions;
-    current.spend += campaign.spend;
-    current.weightedReturn += campaign.spend * campaign.roas;
-
-    if (campaign.spend > current.leaderSpend) {
-      current.leaderCampaign = campaign.campaign;
-      current.leaderSource = campaign.source;
-      current.leaderSpend = campaign.spend;
-    }
-
-    grouped.set(product, current);
-  });
-
-  return Array.from(grouped.values())
+  return topCampaigns
     .map((item) => ({
       campaignCount: item.campaignCount,
       clicks: item.clicks,
       conversions: item.conversions,
-      id: item.id,
-      leaderCampaign: item.leaderCampaign,
-      leaderSource: item.leaderSource,
+      id: item.product,
+      leaderCampaign: item.campaign,
+      leaderSource: item.source,
       product: item.product,
-      roas: item.spend > 0 ? item.weightedReturn / item.spend : 0,
+      roas: item.roas,
       spend: item.spend,
     }))
     .sort((first, second) => second.spend - first.spend);
@@ -465,6 +363,15 @@ function RedtrackProductsTable({ rows }: { rows: RedtrackProductRow[] }) {
   );
 }
 
+function UnavailableRedtrackState() {
+  return (
+    <div className="flex min-h-[300px] items-center justify-center rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-4 py-8 text-center text-sm text-[var(--fly-text-muted)] sm:min-h-[340px]">
+      Mídia RedTrack indisponível com filtro de canal ativo. O canal PayT e o
+      source RedTrack não são a mesma dimensão.
+    </div>
+  );
+}
+
 function PaginationFooter({
   currentPage,
   pageSize,
@@ -527,24 +434,22 @@ export default async function CanaisPage({
 }) {
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getPerformancePageData(range);
-  const channelOptions = buildChannelOptions(data);
+  const baseData = await getChannelAnalytics(range.startDate, range.endDate);
+  const channelOptions = buildChannelOptions(baseData.sourceRows);
   const selectedChannel = resolveFilter(params.channel, channelOptions);
-  const selectedChannels = data.channels.filter((item) =>
-    matchesSelectedChannel(selectedChannel, [item.channel, item.label])
-  );
-  const selectedCampaigns = data.campaigns.filter((item) =>
-    matchesSelectedChannel(selectedChannel, [item.source])
-  );
-  const summary = summarizeChannels({
-    campaigns: selectedCampaigns,
-    channels: selectedChannels,
-    data,
-    selectedChannel,
-  });
-  const channelRevenueRows = buildChannelRevenueRows(selectedChannels);
-  const sourceSpendRows = buildSourceSpendRows(selectedCampaigns, selectedChannels);
-  const redtrackRows = buildRedtrackProductRows(selectedCampaigns);
+  const selectedCanal =
+    selectedChannel === "all" ? null : (selectedChannel as AnalyticsCanal);
+  const data = selectedCanal
+    ? await getChannelAnalytics(range.startDate, range.endDate, selectedCanal)
+    : baseData;
+  const summary = summarizeChannels(data);
+  const channelRevenueRows = buildChannelRevenueRows(data.sourceRows);
+  const sourceSpendRows = data.redtrackComparable
+    ? buildSourceSpendRows(data.mediaBySource)
+    : [];
+  const redtrackRows = data.redtrackComparable
+    ? buildRedtrackProductRows(data.topCampaigns)
+    : [];
   const pageSize = resolvePageSize(params.pageSize);
   const totalPages = Math.max(Math.ceil(redtrackRows.length / pageSize), 1);
   const currentPage = Math.min(resolvePage(params.page), totalPages);
@@ -570,7 +475,7 @@ export default async function CanaisPage({
         <StatGrid columns="xl:grid-cols-6 min-[1400px]:!grid-cols-5">
           <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
-            detail="PayT + receita atribuída"
+            detail="Soma PayT do período"
             label="Receita total"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
@@ -584,24 +489,40 @@ export default async function CanaisPage({
           />
           <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
-            detail="Investimento RedTrack"
+            detail={
+              data.redtrackComparable
+                ? "Investimento RedTrack"
+                : "Indisponível por canal"
+            }
             label="Spend"
             tone="blue"
-            value={formatCurrency(summary.spendTotal)}
+            value={
+              data.redtrackComparable ? formatCurrency(summary.spendTotal) : "-"
+            }
           />
           <StatCard
             className="xl:col-span-3 min-[1400px]:!col-span-1"
-            detail={`${formatNumber(summary.conversionsTotal)} conversões`}
+            detail={
+              data.redtrackComparable
+                ? `${formatNumber(summary.conversionsTotal)} conversões`
+                : "Indisponível por canal"
+            }
             label="Clicks"
             tone="neutral"
-            value={formatNumber(summary.clicksTotal)}
+            value={
+              data.redtrackComparable ? formatNumber(summary.clicksTotal) : "-"
+            }
           />
           <StatCard
             className="xl:col-span-3 min-[1400px]:!col-span-1"
-            detail="Receita / spend"
+            detail={
+              data.redtrackComparable ? "Receita RT / spend" : "Indisponível por canal"
+            }
             label="ROAS RT"
-            tone={summary.roas >= 4 ? "green" : "gold"}
-            value={formatDecimal(summary.roas)}
+            tone={
+              data.redtrackComparable && summary.roas >= 4 ? "green" : "gold"
+            }
+            value={data.redtrackComparable ? formatDecimal(summary.roas) : "-"}
           />
         </StatGrid>
 
@@ -617,7 +538,11 @@ export default async function CanaisPage({
             title="Spend por source RedTrack"
             description="Investimento, cliques e conversões por origem"
           >
-            <SourceSpendChart sources={sourceSpendRows} />
+            {data.redtrackComparable ? (
+              <SourceSpendChart sources={sourceSpendRows} />
+            ) : (
+              <UnavailableRedtrackState />
+            )}
           </Panel>
         </div>
 
@@ -625,22 +550,34 @@ export default async function CanaisPage({
           title="Top produtos RedTrack"
           description="Produto, campanha líder, source e eficiência de mídia"
           action={
-            <ProductTableControls
-              end={tableEnd}
-              pageSize={pageSize}
-              start={tableStart}
-              totalItems={redtrackRows.length}
-            />
+            data.redtrackComparable ? (
+              <ProductTableControls
+                end={tableEnd}
+                pageSize={pageSize}
+                start={tableStart}
+                totalItems={redtrackRows.length}
+              />
+            ) : null
           }
         >
-          <RedtrackProductsTable rows={paginatedRows} />
-          <PaginationFooter
-            currentPage={currentPage}
-            pageSize={pageSize}
-            range={range}
-            selectedChannel={selectedChannel}
-            totalPages={totalPages}
-          />
+          {data.redtrackComparable ? (
+            <>
+              <RedtrackProductsTable rows={paginatedRows} />
+              <PaginationFooter
+                currentPage={currentPage}
+                pageSize={pageSize}
+                range={range}
+                selectedChannel={selectedChannel}
+                totalPages={totalPages}
+              />
+            </>
+          ) : (
+            <p className="rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-3 text-sm leading-5 text-[var(--fly-text-soft)]">
+              Top produtos RedTrack fica oculto com filtro de canal ativo para
+              evitar comparar uma origem PayT com sources de mídia por
+              aproximação.
+            </p>
+          )}
         </Panel>
       </PageBody>
     </Shell>

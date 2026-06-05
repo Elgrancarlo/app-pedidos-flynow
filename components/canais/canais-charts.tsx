@@ -14,7 +14,7 @@ export type ChannelRevenueDatum = {
   directSales: number;
   name: string;
   revenue: number;
-  roas: number;
+  roas: number | null;
 };
 
 export type SourceSpendDatum = {
@@ -89,7 +89,6 @@ function ChartTooltip({ active, payload, variant }: ChartTooltipProps) {
       ? [
           ["Receita", formatCurrency(toNumber(record.revenue))],
           ["Vendas diretas", formatNumber(toNumber(record.directSales))],
-          ["ROAS", formatDecimal(toNumber(record.roas))],
         ]
       : [
           ["Spend", formatCurrency(toNumber(record.spend))],
