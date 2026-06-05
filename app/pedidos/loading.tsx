@@ -1,16 +1,27 @@
-import { WorkspaceTablePageSkeleton } from "@/components/workspace/page-skeleton";
+import { DashboardHeader } from "@/components/layout/dashboard-header";
+import Shell from "@/components/layout/shell";
+import {
+  PedidosContentSkeleton,
+  PedidosHeaderActionsSkeleton,
+} from "@/components/pedidos/pedidos-skeleton";
 
 export default function PedidosLoading() {
   return (
-    <WorkspaceTablePageSkeleton
-      title="Pedidos"
-      description="Pagamentos, rastreios e entregas em uma visao operacional"
-      ariaLabel="Carregando pedidos"
-      actionCount={2}
-      metricCount={4}
-      summaryCount={9}
-      tableColumns={6}
-      tableRows={8}
-    />
+    <Shell>
+      <DashboardHeader
+        title="Pedidos"
+        description="Pagamentos, rastreios e entregas em uma visao operacional"
+        actions={<PedidosHeaderActionsSkeleton />}
+      />
+
+      <div
+        role="status"
+        aria-label="Carregando pedidos"
+        className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
+      >
+        <PedidosContentSkeleton />
+        <span className="sr-only">Carregando pedidos.</span>
+      </div>
+    </Shell>
   );
 }

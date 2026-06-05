@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui";
 
 import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { PedidosContentSkeleton } from "@/components/pedidos/pedidos-skeleton";
 import {
   SystemDateRangeFilter,
   type RangeValue,
@@ -1556,122 +1557,6 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function PedidosSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Carregando pedidos"
-      className="flynow-dashboard-skeleton space-y-5"
-    >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className="flynow-dashboard-skeleton-panel h-[176px] rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-4"
-          >
-            <div className="flex h-full flex-col justify-between">
-              <div className="space-y-3">
-                <span className="block h-2.5 w-24 rounded-full bg-white/[0.055]" />
-                <span className="block h-8 w-32 rounded-md bg-white/[0.07]" />
-                <span className="block h-2.5 w-40 rounded-full bg-white/[0.05]" />
-              </div>
-              <div className="space-y-2">
-                <span className="block h-1.5 w-full rounded-full bg-white/[0.055]" />
-                <span className="block h-1.5 w-3/4 rounded-full bg-white/[0.05]" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12] p-3">
-        <div className="mb-3 space-y-2">
-          <span className="block h-3 w-28 rounded-full bg-white/[0.07]" />
-          <span className="block h-2.5 w-44 rounded-full bg-white/[0.045]" />
-        </div>
-        <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-9">
-          {Array.from({ length: 9 }).map((_, index) => (
-            <span
-              key={index}
-              className="h-[58px] rounded-[8px] bg-white/[0.045]"
-            />
-          ))}
-        </div>
-      </div>
-      <div className="flynow-dashboard-skeleton-panel rounded-[8px] border border-white/[0.06] bg-[#0D0F12]">
-        <div className="border-b border-white/[0.06] p-3 sm:p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <span className="h-10 flex-1 rounded-[8px] bg-white/[0.055]" />
-            <span className="h-10 w-full rounded-[8px] bg-white/[0.05] sm:w-28" />
-          </div>
-        </div>
-        <div className="hidden lg:block">
-          <div className="grid grid-cols-[23%_12%_18%_17%_22%_8%] border-b border-white/[0.06] bg-white/[0.018] px-4 py-3.5">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <span
-                key={index}
-                className="h-2.5 w-20 rounded-full bg-white/[0.055]"
-              />
-            ))}
-          </div>
-          <div className="divide-y divide-white/[0.055] px-4">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[23%_12%_18%_17%_22%_8%] items-center gap-0 py-4"
-              >
-                <div className="space-y-2">
-                  <span className="block h-3.5 w-36 rounded-full bg-white/[0.07]" />
-                  <span className="block h-2.5 w-44 rounded-full bg-white/[0.045]" />
-                  <span className="block h-2.5 w-28 rounded-full bg-white/[0.045]" />
-                </div>
-                <span className="block h-3 w-20 rounded-full bg-white/[0.055]" />
-                <div className="space-y-2">
-                  <span className="block h-3.5 w-44 rounded-full bg-white/[0.06]" />
-                  <span className="block h-2.5 w-24 rounded-full bg-white/[0.045]" />
-                </div>
-                <div className="space-y-2">
-                  <span className="block h-3.5 w-24 rounded-full bg-white/[0.07]" />
-                  <span className="block h-2.5 w-28 rounded-full bg-white/[0.045]" />
-                </div>
-                <div className="space-y-2">
-                  <span className="block h-6 w-28 rounded-[7px] bg-white/[0.06]" />
-                  <span className="block h-2.5 w-32 rounded-full bg-white/[0.045]" />
-                </div>
-                <div className="ml-auto space-y-2">
-                  <span className="block h-2.5 w-16 rounded-full bg-white/[0.055]" />
-                  <span className="block h-2.5 w-20 rounded-full bg-white/[0.045]" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="divide-y divide-white/[0.055] lg:hidden">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-[minmax(0,1fr)_82px] gap-x-3 gap-y-2 px-3 py-3"
-            >
-              <div className="space-y-1.5">
-                <span className="block h-3.5 w-36 rounded-full bg-white/[0.07]" />
-                <span className="block h-2.5 w-44 rounded-full bg-white/[0.045]" />
-              </div>
-              <div className="flex flex-col items-end gap-1.5 pt-0.5">
-                <span className="block h-3.5 w-20 rounded-full bg-white/[0.065]" />
-                <span className="block h-2 w-12 rounded-full bg-white/[0.045]" />
-              </div>
-              <div className="col-span-2 flex items-center justify-between gap-3">
-                <span className="block h-2.5 w-40 rounded-full bg-white/[0.045]" />
-                <span className="block h-5 w-20 rounded-[7px] bg-white/[0.055]" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <span className="sr-only">Carregando pedidos.</span>
-    </div>
-  );
-}
-
 function ActionNotice({
   message,
   onDismiss,
@@ -2416,7 +2301,12 @@ export default function PedidosClientView({
       />
 
       <div className="min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6">
-        {status === "initial-loading" ? <PedidosSkeleton /> : null}
+        {status === "initial-loading" ? (
+          <div role="status" aria-label="Carregando pedidos">
+            <PedidosContentSkeleton />
+            <span className="sr-only">Carregando pedidos.</span>
+          </div>
+        ) : null}
 
         {status === "error" ? <ErrorState onRetry={retry} /> : null}
 
