@@ -1,4 +1,5 @@
 import {
+  buildFunilAlerts,
   defaultAnalyticsDates,
   getAnalyticsOverview,
   getChannelAnalytics,
@@ -64,6 +65,17 @@ export type PerformanceFunnelDay = {
   takeRateUs2: number;
 };
 
+export type PerformanceFunnelSourceRow = {
+  campaign: string | null;
+  channel: string;
+  directSales: number;
+  medium: string | null;
+  revenueTotal: number;
+  source: string | null;
+  upsellCount: number;
+  upsellRevenue: number;
+};
+
 export type PerformanceAlert = {
   level: "ok" | "info" | "warning" | "danger";
   title: string;
@@ -111,6 +123,7 @@ export type PerformancePageData = {
   channels: PerformanceChannel[];
   campaigns: PerformanceCampaign[];
   funnelDays: PerformanceFunnelDay[];
+  funnelSourceRows: PerformanceFunnelSourceRow[];
   alerts: PerformanceAlert[];
   logs: PerformanceLog[];
   upsells: PerformanceUpsellProduct[];
@@ -294,6 +307,24 @@ function createMockPerformanceData(range = getDefaultRange()): PerformancePageDa
       };
     })
   );
+  const funnelSourceRows = funnelDays.map((row, index) => {
+    const matchingCampaign =
+      campaigns.find((campaign) => campaign.product === row.product) ??
+      campaigns[index % Math.max(campaigns.length, 1)];
+
+    return {
+      campaign: matchingCampaign?.campaign ?? null,
+      channel: row.channel,
+      directSales: row.directSales,
+      medium: null,
+      revenueTotal: row.revenueTotal,
+      source: matchingCampaign?.source ?? row.channel,
+      upsellCount: Math.round(
+        row.directSales * (row.takeRateUs1 + row.takeRateUs2)
+      ),
+      upsellRevenue: row.upsellRevenue,
+    };
+  });
   const upsells = products.map((product) => {
     const us1Wins = Math.round(product.directSales * 0.29);
     const us2Wins = Math.round(product.directSales * 0.13);
@@ -336,6 +367,7 @@ function createMockPerformanceData(range = getDefaultRange()): PerformancePageDa
     channels,
     campaigns,
     funnelDays,
+    funnelSourceRows,
     alerts: [
       {
         level: "ok",
@@ -474,10 +506,20 @@ export async function getPerformancePageData(
       takeRateUs1: numberValue(item.take_rate_us1),
       takeRateUs2: numberValue(item.take_rate_us2),
     })),
-    alerts: (funil.logImpacts ?? []).slice(0, 3).map((item) => ({
-      level: item.severity === "alerta" ? "warning" : "info",
-      title: `Alteracao #${item.logId}`,
-      detail: item.insight,
+    funnelSourceRows: (funil.sourceRows ?? []).map((item) => ({
+      campaign: item.utm_campaign,
+      channel: item.canal,
+      directSales: numberValue(item.qtd_vendas),
+      medium: item.utm_medium,
+      revenueTotal: numberValue(item.receita_total),
+      source: item.utm_source,
+      upsellCount: numberValue(item.qtd_upsells),
+      upsellRevenue: numberValue(item.receita_upsells),
+    })),
+    alerts: buildFunilAlerts(funil.dailyRows ?? []).slice(0, 3).map((item) => ({
+      level: item.level === "alerta" ? "danger" : "ok",
+      title: item.title,
+      detail: item.detail,
     })),
     logs: (funil.logs ?? []).slice(0, 8).map((item) => ({
       day: item.day,

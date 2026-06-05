@@ -23,8 +23,8 @@ import { defaultAnalyticsDates } from "@/lib/analytics";
 import {
   getPerformancePageData,
   type PerformanceAlert,
-  type PerformanceCampaign,
   type PerformanceFunnelDay,
+  type PerformanceFunnelSourceRow,
   type PerformanceLog,
   type PerformanceRange,
 } from "@/lib/performance-pages";
@@ -61,6 +61,7 @@ type SourceSummaryRow = {
   channel: string;
   directSales: number;
   id: string;
+  medium: string;
   revenueTotal: number;
   source: string;
   upsellRatio: number;
@@ -232,57 +233,48 @@ function buildDailySeries(rows: PerformanceFunnelDay[]): FunilChartPoint[] {
     .sort((first, second) => first.day.localeCompare(second.day));
 }
 
-function fallbackCampaignName(product: string, channel: string) {
-  const productSlug = product
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-
-  return `${channel.toLowerCase()}-${productSlug || "campanha"}`;
-}
-
 function buildSourceRows(
-  rows: PerformanceFunnelDay[],
-  campaigns: PerformanceCampaign[]
+  rows: PerformanceFunnelSourceRow[],
+  selectedChannel: string
 ): SourceSummaryRow[] {
   const grouped = new Map<
     string,
     SourceSummaryRow & {
-      takeRateBase: number;
+      upsellCount: number;
     }
   >();
 
-  rows.forEach((row, index) => {
-    const matchingCampaign =
-      campaigns.find((campaign) => campaign.product === row.product) ??
-      campaigns[index % Math.max(campaigns.length, 1)];
-    const campaign =
-      matchingCampaign?.campaign ?? fallbackCampaignName(row.product, row.channel);
-    const source = matchingCampaign?.source ?? formatChannelLabel(row.channel);
-    const id = `${row.channel}-${campaign}-${source}`;
-    const current =
-      grouped.get(id) ??
-      ({
-        campaign,
-        channel: row.channel,
-        directSales: 0,
-        id,
-        revenueTotal: 0,
-        source,
-        takeRateBase: 0,
-        upsellRatio: 0,
-        upsellRevenue: 0,
-      } satisfies SourceSummaryRow & { takeRateBase: number });
+  rows
+    .filter(
+      (row) => selectedChannel === "all" || row.channel === selectedChannel
+    )
+    .forEach((row) => {
+      const campaign = row.campaign ?? "-";
+      const medium = row.medium ?? "-";
+      const source = row.source ?? "-";
+      const id = `${row.channel}-${campaign}-${medium}-${source}`;
+      const current =
+        grouped.get(id) ??
+        ({
+          campaign,
+          channel: row.channel,
+          directSales: 0,
+          id,
+          medium,
+          revenueTotal: 0,
+          source,
+          upsellRatio: 0,
+          upsellCount: 0,
+          upsellRevenue: 0,
+        } satisfies SourceSummaryRow & { upsellCount: number });
 
-    current.directSales += row.directSales;
-    current.revenueTotal += row.revenueTotal;
-    current.upsellRevenue += row.upsellRevenue;
-    current.takeRateBase += row.directSales * (row.takeRateUs1 + row.takeRateUs2);
+      current.directSales += row.directSales;
+      current.revenueTotal += row.revenueTotal;
+      current.upsellRevenue += row.upsellRevenue;
+      current.upsellCount += row.upsellCount;
 
-    grouped.set(id, current);
-  });
+      grouped.set(id, current);
+    });
 
   return Array.from(grouped.values())
     .map((item) => ({
@@ -290,10 +282,10 @@ function buildSourceRows(
       channel: item.channel,
       directSales: item.directSales,
       id: item.id,
+      medium: item.medium,
       revenueTotal: item.revenueTotal,
       source: item.source,
-      upsellRatio:
-        item.directSales > 0 ? item.takeRateBase / item.directSales : 0,
+      upsellRatio: item.directSales > 0 ? item.upsellCount / item.directSales : 0,
       upsellRevenue: item.upsellRevenue,
     }))
     .sort((first, second) => second.revenueTotal - first.revenueTotal);
@@ -583,7 +575,10 @@ export default async function FunilPage({
   );
   const summary = summarizeFunnel(filteredFunnelDays);
   const chartSeries = buildDailySeries(filteredFunnelDays);
-  const sourceRows = buildSourceRows(filteredFunnelDays, data.campaigns);
+  const canShowSourceRows = selectedProduct === "all";
+  const sourceRows = canShowSourceRows
+    ? buildSourceRows(data.funnelSourceRows, selectedChannel)
+    : [];
   const totalPages = Math.max(Math.ceil(sourceRows.length / pageSize), 1);
   const currentPage = Math.min(resolvePage(params.page), totalPages);
   const startIndex = (currentPage - 1) * pageSize;
@@ -677,23 +672,35 @@ export default async function FunilPage({
           title="Resumo por fonte no periodo"
           description="Canal, UTM, vendas, receita e take de upsell"
           action={
-            <SourceTableControls
-              end={tableEnd}
-              pageSize={pageSize}
-              start={tableStart}
-              totalItems={sourceRows.length}
-            />
+            canShowSourceRows ? (
+              <SourceTableControls
+                end={tableEnd}
+                pageSize={pageSize}
+                start={tableStart}
+                totalItems={sourceRows.length}
+              />
+            ) : null
           }
         >
-          <SourceSummaryTable rows={paginatedSourceRows} />
-          <PaginationFooter
-            currentPage={currentPage}
-            pageSize={pageSize}
-            range={range}
-            selectedChannel={selectedChannel}
-            selectedProduct={selectedProduct}
-            totalPages={totalPages}
-          />
+          {canShowSourceRows ? (
+            <>
+              <SourceSummaryTable rows={paginatedSourceRows} />
+              <PaginationFooter
+                currentPage={currentPage}
+                pageSize={pageSize}
+                range={range}
+                selectedChannel={selectedChannel}
+                selectedProduct={selectedProduct}
+                totalPages={totalPages}
+              />
+            </>
+          ) : (
+            <p className="rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-3 text-sm leading-5 text-[var(--fly-text-soft)]">
+              O resumo por fonte nao possui dimensao confiavel de produto na fact
+              atual. Com filtro de produto ativo, esta secao fica oculta para
+              evitar leitura incorreta.
+            </p>
+          )}
         </Panel>
 
         <div className="grid gap-4 xl:grid-cols-2">

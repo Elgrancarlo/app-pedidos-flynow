@@ -11,6 +11,7 @@ Nem toda diferenca entre o novo frontend e o sistema legado e um erro. Algumas p
 | Carrinhos | KPIs usam o periodo completo; tabela carrega eventos recentes | Sim | Evita tela pesada sem distorcer os numeros principais. |
 | Financeiro | Pagina todos os pedidos pagos do periodo e calcula reversoes por evento financeiro | Sim | Corrige limite pratico de 1.000 linhas que podia reduzir a receita no legado. |
 | Estoque | Saldo e potes seguem estoque real; ofertas usam pedidos pagos reais | Sim na tabela | Substitui o extrato gigante por uma leitura de ofertas do produto. |
+| Funil | Usa as facts de funil diario e fonte; alertas voltam a ser por regras | Sim, pontual nos take rates | Mantem media ponderada para reduzir ruido de arredondamento por linha. |
 
 ## Dashboard
 
@@ -49,9 +50,20 @@ A tabela diverge do legado porque deixou de exibir o extrato de movimentacoes co
 
 Essa camada nova usa dados reais da tabela `pedidos`: `produto_nome`, `produto_grupo`, `qtd_potes`, `valor_total` e `data_pagamento`. A ressalva e que ainda nao existe uma tabela propria de ofertas no backend, entao a classificacao depende da qualidade dos nomes dos produtos no banco.
 
+## Funil
+
+O contrato principal segue o legado:
+
+- KPIs e graficos usam `analytics.fact_funil_diario`.
+- resumo por fonte usa `analytics.fact_funil_por_fonte`.
+- com filtro de produto ativo, o resumo por fonte fica oculto porque a fact de fonte nao possui dimensao confiavel de produto.
+- alertas automaticos usam regras sobre os dados diarios do funil.
+
+A divergencia mantida esta nos take rates US1/US2. O legado estima aprovacoes arredondando cada linha antes de agregar. O novo frontend usa media ponderada por vendas diretas, que reduz pequenas distorcoes de arredondamento e deixa a leitura mais estavel.
+
 ## Decisao Recomendada
 
-Manter os contratos novos onde eles corrigem problemas do legado, especialmente em Carrinhos, Financeiro e na leitura analitica de Estoque. Preservar o legado onde ele ja representa bem a operacao, como em Dashboard e Pedidos.
+Manter os contratos novos onde eles corrigem problemas do legado, especialmente em Carrinhos, Financeiro, Estoque e no take rate do Funil. Preservar o legado onde ele ja representa bem a operacao, como em Dashboard, Pedidos e nas facts principais do Funil.
 
 O ponto principal e que a meta nao e simplesmente "bater numero com o legado" quando o legado esta limitado. A meta e exibir dados mais coerentes para analise e tomada de decisao.
 
@@ -61,3 +73,4 @@ O ponto principal e que a meta nao e simplesmente "bater numero com o legado" qu
 - Documentar qual campo de data rege cada dominio.
 - Confirmar se `chargeback = null` em pedidos antigos deve ser tratado como falso ou desconhecido.
 - Criar uma estrutura oficial de ofertas, se a leitura por oferta se tornar parte fixa do produto.
+- Avaliar se a comparacao visual com o legado exige replicar o arredondamento antigo dos take rates.
