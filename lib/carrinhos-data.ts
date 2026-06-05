@@ -1,3 +1,4 @@
+import { shouldUseMockData } from "@/lib/data-mode";
 import { createServiceClient } from "@/lib/supabase";
 import { getUtcRangeForAppDates } from "@/lib/app-dates";
 import {
@@ -791,6 +792,10 @@ export async function getCarrinhosForFrontendData(
   } catch (error) {
     if (!isMissingEventStream(error)) {
       console.error("[carrinhos] Erro ao buscar eventos Payt:", error);
+    }
+
+    if (!shouldUseMockData()) {
+      throw error;
     }
 
     return {

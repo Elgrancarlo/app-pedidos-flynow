@@ -4,7 +4,7 @@ export function getFlynowDataMode(): FlynowDataMode {
   const value =
     process.env.NEXT_PUBLIC_FLYNOW_DATA_MODE ?? process.env.FLYNOW_DATA_MODE;
 
-  return value === "real" ? "real" : "mock";
+  return value?.trim().toLowerCase() === "mock" ? "mock" : "real";
 }
 
 export function shouldUseMockData() {

@@ -15,6 +15,7 @@ Nem toda diferenca entre o novo frontend e o legado e erro. Algumas diferencas f
 | Funil | Sim, pontual | Mantem facts principais; limita tabela a 2.000 linhas; take rate ponderado. |
 | Upsells | Sim, pontual | Consolida produto e canal para reduzir duplicidade e ruido. |
 | Canais | Sim, pontual | Prioriza agregacao coerente por canal/source e produto. |
+| Modo de dados | Sim | `real` e o padrao; mock so entra quando explicitamente configurado. |
 
 ## Dashboard
 
@@ -84,6 +85,12 @@ Motivo: facilitar comparacao entre produtos e reduzir poluicao da tela.
 Prioriza leitura por canal/source e produto com agregacao mais coerente.
 
 Motivo: o legado mistura granularidades em algumas partes; a nova tela tenta deixar a tomada de decisao mais clara.
+
+## Modo de Dados
+
+O sistema agora assume `real` por padrao. Mock so e usado quando `NEXT_PUBLIC_FLYNOW_DATA_MODE=mock` ou `FLYNOW_DATA_MODE=mock`.
+
+Motivo: evitar que falta de env ou valor invalido esconda erro real exibindo dados simulados.
 
 ## Decisao Geral
 
