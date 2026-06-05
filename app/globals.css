@@ -375,13 +375,13 @@ html[data-flynow-theme="dark"],
   --fly-danger-border-hover: rgba(248, 113, 113, 0.36);
   --fly-danger-text: #fca5a5;
   --fly-danger-strong: #fecaca;
-  --fly-warning-bg: rgba(29, 22, 9, 0.7);
-  --fly-warning-surface: #2a2112;
-  --fly-warning-surface-hover: #332815;
-  --fly-warning-border: rgba(245, 158, 11, 0.18);
-  --fly-warning-border-hover: rgba(245, 158, 11, 0.34);
-  --fly-warning-text: #f8d88a;
-  --fly-warning-strong: #fcd34d;
+  --fly-warning-bg: rgba(51, 22, 16, 0.62);
+  --fly-warning-surface: #251711;
+  --fly-warning-surface-hover: #321c14;
+  --fly-warning-border: rgba(251, 143, 103, 0.22);
+  --fly-warning-border-hover: rgba(251, 143, 103, 0.34);
+  --fly-warning-text: #ffb199;
+  --fly-warning-strong: #fb8f67;
   --fly-panel-shadow:
     0 1px 0 rgba(255, 255, 255, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
@@ -455,13 +455,13 @@ html[data-flynow-theme="light"],
   --fly-danger-border-hover: rgba(180, 35, 24, 0.28);
   --fly-danger-text: #b42318;
   --fly-danger-strong: #7a271a;
-  --fly-warning-bg: #fff8e6;
+  --fly-warning-bg: #fff3ef;
   --fly-warning-surface: #ffffff;
-  --fly-warning-surface-hover: #fff4d6;
-  --fly-warning-border: rgba(181, 121, 0, 0.2);
-  --fly-warning-border-hover: rgba(181, 121, 0, 0.32);
-  --fly-warning-text: #8a5b10;
-  --fly-warning-strong: #6b4508;
+  --fly-warning-surface-hover: #ffe9df;
+  --fly-warning-border: rgba(184, 74, 47, 0.2);
+  --fly-warning-border-hover: rgba(184, 74, 47, 0.32);
+  --fly-warning-text: #b84a2f;
+  --fly-warning-strong: #7c2d12;
   --fly-panel-shadow:
     0 10px 24px rgba(15, 23, 42, 0.06),
     0 1px 0 rgba(255, 255, 255, 0.86),
@@ -1012,7 +1012,7 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 .flynow-status-badge--warning {
   background-color: transparent;
   border-color: transparent;
-  color: #f0c76a;
+  color: var(--fly-warning-strong);
 }
 
 .flynow-status-badge--orange {
@@ -1060,7 +1060,7 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-status-dot--warning {
-  background-color: #d6a84f;
+  background-color: var(--fly-warning-strong);
 }
 
 .flynow-status-dot--orange {
@@ -1087,7 +1087,7 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--warning {
-  color: var(--fly-brand-strong);
+  color: var(--fly-warning-strong);
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-status-badge--orange {
