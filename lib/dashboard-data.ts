@@ -22,6 +22,8 @@ import {
 } from "@/lib/pedidos";
 import { createServiceClient, STATUS_LABELS, type StatusPedido } from "@/lib/supabase";
 
+const DASHBOARD_TIMING_LOGS_ENV = "DASHBOARD_TIMING_LOGS";
+
 export type DashboardTone = "blue" | "gold" | "green" | "red" | "neutral";
 
 export type DashboardKpi = {
@@ -103,6 +105,35 @@ type DashboardAlertRpcRow = {
   data_prometida_entrega: string | null;
   status: string | null;
 };
+
+function shouldLogDashboardTimings() {
+  return process.env[DASHBOARD_TIMING_LOGS_ENV] === "true";
+}
+
+function logDashboardTiming(label: string, startedAt: number) {
+  if (!shouldLogDashboardTimings()) return;
+
+  const durationMs = Math.round(performance.now() - startedAt);
+  console.log(`[dashboard] ${label}: ${durationMs}ms`);
+}
+
+async function timedDashboardTask<T>(
+  label: string,
+  task: () => PromiseLike<T> | T
+): Promise<Awaited<T>> {
+  if (!shouldLogDashboardTimings()) return await task();
+
+  const startedAt = performance.now();
+
+  try {
+    const result = await task();
+    logDashboardTiming(label, startedAt);
+    return result;
+  } catch (error) {
+    logDashboardTiming(`${label} erro`, startedAt);
+    throw error;
+  }
+}
 
 const OPEN_LOGISTICS_STATUSES: PedidoStatusLogistico[] = [
   "postado",
@@ -432,11 +463,13 @@ function buildMockCheckout(carrinhos: Carrinho[]) {
 }
 
 async function getRealDashboardData(): Promise<DashboardPageData> {
+  const totalStartedAt = performance.now();
   const supabase = createServiceClient();
   const today = getTodayInAppTimezone();
   const { startTs, endTs } = getUtcRangeForAppDate(today);
   const analyticsRange = defaultAnalyticsDates(7);
 
+  const queriesStartedAt = performance.now();
   const [
     vendasHojeRows,
     financialMetrics,
@@ -447,29 +480,38 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     tendencia,
     funilAnalytics,
   ] = await Promise.all([
-    fetchPaidSalesRowsForRange(supabase, startTs, endTs),
-    getFinancialEventMetrics(today, today),
-    supabase.rpc("pedidos_em_transito"),
-    supabase.rpc("pedidos_atrasados"),
-    import("@/lib/payt-checkout").then(({ getPaytCheckoutMonitor }) =>
-      getPaytCheckoutMonitor(24, { includeRows: false })
+    timedDashboardTask("vendasHoje", () =>
+      fetchPaidSalesRowsForRange(supabase, startTs, endTs)
     ),
-    supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs }),
-    supabase.rpc("tendencia_30_dias"),
-    getFunilAnalytics(
-      analyticsRange.startDate,
-      analyticsRange.endDate,
-      null,
-      null,
-      { skipImpactAnalysis: true }
+    timedDashboardTask("financeiro", () => getFinancialEventMetrics(today, today)),
+    timedDashboardTask("emTransito", () => supabase.rpc("pedidos_em_transito")),
+    timedDashboardTask("atrasados", () => supabase.rpc("pedidos_atrasados")),
+    timedDashboardTask("checkout", async () => {
+      const { getPaytCheckoutMonitor } = await import("@/lib/payt-checkout");
+      return getPaytCheckoutMonitor(24, { includeRows: false });
+    }),
+    timedDashboardTask("funilPedidos", () =>
+      supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs })
+    ),
+    timedDashboardTask("tendencia", () => supabase.rpc("tendencia_30_dias")),
+    timedDashboardTask("funilAnalytics", () =>
+      getFunilAnalytics(
+        analyticsRange.startDate,
+        analyticsRange.endDate,
+        null,
+        null,
+        { skipImpactAnalysis: true }
+      )
     ),
   ]);
+  logDashboardTiming("queries.total", queriesStartedAt);
 
   if (emTransito.error) throw emTransito.error;
   if (atrasados.error) throw atrasados.error;
   if (funilPedidos.error) throw funilPedidos.error;
   if (tendencia.error) throw tendencia.error;
 
+  const postProcessStartedAt = performance.now();
   const salesRows = vendasHojeRows;
   const salesCount = salesRows.length;
   const salesValue = salesRows.reduce(
@@ -503,16 +545,18 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       })
     )
     .map((row) => normalizeAlert(row, today));
-  const funnelAlerts = await buildFunilAiAlerts({
-    dailyRows: funilAnalytics.dailyRows,
-    logs: funilAnalytics.logs,
-    transcripts: funilAnalytics.transcripts,
-  });
+  const funnelAlerts = await timedDashboardTask("postProcess.funilAiAlerts", () =>
+    buildFunilAiAlerts({
+      dailyRows: funilAnalytics.dailyRows,
+      logs: funilAnalytics.logs,
+      transcripts: funilAnalytics.transcripts,
+    })
+  );
   const criticalFunnelAlerts = funnelAlerts.filter(
     (alert) => alert.level === "alerta"
   ).length;
 
-  return {
+  const data = {
     activeAlerts,
     alertasFunil: funnelAlerts,
     checkoutCards: buildCheckoutCards({
@@ -541,6 +585,11 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     }),
     trend: ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
   };
+
+  logDashboardTiming("postProcess.total", postProcessStartedAt);
+  logDashboardTiming("total", totalStartedAt);
+
+  return data;
 }
 
 function getMockDashboardData(): DashboardPageData {
