@@ -1,44 +1,73 @@
 "use client";
 
-
 import { Fragment, useEffect, useState, useCallback } from "react";
 import Shell from "@/components/shell";
 import PageHeader from "@/components/page-header";
+import {
+  ShieldCheck,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  Truck,
+  AlertTriangle,
+  Pencil,
+  X,
+  Check,
+} from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/*  TYPES                                                              */
+/* ------------------------------------------------------------------ */
 
 interface IndicadorCell {
   previsto: number | null;
   realizado: number | null;
   pct: number | null;
-  status: string;
+  status: "NO_RITMO" | "ATENCAO" | "CRITICO" | "—";
 }
 
-interface SemanaIndicadores {
-  receita: Record<string, IndicadorCell>;
-  aquisicao: Record<string, IndicadorCell>;
-  perdas: Record<string, IndicadorCell>;
-  custos: Record<string, IndicadorCell>;
-  resultado: Record<string, IndicadorCell>;
-}
-
-interface SemanaData {
+interface Semana {
   semana: number;
   inicio: string;
   fim: string;
   notas: string | null;
-  indicadores: SemanaIndicadores;
+  indicadores: {
+    receita: Record<string, IndicadorCell>;
+    aquisicao: Record<string, IndicadorCell>;
+    perdas: Record<string, IndicadorCell>;
+    custos: Record<string, IndicadorCell>;
+    resultado: Record<string, IndicadorCell>;
+  };
+}
+
+interface Meta {
+  meta_receita_liquida: number;
+  meta_clientes: number;
+  invest_total: number;
+  roas_exigido: number;
+  meta_pct_chargeback: number;
+  meta_pct_reembolso: number;
+  meta_pct_cmv: number;
+  meta_pct_eficiencia: number;
+  meta_lucro_liquido: number;
+  meta_ebitda_pct: number;
+  meta_ticket_medio: number;
+  meta_pct_front: number;
+  meta_pct_backend: number;
+  meta_pct_recuperada: number;
+  [k: string]: number;
 }
 
 interface PainelData {
   ok: boolean;
   mes: string;
-  meta: Record<string, unknown>;
-  semanas: SemanaData[];
+  meta: Meta;
+  semanas: Semana[];
   legenda: Record<string, string>;
 }
 
-interface InputRow {
-  id?: number;
-  mes: string;
+interface InputSemana {
   semana: number;
   semana_inicio: string;
   semana_fim: string;
@@ -49,417 +78,900 @@ interface InputRow {
   notas: string | null;
 }
 
-const INDICADORES_CONFIG: Array<{
-  bloco: string;
-  blocoKey: keyof SemanaIndicadores;
-  items: Array<{ key: string; label: string; unidade: string; inverso?: boolean }>;
-}> = [
-  {
-    bloco: "RECEITA",
-    blocoKey: "receita",
-    items: [
-      { key: "receita_liquida", label: "Receita Líquida Total", unidade: "R$" },
-      { key: "pct_front", label: "% Receita Front", unidade: "%" },
-      { key: "pct_backend", label: "% Receita Backend/Upsell", unidade: "%" },
-      { key: "pct_recuperada", label: "% Receita Recuperada", unidade: "%" },
-      { key: "clientes", label: "Quantidade de Clientes", unidade: "Qtd" },
-      { key: "ticket_medio", label: "Ticket Médio", unidade: "R$" },
-    ],
-  },
-  {
-    bloco: "AQUISIÇÃO",
-    blocoKey: "aquisicao",
-    items: [
-      { key: "investimento", label: "Investimento em Tráfego", unidade: "R$" },
-      { key: "roas", label: "ROAS", unidade: "ROI" },
-      { key: "roi_consolidado", label: "ROI Consolidado", unidade: "ROI" },
-      { key: "cpa", label: "CPA Médio", unidade: "R$" },
-    ],
-  },
-  {
-    bloco: "PERDAS",
-    blocoKey: "perdas",
-    items: [
-      { key: "pct_chargeback", label: "% Chargeback", unidade: "%", inverso: true },
-      { key: "pct_reembolso", label: "% Reembolso", unidade: "%", inverso: true },
-    ],
-  },
-  {
-    bloco: "CUSTOS",
-    blocoKey: "custos",
-    items: [
-      { key: "cmv", label: "CMV (% sobre faturamento)", unidade: "%", inverso: true },
-      { key: "eficiencia", label: "Eficiência Operacional", unidade: "%", inverso: true },
-    ],
-  },
-  {
-    bloco: "RESULTADO",
-    blocoKey: "resultado",
-    items: [
-      { key: "lucro_liquido", label: "LUCRO LÍQUIDO", unidade: "R$" },
-      { key: "ebitda_pct", label: "EBITDA Projetado %", unidade: "%" },
-    ],
-  },
-];
+/* ------------------------------------------------------------------ */
+/*  CONSTANTS                                                          */
+/* ------------------------------------------------------------------ */
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  NO_RITMO: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: "NO RITMO" },
-  ATENCAO:  { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "ATENÇÃO" },
-  CRITICO:  { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", label: "CRÍTICO" },
-  "—":      { bg: "bg-gray-50", text: "text-gray-400", dot: "bg-gray-300", label: "—" },
+type BlockKey = "receita" | "aquisicao" | "perdas" | "custos" | "resultado";
+
+interface IndicadorConfig {
+  key: string;
+  label: string;
+  unidade: "R$" | "%" | "Qtd" | "ROI";
+}
+
+const INDICADORES_CONFIG: Record<BlockKey, IndicadorConfig[]> = {
+  receita: [
+    { key: "receita_liquida", label: "Receita Liquida Total", unidade: "R$" },
+    { key: "pct_front", label: "% Receita Front", unidade: "%" },
+    { key: "pct_backend", label: "% Receita Backend/Upsell", unidade: "%" },
+    { key: "pct_recuperada", label: "% Receita Recuperada", unidade: "%" },
+    { key: "clientes", label: "Quantidade de Clientes", unidade: "Qtd" },
+    { key: "ticket_medio", label: "Ticket Medio", unidade: "R$" },
+  ],
+  aquisicao: [
+    { key: "investimento", label: "Investimento em Trafego", unidade: "R$" },
+    { key: "roas", label: "ROAS", unidade: "ROI" },
+    { key: "roi_consolidado", label: "ROI Consolidado", unidade: "ROI" },
+    { key: "cpa", label: "CPA Medio", unidade: "R$" },
+  ],
+  perdas: [
+    { key: "pct_chargeback", label: "% Chargeback", unidade: "%" },
+    { key: "pct_reembolso", label: "% Reembolso", unidade: "%" },
+  ],
+  custos: [
+    { key: "cmv", label: "CMV (% s/ faturamento)", unidade: "%" },
+    { key: "eficiencia", label: "Eficiencia Operacional", unidade: "%" },
+  ],
+  resultado: [
+    { key: "lucro_liquido", label: "LUCRO LIQUIDO", unidade: "R$" },
+    { key: "ebitda_pct", label: "EBITDA Projetado %", unidade: "%" },
+  ],
 };
 
-function getCurrentMonth() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
+const BLOCK_STYLES: Record<
+  BlockKey,
+  { border: string; text: string; bg: string; icon: typeof DollarSign }
+> = {
+  receita: {
+    border: "border-l-emerald-500",
+    text: "text-emerald-700",
+    bg: "bg-emerald-50",
+    icon: TrendingUp,
+  },
+  aquisicao: {
+    border: "border-l-blue-500",
+    text: "text-blue-700",
+    bg: "bg-blue-50",
+    icon: Truck,
+  },
+  perdas: {
+    border: "border-l-red-500",
+    text: "text-red-700",
+    bg: "bg-red-50",
+    icon: AlertTriangle,
+  },
+  custos: {
+    border: "border-l-amber-500",
+    text: "text-amber-700",
+    bg: "bg-amber-50",
+    icon: DollarSign,
+  },
+  resultado: {
+    border: "border-l-violet-500",
+    text: "text-violet-700",
+    bg: "bg-violet-50",
+    icon: ShieldCheck,
+  },
+};
 
-function mesLabel(mes: string) {
-  const [y, m] = mes.split("-");
-  const meses = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-  return `${meses[parseInt(m)]}/${y}`;
-}
+const BLOCK_LABELS: Record<BlockKey, string> = {
+  receita: "RECEITA",
+  aquisicao: "AQUISICAO",
+  perdas: "PERDAS",
+  custos: "CUSTOS",
+  resultado: "RESULTADO",
+};
 
-function fmtValor(valor: number | null, unidade: string): string {
-  if (valor == null) return "—";
-  if (unidade === "R$") {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", notation: "compact", maximumFractionDigits: 1 }).format(valor);
+const MESES_PT = [
+  "Janeiro",
+  "Fevereiro",
+  "Marco",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+/* ------------------------------------------------------------------ */
+/*  HELPERS                                                            */
+/* ------------------------------------------------------------------ */
+
+const fmtCurrency = (v: number | null, compact = false): string => {
+  if (v == null) return "—";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    ...(compact
+      ? { notation: "compact", compactDisplay: "short" }
+      : { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+  }).format(v);
+};
+
+const fmtPct = (v: number | null): string => {
+  if (v == null) return "—";
+  return `${v.toFixed(1)}%`;
+};
+
+const fmtRoi = (v: number | null): string => {
+  if (v == null) return "—";
+  return `${v.toFixed(2)}x`;
+};
+
+const fmtQtd = (v: number | null): string => {
+  if (v == null) return "—";
+  return new Intl.NumberFormat("pt-BR").format(v);
+};
+
+function fmtValue(v: number | null, unidade: string, compact = false): string {
+  switch (unidade) {
+    case "R$":
+      return fmtCurrency(v, compact);
+    case "%":
+      return fmtPct(v);
+    case "ROI":
+      return fmtRoi(v);
+    case "Qtd":
+      return fmtQtd(v);
+    default:
+      return v != null ? String(v) : "—";
   }
-  if (unidade === "ROI") return `${valor.toFixed(2)}x`;
-  if (unidade === "%") return `${valor.toFixed(1)}%`;
-  if (unidade === "Qtd") return new Intl.NumberFormat("pt-BR").format(valor);
-  return String(valor);
 }
 
-function fmtSemanaRange(inicio: string, fim: string) {
-  const [, , di] = inicio.split("-");
-  const [, , df] = fim.split("-");
-  return `De ${parseInt(di)} a ${parseInt(df)}`;
+function mesKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLES[status] ?? STATUS_STYLES["—"];
+function mesLabel(date: Date): string {
+  return `${MESES_PT[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function semanaLabel(s: Semana): string {
+  const d1 = parseInt(s.inicio.split("-")[2], 10);
+  const d2 = parseInt(s.fim.split("-")[2], 10);
+  return `S${s.semana} (${d1}-${d2})`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  SUB-COMPONENTS                                                     */
+/* ------------------------------------------------------------------ */
+
+function SemaforoBadge({ status }: { status: string }) {
+  const map: Record<string, { wrap: string; dot: string; label: string }> = {
+    NO_RITMO: {
+      wrap: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+      dot: "bg-emerald-500",
+      label: "NO RITMO",
+    },
+    ATENCAO: {
+      wrap: "bg-amber-100 text-amber-800 border border-amber-200",
+      dot: "bg-amber-500",
+      label: "ATENCAO",
+    },
+    CRITICO: {
+      wrap: "bg-red-100 text-red-800 border border-red-200",
+      dot: "bg-red-500",
+      label: "CRITICO",
+    },
+    "—": {
+      wrap: "bg-gray-100 text-gray-400 border border-gray-200",
+      dot: "bg-gray-300",
+      label: "—",
+    },
+  };
+  const s = map[status] ?? map["—"];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+    <span
+      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${s.wrap}`}
+    >
+      <span className={`inline-block h-2 w-2 rounded-full ${s.dot}`} />
       {s.label}
     </span>
   );
 }
 
-// Manual input fields for custos/resultado
-const MANUAL_FIELDS: Record<string, { dbField: string; label: string }> = {
-  "custos.cmv": { dbField: "cmv_pct", label: "CMV %" },
-  "custos.eficiencia": { dbField: "eficiencia_pct", label: "Eficiência %" },
-  "resultado.lucro_liquido": { dbField: "lucro_liquido", label: "Lucro R$" },
-  "resultado.ebitda_pct": { dbField: "ebitda_pct", label: "EBITDA %" },
-};
+function ProgressBar({ pct }: { pct: number }) {
+  const color =
+    pct >= 95
+      ? "bg-emerald-500"
+      : pct >= 80
+        ? "bg-amber-500"
+        : "bg-red-500";
+  return (
+    <div className="w-full h-1.5 rounded-full bg-gray-100 mt-2">
+      <div
+        className={`h-1.5 rounded-full ${color} transition-all`}
+        style={{ width: `${Math.min(pct, 100)}%` }}
+      />
+    </div>
+  );
+}
 
-export default function CfoPage() {
-  const [mes, setMes] = useState(getCurrentMonth());
-  const [painel, setPainel] = useState<PainelData | null>(null);
-  const [inputs, setInputs] = useState<InputRow[]>([]);
+function WeekCell({
+  cell,
+  unidade,
+}: {
+  cell: IndicadorCell | undefined;
+  unidade: string;
+}) {
+  if (!cell) {
+    return (
+      <td className="px-3 py-3 text-center">
+        <span className="text-gray-300 text-xs">—</span>
+      </td>
+    );
+  }
+  return (
+    <td className="px-3 py-3 text-center">
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="font-semibold text-sm font-mono text-gray-900">
+          {fmtValue(cell.realizado, unidade, true)}
+        </span>
+        <span className="text-xs text-gray-400 font-mono">
+          de {fmtValue(cell.previsto, unidade, true)}
+        </span>
+        <span className="text-xs text-gray-500 font-mono">
+          {cell.pct != null ? `${cell.pct.toFixed(1)}%` : "—"}
+        </span>
+        <SemaforoBadge status={cell.status} />
+      </div>
+    </td>
+  );
+}
+
+function MetaCell({
+  meta,
+  blockKey,
+  indKey,
+  unidade,
+}: {
+  meta: Meta;
+  blockKey: BlockKey;
+  indKey: string;
+  unidade: string;
+}) {
+  const metaKeyMap: Record<string, string> = {
+    receita_liquida: "meta_receita_liquida",
+    pct_front: "meta_pct_front",
+    pct_backend: "meta_pct_backend",
+    pct_recuperada: "meta_pct_recuperada",
+    clientes: "meta_clientes",
+    ticket_medio: "meta_ticket_medio",
+    investimento: "invest_total",
+    roas: "roas_exigido",
+    roi_consolidado: "roas_exigido",
+    cpa: "meta_cpa",
+    pct_chargeback: "meta_pct_chargeback",
+    pct_reembolso: "meta_pct_reembolso",
+    cmv: "meta_pct_cmv",
+    eficiencia: "meta_pct_eficiencia",
+    lucro_liquido: "meta_lucro_liquido",
+    ebitda_pct: "meta_ebitda_pct",
+  };
+  const k = metaKeyMap[indKey];
+  const v = k ? meta[k] ?? null : null;
+  return (
+    <td className="px-3 py-3 text-center font-mono text-sm text-gray-600">
+      {fmtValue(v as number | null, unidade, true)}
+    </td>
+  );
+}
+
+function BlockCard({
+  blockKey,
+  semanas,
+  meta,
+}: {
+  blockKey: BlockKey;
+  semanas: Semana[];
+  meta: Meta;
+}) {
+  const style = BLOCK_STYLES[blockKey];
+  const indicators = INDICADORES_CONFIG[blockKey];
+  const Icon = style.icon;
+
+  return (
+    <div
+      className={`bg-white rounded-xl border border-gray-200 shadow-sm border-l-4 ${style.border} overflow-hidden`}
+    >
+      <div className={`px-6 py-4 flex items-center gap-2 ${style.bg}`}>
+        <Icon className={`h-5 w-5 ${style.text}`} />
+        <h3 className={`text-sm font-bold uppercase tracking-wide ${style.text}`}>
+          {BLOCK_LABELS[blockKey]}
+        </h3>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-52">
+                Indicador
+              </th>
+              <th className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Meta Mes
+              </th>
+              {semanas.map((s) => (
+                <th
+                  key={s.semana}
+                  className="text-center px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  {semanaLabel(s)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {indicators.map((ind) => (
+              <tr key={ind.key} className="hover:bg-gray-50/50">
+                <td className="px-6 py-3 text-sm font-medium text-gray-700 whitespace-nowrap">
+                  {ind.label}
+                </td>
+                <MetaCell
+                  meta={meta}
+                  blockKey={blockKey}
+                  indKey={ind.key}
+                  unidade={ind.unidade}
+                />
+                {semanas.map((s) => {
+                  const group =
+                    s.indicadores[blockKey] as Record<string, IndicadorCell>;
+                  return (
+                    <WeekCell
+                      key={s.semana}
+                      cell={group?.[ind.key]}
+                      unidade={ind.unidade}
+                    />
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  MAIN PAGE                                                          */
+/* ------------------------------------------------------------------ */
+
+export default function PainelCFOPage() {
+  const [mesAtual, setMesAtual] = useState<Date>(() => new Date());
+  const [data, setData] = useState<PainelData | null>(null);
+  const [inputs, setInputs] = useState<InputSemana[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingSemana, setEditingSemana] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editingWeek, setEditingWeek] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<Partial<InputSemana>>({});
   const [savingInput, setSavingInput] = useState(false);
 
-  const fetchPainel = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    const [painelRes, inputsRes] = await Promise.all([
-      fetch(`/api/analytics/cfo-painel?mes=${mes}`),
-      fetch(`/api/analytics/cfo-inputs?mes=${mes}-01`),
-    ]);
-    const painelJson = await painelRes.json();
-    const inputsJson = await inputsRes.json();
-    if (painelJson.ok) setPainel(painelJson);
-    else setPainel(null);
-    setInputs(inputsJson.ok ? inputsJson.data : []);
-    setLoading(false);
-  }, [mes]);
+    const mk = mesKey(mesAtual);
+    try {
+      const [painelRes, inputsRes] = await Promise.all([
+        fetch(`/api/analytics/cfo-painel?mes=${mk}`),
+        fetch(`/api/analytics/cfo-inputs?mes=${mk}-01`),
+      ]);
+      const painelJson = await painelRes.json();
+      const inputsJson = await inputsRes.json();
+      if (painelJson.ok) setData(painelJson);
+      if (Array.isArray(inputsJson)) setInputs(inputsJson);
+      else if (inputsJson.data && Array.isArray(inputsJson.data))
+        setInputs(inputsJson.data);
+      else setInputs([]);
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  }, [mesAtual]);
 
-  useEffect(() => { fetchPainel(); }, [fetchPainel]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  function openEdit(semana: number) {
-    const input = inputs.find((i) => i.semana === semana);
-    setEditForm({
-      cmv_pct: input?.cmv_pct != null ? String(input.cmv_pct) : "",
-      eficiencia_pct: input?.eficiencia_pct != null ? String(input.eficiencia_pct) : "",
-      lucro_liquido: input?.lucro_liquido != null ? String(input.lucro_liquido) : "",
-      ebitda_pct: input?.ebitda_pct != null ? String(input.ebitda_pct) : "",
-      notas: input?.notas ?? "",
+  const navMonth = (delta: number) => {
+    setMesAtual((prev) => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + delta);
+      return d;
     });
-    setEditingSemana(semana);
-  }
+  };
 
-  async function saveInput() {
-    if (editingSemana == null) return;
+  /* Executive summary computations */
+  const receitaAcumulada =
+    data?.semanas.reduce(
+      (sum, s) => sum + (s.indicadores.receita?.receita_liquida?.realizado ?? 0),
+      0
+    ) ?? 0;
+
+  const investAcumulado =
+    data?.semanas.reduce(
+      (sum, s) =>
+        sum + (s.indicadores.aquisicao?.investimento?.realizado ?? 0),
+      0
+    ) ?? 0;
+
+  const roasMedio =
+    investAcumulado > 0 ? receitaAcumulada / investAcumulado : 0;
+
+  const allStatuses: string[] = [];
+  if (data) {
+    for (const s of data.semanas) {
+      for (const bk of Object.keys(INDICADORES_CONFIG) as BlockKey[]) {
+        const group = s.indicadores[bk] as Record<string, IndicadorCell>;
+        if (!group) continue;
+        for (const ind of INDICADORES_CONFIG[bk]) {
+          if (group[ind.key]) allStatuses.push(group[ind.key].status);
+        }
+      }
+    }
+  }
+  const countCritico = allStatuses.filter((s) => s === "CRITICO").length;
+  const countAtencao = allStatuses.filter((s) => s === "ATENCAO").length;
+  const countOk = allStatuses.filter((s) => s === "NO_RITMO").length;
+
+  const metaReceitaPct =
+    data?.meta?.meta_receita_liquida && data.meta.meta_receita_liquida > 0
+      ? (receitaAcumulada / data.meta.meta_receita_liquida) * 100
+      : 0;
+
+  const metaInvestPct =
+    data?.meta?.invest_total && data.meta.invest_total > 0
+      ? (investAcumulado / data.meta.invest_total) * 100
+      : 0;
+
+  /* Manual inputs helpers */
+  const startEdit = (semana: number) => {
+    const existing = inputs.find((i) => i.semana === semana);
+    setEditForm(
+      existing
+        ? { ...existing }
+        : {
+            semana,
+            cmv_pct: null,
+            eficiencia_pct: null,
+            lucro_liquido: null,
+            ebitda_pct: null,
+            notas: null,
+          }
+    );
+    setEditingWeek(semana);
+  };
+
+  const cancelEdit = () => {
+    setEditingWeek(null);
+    setEditForm({});
+  };
+
+  const saveInput = async () => {
+    if (editingWeek == null) return;
     setSavingInput(true);
-    const input = inputs.find((i) => i.semana === editingSemana);
-    await fetch("/api/analytics/cfo-inputs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mes: mes + "-01",
-        semana: editingSemana,
-        semana_inicio: input?.semana_inicio ?? "",
-        semana_fim: input?.semana_fim ?? "",
-        cmv_pct: editForm.cmv_pct ? parseFloat(editForm.cmv_pct) : null,
-        eficiencia_pct: editForm.eficiencia_pct ? parseFloat(editForm.eficiencia_pct) : null,
-        lucro_liquido: editForm.lucro_liquido ? parseFloat(editForm.lucro_liquido) : null,
-        ebitda_pct: editForm.ebitda_pct ? parseFloat(editForm.ebitda_pct) : null,
-        notas: editForm.notas || null,
-      }),
-    });
-    setSavingInput(false);
-    setEditingSemana(null);
-    fetchPainel();
-  }
-
-  const semanas = painel?.semanas ?? [];
+    try {
+      const mk = mesKey(mesAtual);
+      await fetch("/api/analytics/cfo-inputs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editForm, mes: `${mk}-01` }),
+      });
+      await fetchData();
+      setEditingWeek(null);
+      setEditForm({});
+    } catch {
+      /* silent */
+    } finally {
+      setSavingInput(false);
+    }
+  };
 
   return (
     <Shell>
       <PageHeader
         titulo="Painel CFO"
-        subtitulo="Previsto vs Realizado — Visão Semanal Contínua"
+        subtitulo="Governanca financeira semanal"
       />
-      <div className="px-6 pb-8 space-y-6">
 
-        {/* Seletor de mês */}
-        <div className="flex items-center gap-4">
-          <input
-            type="month"
-            value={mes}
-            onChange={(e) => setMes(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <span className="text-lg font-semibold text-gray-900">{mesLabel(mes)}</span>
-          <span className="text-sm text-gray-500">Semanas no mês: {semanas.length}</span>
+      <div className="space-y-6 pb-12">
+        {/* ---- Month Nav ---- */}
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => navMonth(-1)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-600"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <h2 className="text-xl font-bold text-gray-900 min-w-[200px] text-center">
+            {mesLabel(mesAtual)}
+          </h2>
+          <button
+            onClick={() => navMonth(1)}
+            className="p-2 rounded-lg hover:bg-gray-100 transition text-gray-600"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12 text-gray-400">Carregando painel...</div>
-        ) : !painel ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
-            <p className="text-amber-900 font-medium">Meta não encontrada para {mesLabel(mes)}</p>
-            <p className="text-amber-700 text-sm mt-1">Configure a meta na aba Meta antes.</p>
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 border-4 border-gray-200 border-t-emerald-500 rounded-full animate-spin" />
           </div>
-        ) : (
-          <>
-            {/* Legenda */}
-            <div className="flex items-center gap-4 text-xs">
-              {Object.entries(STATUS_STYLES).map(([key, s]) => (
-                <span key={key} className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-                  <span className="text-gray-600">{s.label}</span>
-                  <span className="text-gray-400">
-                    {key === "NO_RITMO" && "≥ 95%"}
-                    {key === "ATENCAO" && "80–95%"}
-                    {key === "CRITICO" && "< 80%"}
-                    {key === "—" && "sem dados"}
+        )}
+
+        {!loading && data && (
+          <Fragment>
+            {/* ---- Executive Summary ---- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Receita Acumulada */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-start justify-between">
+                  <DollarSign className="h-5 w-5 text-emerald-500" />
+                  <span className="text-xs text-gray-400 uppercase font-semibold">
+                    Receita Acumulada
                   </span>
-                </span>
-              ))}
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mt-3 font-mono">
+                  {fmtCurrency(receitaAcumulada, true)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {fmtPct(metaReceitaPct)} da meta mensal
+                </p>
+                <ProgressBar pct={metaReceitaPct} />
+              </div>
+
+              {/* Investimento Acumulado */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-start justify-between">
+                  <Truck className="h-5 w-5 text-blue-500" />
+                  <span className="text-xs text-gray-400 uppercase font-semibold">
+                    Investimento Acumulado
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mt-3 font-mono">
+                  {fmtCurrency(investAcumulado, true)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {fmtPct(metaInvestPct)} do orcamento
+                </p>
+                <ProgressBar pct={metaInvestPct} />
+              </div>
+
+              {/* ROAS Medio */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-start justify-between">
+                  <TrendingUp className="h-5 w-5 text-violet-500" />
+                  <span className="text-xs text-gray-400 uppercase font-semibold">
+                    ROAS Medio
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-gray-900 mt-3 font-mono">
+                  {fmtRoi(roasMedio)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Meta: {fmtRoi(data.meta?.roas_exigido ?? null)}
+                </p>
+                <ProgressBar
+                  pct={
+                    data.meta?.roas_exigido
+                      ? (roasMedio / data.meta.roas_exigido) * 100
+                      : 0
+                  }
+                />
+              </div>
+
+              {/* Status Geral */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <div className="flex items-start justify-between">
+                  <ShieldCheck className="h-5 w-5 text-gray-500" />
+                  <span className="text-xs text-gray-400 uppercase font-semibold">
+                    Status Geral
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 rounded-full bg-red-500" />
+                    <span className="text-lg font-bold font-mono text-gray-900">
+                      {countCritico}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
+                    <span className="text-lg font-bold font-mono text-gray-900">
+                      {countAtencao}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 rounded-full bg-emerald-500" />
+                    <span className="text-lg font-bold font-mono text-gray-900">
+                      {countOk}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  {allStatuses.length} indicadores avaliados
+                </p>
+                <ProgressBar
+                  pct={
+                    allStatuses.length > 0
+                      ? (countOk / allStatuses.length) * 100
+                      : 0
+                  }
+                />
+              </div>
             </div>
 
-            {/* GRID PRINCIPAL */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-xs border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="sticky left-0 z-10 bg-gray-100 text-left px-3 py-2.5 font-semibold text-gray-700 min-w-[200px] border-b border-gray-200">
-                      Indicador
-                    </th>
-                    <th className="text-left px-2 py-2.5 font-medium text-gray-500 border-b border-gray-200 min-w-[50px]">Unid.</th>
-                    <th className="text-left px-2 py-2.5 font-medium text-gray-500 border-b border-gray-200 min-w-[80px]">Meta Mês</th>
-                    {semanas.map((sem) => (
-                      <th key={sem.semana} colSpan={4} className="text-center px-1 py-2.5 font-semibold text-gray-700 border-b border-gray-200 border-l border-gray-300 min-w-[320px]">
-                        <div>SEMANA {sem.semana}</div>
-                        <div className="text-[10px] font-normal text-gray-400">{fmtSemanaRange(sem.inicio, sem.fim)}</div>
-                      </th>
-                    ))}
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <th className="sticky left-0 z-10 bg-gray-50 border-b border-gray-200" />
-                    <th className="border-b border-gray-200" />
-                    <th className="border-b border-gray-200" />
-                    {semanas.map((sem) => (
-                      <Fragment key={`sub-${sem.semana}`}>
-                        <th className="text-center px-1 py-1.5 font-medium text-gray-400 border-b border-gray-200 border-l border-gray-300">Previsto</th>
-                        <th className="text-center px-1 py-1.5 font-medium text-gray-400 border-b border-gray-200">Realizado</th>
-                        <th className="text-center px-1 py-1.5 font-medium text-gray-400 border-b border-gray-200">% Ating.</th>
-                        <th className="text-center px-1 py-1.5 font-medium text-gray-400 border-b border-gray-200">Status</th>
-                      </Fragment>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {INDICADORES_CONFIG.map((bloco) => (
-                    <Fragment key={bloco.bloco}>
-                      {/* Bloco header */}
-                      <tr>
-                        <td colSpan={3 + semanas.length * 4} className="bg-gray-800 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-2">
-                          {bloco.bloco}
-                        </td>
-                      </tr>
-                      {bloco.items.map((item) => {
-                        const metaVal = painel.meta as Record<string, unknown>;
-                        let metaMes: string = "—";
-                        if (item.key === "receita_liquida") metaMes = fmtValor(metaVal.meta_receita_liquida as number, "R$");
-                        else if (item.key === "clientes") metaMes = fmtValor(metaVal.meta_clientes as number, "Qtd");
-                        else if (item.key === "ticket_medio") metaMes = fmtValor(metaVal.meta_ticket_medio as number, "R$");
-                        else if (item.key === "pct_front") metaMes = `${metaVal.meta_pct_front}%`;
-                        else if (item.key === "pct_backend") metaMes = `${metaVal.meta_pct_backend}%`;
-                        else if (item.key === "pct_recuperada") metaMes = `${metaVal.meta_pct_recuperada}%`;
-                        else if (item.key === "investimento") metaMes = fmtValor(metaVal.invest_total as number, "R$");
-                        else if (item.key === "roas") metaMes = `${metaVal.roas_exigido}x`;
-                        else if (item.key === "roi_consolidado") metaMes = "1,20x";
-                        else if (item.key === "cpa") metaMes = fmtValor(metaVal.meta_clientes ? (metaVal.invest_total as number) / (metaVal.meta_clientes as number) : 0, "R$");
-                        else if (item.key === "pct_chargeback") metaMes = `${metaVal.meta_pct_chargeback}%`;
-                        else if (item.key === "pct_reembolso") metaMes = `${metaVal.meta_pct_reembolso}%`;
-                        else if (item.key === "cmv") metaMes = `${metaVal.meta_pct_cmv}%`;
-                        else if (item.key === "eficiencia") metaMes = `${metaVal.meta_pct_eficiencia}%`;
-                        else if (item.key === "lucro_liquido") metaMes = fmtValor(metaVal.meta_lucro_liquido as number, "R$");
-                        else if (item.key === "ebitda_pct") metaMes = `${metaVal.meta_ebitda_pct}%`;
-
-                        return (
-                          <tr key={item.key} className="border-b border-gray-100 hover:bg-gray-50/50">
-                            <td className="sticky left-0 z-10 bg-white px-3 py-2 font-medium text-gray-800 whitespace-nowrap">
-                              {item.label}
-                            </td>
-                            <td className="px-2 py-2 text-gray-400">{item.unidade}</td>
-                            <td className="px-2 py-2 font-semibold text-gray-700">{metaMes}</td>
-                            {semanas.map((sem) => {
-                              const blocoData = sem.indicadores[bloco.blocoKey] as Record<string, IndicadorCell>;
-                              const cell = blocoData?.[item.key];
-                              if (!cell) {
-                                return (
-                                  <Fragment key={`${sem.semana}-${item.key}`}>
-                                    <td className="text-center px-1 py-2 text-gray-300 border-l border-gray-200">—</td>
-                                    <td className="text-center px-1 py-2 text-gray-300">—</td>
-                                    <td className="text-center px-1 py-2 text-gray-300">—</td>
-                                    <td className="text-center px-1 py-2"><StatusBadge status="—" /></td>
-                                  </Fragment>
-                                );
-                              }
-                              return (
-                                <Fragment key={`${sem.semana}-${item.key}`}>
-                                  <td className="text-center px-1 py-2 text-gray-500 border-l border-gray-200 whitespace-nowrap">
-                                    {fmtValor(cell.previsto, item.unidade)}
-                                  </td>
-                                  <td className="text-center px-1 py-2 font-semibold text-gray-900 whitespace-nowrap">
-                                    {fmtValor(cell.realizado, item.unidade)}
-                                  </td>
-                                  <td className="text-center px-1 py-2 text-gray-600 whitespace-nowrap">
-                                    {cell.pct != null ? `${cell.pct}%` : "—"}
-                                  </td>
-                                  <td className="text-center px-1 py-2">
-                                    <StatusBadge status={cell.status} />
-                                  </td>
-                                </Fragment>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
+            {/* ---- Block Cards ---- */}
+            <div className="space-y-6">
+              {(Object.keys(INDICADORES_CONFIG) as BlockKey[]).map(
+                (blockKey) => (
+                  <BlockCard
+                    key={blockKey}
+                    blockKey={blockKey}
+                    semanas={data.semanas}
+                    meta={data.meta}
+                  />
+                )
+              )}
             </div>
 
-            {/* INPUTS MANUAIS POR SEMANA */}
-            <section className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-base font-semibold text-gray-900 mb-4">Inputs Manuais (CMV, Eficiência, Lucro, EBITDA)</h2>
-              <p className="text-xs text-gray-500 mb-4">Esses indicadores não vêm de APIs — preencha manualmente para cada semana.</p>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {semanas.map((sem) => {
-                  const input = inputs.find((i) => i.semana === sem.semana);
-                  const isEditing = editingSemana === sem.semana;
+            {/* ---- Manual Inputs ---- */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                Inputs Manuais
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {data.semanas.map((s) => {
+                  const inp = inputs.find((i) => i.semana === s.semana);
+                  const isEditing = editingWeek === s.semana;
+                  const hasData =
+                    inp &&
+                    (inp.cmv_pct != null ||
+                      inp.eficiencia_pct != null ||
+                      inp.lucro_liquido != null ||
+                      inp.ebitda_pct != null);
+
                   return (
-                    <div key={sem.semana} className={`rounded-lg border p-4 ${isEditing ? "border-indigo-400 bg-indigo-50/50" : "border-gray-200"}`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-semibold text-gray-900">S{sem.semana}</span>
-                        <span className="text-[10px] text-gray-400">{fmtSemanaRange(sem.inicio, sem.fim)}</span>
+                    <div
+                      key={s.semana}
+                      className={`bg-white rounded-xl border shadow-sm p-6 ${
+                        hasData
+                          ? "border-gray-200"
+                          : "border-dashed border-gray-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-gray-700">
+                          {semanaLabel(s)}
+                        </h4>
+                        {!isEditing && (
+                          <button
+                            onClick={() => startEdit(s.semana)}
+                            className="p-1.5 rounded-lg hover:bg-gray-100 transition text-gray-400 hover:text-gray-700"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
+
                       {isEditing ? (
-                        <div className="space-y-2">
-                          {Object.entries(MANUAL_FIELDS).map(([, { dbField, label }]) => (
-                            <div key={dbField}>
-                              <label className="block text-[10px] text-gray-500 mb-0.5">{label}</label>
-                              <input
-                                type="number"
-                                step="any"
-                                value={editForm[dbField] ?? ""}
-                                onChange={(e) => setEditForm((f) => ({ ...f, [dbField]: e.target.value }))}
-                                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              />
-                            </div>
-                          ))}
-                          <div>
-                            <label className="block text-[10px] text-gray-500 mb-0.5">Notas</label>
+                        <div className="space-y-3">
+                          <label className="block">
+                            <span className="text-xs text-gray-500">
+                              CMV %
+                            </span>
                             <input
-                              type="text"
-                              value={editForm.notas ?? ""}
-                              onChange={(e) => setEditForm((f) => ({ ...f, notas: e.target.value }))}
-                              className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              type="number"
+                              step="0.1"
+                              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                              value={editForm.cmv_pct ?? ""}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  cmv_pct: e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
+                                }))
+                              }
                             />
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            <button onClick={saveInput} disabled={savingInput}
-                              className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-50">
-                              {savingInput ? "..." : "Salvar"}
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-gray-500">
+                              Eficiencia %
+                            </span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                              value={editForm.eficiencia_pct ?? ""}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  eficiencia_pct: e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-gray-500">
+                              Lucro Liquido (R$)
+                            </span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                              value={editForm.lucro_liquido ?? ""}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  lucro_liquido: e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-gray-500">
+                              EBITDA %
+                            </span>
+                            <input
+                              type="number"
+                              step="0.1"
+                              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                              value={editForm.ebitda_pct ?? ""}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  ebitda_pct: e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-xs text-gray-500">
+                              Notas
+                            </span>
+                            <textarea
+                              rows={2}
+                              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 resize-none"
+                              value={editForm.notas ?? ""}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  notas: e.target.value || null,
+                                }))
+                              }
+                            />
+                          </label>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              onClick={saveInput}
+                              disabled={savingInput}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              Salvar
                             </button>
-                            <button onClick={() => setEditingSemana(null)}
-                              className="text-xs text-gray-500 px-3 py-1 rounded hover:bg-gray-100">
+                            <button
+                              onClick={cancelEdit}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold hover:bg-gray-200 transition"
+                            >
+                              <X className="h-3.5 w-3.5" />
                               Cancelar
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="text-gray-500">CMV</span>
-                            <span className="font-medium text-gray-800">{input?.cmv_pct != null ? `${input.cmv_pct}%` : "—"}</span>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">CMV %</span>
+                            <span className="font-mono font-medium text-gray-900">
+                              {inp?.cmv_pct != null
+                                ? fmtPct(inp.cmv_pct)
+                                : "—"}
+                            </span>
                           </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-gray-500">Eficiência</span>
-                            <span className="font-medium text-gray-800">{input?.eficiencia_pct != null ? `${input.eficiencia_pct}%` : "—"}</span>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Eficiencia %</span>
+                            <span className="font-mono font-medium text-gray-900">
+                              {inp?.eficiencia_pct != null
+                                ? fmtPct(inp.eficiencia_pct)
+                                : "—"}
+                            </span>
                           </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-gray-500">Lucro</span>
-                            <span className="font-medium text-gray-800">{input?.lucro_liquido != null ? `R$ ${input.lucro_liquido.toLocaleString("pt-BR")}` : "—"}</span>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Lucro Liq.</span>
+                            <span className="font-mono font-medium text-gray-900">
+                              {inp?.lucro_liquido != null
+                                ? fmtCurrency(inp.lucro_liquido, true)
+                                : "—"}
+                            </span>
                           </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-gray-500">EBITDA</span>
-                            <span className="font-medium text-gray-800">{input?.ebitda_pct != null ? `${input.ebitda_pct}%` : "—"}</span>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">EBITDA %</span>
+                            <span className="font-mono font-medium text-gray-900">
+                              {inp?.ebitda_pct != null
+                                ? fmtPct(inp.ebitda_pct)
+                                : "—"}
+                            </span>
                           </div>
-                          {input?.notas && <p className="text-[10px] text-gray-400 italic mt-1">{input.notas}</p>}
-                          <button onClick={() => openEdit(sem.semana)}
-                            className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                            Editar
-                          </button>
+                          {inp?.notas && (
+                            <p className="text-xs text-gray-400 pt-1 border-t border-gray-100">
+                              {inp.notas}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-            </section>
+            </div>
 
-            {/* COMO LER */}
-            <section className="bg-gray-50 rounded-xl border border-gray-200 p-5 text-xs text-gray-500 space-y-1">
-              <p className="font-semibold text-gray-700 text-sm mb-2">Como ler este painel</p>
-              <p>• Para cada indicador, você vê as semanas lado a lado — bate o olho e acompanha a evolução do mês inteiro.</p>
-              <p>• Em cada semana: Previsto (vem da aba Meta) | Realizado (puxa automático do RedTrack + Payt) | % Atingido | Status.</p>
-              <p>• CMV, Eficiência, Lucro e EBITDA são inputs manuais — preencha nos cards acima.</p>
-              <p>• O bloco RESULTADO é consequência dos demais — sempre interpretado pela ótica dos blocos anteriores.</p>
-            </section>
-          </>
+            {/* ---- Legend ---- */}
+            {data.legenda && (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                <h3 className="text-sm font-bold text-gray-700 mb-3">
+                  Legenda
+                </h3>
+                <div className="flex flex-wrap gap-6">
+                  {Object.entries(data.legenda).map(([key, desc]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <SemaforoBadge status={key} />
+                      <span className="text-xs text-gray-500">{desc}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Fragment>
+        )}
+
+        {!loading && !data && (
+          <div className="text-center py-20 text-gray-400">
+            <AlertTriangle className="h-8 w-8 mx-auto mb-3" />
+            <p className="text-sm">
+              Nao foi possivel carregar os dados para este mes.
+            </p>
+          </div>
         )}
       </div>
     </Shell>
   );
 }
-
