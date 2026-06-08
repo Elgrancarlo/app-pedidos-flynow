@@ -10,6 +10,7 @@ import {
   StatGrid,
 } from "@/components/workspace/operational-ui";
 import { getEstoquePageData } from "@/lib/estoque";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import type { EstoqueMovimentacao } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -90,8 +91,12 @@ export default async function EstoquePage({
 }: {
   searchParams: Promise<{ dias?: string }>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
-  const data = await getEstoquePageData(params.dias);
+  const data = await timedServerTask("estoque", "data.total", () =>
+    getEstoquePageData(params.dias)
+  );
+  const postProcessStartedAt = performance.now();
   const automaticRestocks = data.movimentacoes.filter(isAutomaticRestock);
   const manualAdjustments = data.movimentacoes.filter(isManualAdjustment);
   const automaticRestockTotal = automaticRestocks.reduce(
@@ -102,6 +107,8 @@ export default async function EstoquePage({
     (sum, item) => sum + signedMovementQuantity(item),
     0
   );
+  logServerTiming("estoque", "postProcess.kpis", postProcessStartedAt);
+  logServerTiming("estoque", "total", pageStartedAt);
 
   return (
     <Shell>

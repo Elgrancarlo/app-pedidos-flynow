@@ -13,6 +13,7 @@ import {
   getPedidosRealInitialMetrics,
 } from "@/lib/pedidos-data";
 import { shouldUseMockData } from "@/lib/data-mode";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -63,17 +64,28 @@ export default async function PedidosPage({
 }: {
   searchParams: PedidosSearchParams;
 }) {
+  const pageStartedAt = performance.now();
   const periodo = getPageRange(await searchParams);
   const useMockData = shouldUseMockData();
-  const pedidos = useMockData ? createMockPedidos() : await getPedidosForFrontend(periodo);
+  const pedidos = useMockData
+    ? createMockPedidos()
+    : await timedServerTask("pedidos", "data.pedidos", () =>
+        getPedidosForFrontend(periodo)
+      );
+  const postProcessStartedAt = performance.now();
   const metricasPedidos = filterPedidosByRange(pedidos, periodo);
+  logServerTiming("pedidos", "postProcess.filter", postProcessStartedAt);
   const metricas = useMockData
     ? {
         contagem: getPedidosContagemPorStatus(metricasPedidos),
         financeiro: getPedidosFinanceiroResumo(metricasPedidos),
         valorPago: getPedidosValorPago(metricasPedidos),
       }
-    : await getPedidosRealInitialMetrics(periodo, pedidos);
+    : await timedServerTask("pedidos", "data.initialMetrics", () =>
+        getPedidosRealInitialMetrics(periodo, pedidos)
+      );
+
+  logServerTiming("pedidos", "total", pageStartedAt);
 
   return (
     <Shell>

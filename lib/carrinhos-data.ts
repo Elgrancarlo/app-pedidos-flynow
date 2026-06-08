@@ -5,6 +5,7 @@ import {
   buildPaytEventStreamRow,
   type PaytPayload,
 } from "@/lib/payt-events";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
   createMockCarrinhos,
@@ -691,19 +692,24 @@ async function fetchCurrentPeriodEvents(
   maxEvents: number | null
 ) {
   try {
+    const latestStartedAt = performance.now();
     const [streamLatest, rawLatest] = await Promise.all([
-      getLatestStreamEventAt(supabase, startTs, endTs),
-      getLatestRawReceivedAt(supabase, startTs, endTs),
+      timedServerTask("carrinhos", "data.latestStreamEventAt", () =>
+        getLatestStreamEventAt(supabase, startTs, endTs)
+      ),
+      timedServerTask("carrinhos", "data.latestRawReceivedAt", () =>
+        getLatestRawReceivedAt(supabase, startTs, endTs)
+      ),
     ]);
+    logServerTiming("carrinhos", "data.latestChecksTotal", latestStartedAt);
     const shouldPreferRaw =
       rawLatest !== null && (streamLatest === null || rawLatest > streamLatest);
 
     if (shouldPreferRaw) {
-      const rawResult = await fetchRawWebhookEventRows(
-        supabase,
-        startTs,
-        endTs,
-        maxEvents
+      const rawResult = await timedServerTask(
+        "carrinhos",
+        "data.rawWebhookEvents",
+        () => fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
       );
 
       if (rawResult.rows.length > 0 || streamLatest === null) {
@@ -711,21 +717,24 @@ async function fetchCurrentPeriodEvents(
       }
     }
 
-    const streamResult = await fetchStreamEventRows(
-      supabase,
-      startTs,
-      endTs,
-      maxEvents
+    const streamResult = await timedServerTask(
+      "carrinhos",
+      "data.streamEvents",
+      () => fetchStreamEventRows(supabase, startTs, endTs, maxEvents)
     );
 
     if (streamResult.rows.length > 0 || rawLatest === null) {
       return streamResult;
     }
 
-    return fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents);
+    return timedServerTask("carrinhos", "data.rawWebhookFallback", () =>
+      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
+    );
   } catch (error) {
     if (!isMissingEventStream(error)) throw error;
-    return fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents);
+    return timedServerTask("carrinhos", "data.rawWebhookMissingStream", () =>
+      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
+    );
   }
 }
 
@@ -736,12 +745,12 @@ async function fetchCarrinhosFromPaytEvents({
   const supabase = createServiceClient();
   const maxTableCarts = options.maxTableCarts ?? null;
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
-  const eventResult = await fetchCurrentPeriodEvents(
-    supabase,
-    startTs,
-    endTs,
-    null
+  const eventResult = await timedServerTask(
+    "carrinhos",
+    "data.currentPeriodEvents",
+    () => fetchCurrentPeriodEvents(supabase, startTs, endTs, null)
   );
+  const groupStartedAt = performance.now();
   const rows = sortPaytEventsByNewest(eventResult.rows);
 
   const groupedEvents = Array.from(groupPaytEvents(rows).values());
@@ -763,6 +772,8 @@ async function fetchCarrinhosFromPaytEvents({
         new Date(second.lastActivityAt).getTime() -
         new Date(first.lastActivityAt).getTime()
     );
+
+  logServerTiming("carrinhos", "postProcess.groupEvents", groupStartedAt);
 
   return {
     carrinhos,

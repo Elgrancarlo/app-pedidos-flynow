@@ -24,6 +24,7 @@ import {
   type AnalyticsCanal,
   type AnalyticsFunilSourceRow,
 } from "@/lib/supabase";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -432,16 +433,22 @@ export default async function CanaisPage({
 }: {
   searchParams: Promise<CanaisPageParams>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const baseData = await getChannelAnalytics(range.startDate, range.endDate);
+  const baseData = await timedServerTask("canais", "data.base", () =>
+    getChannelAnalytics(range.startDate, range.endDate)
+  );
   const channelOptions = buildChannelOptions(baseData.sourceRows);
   const selectedChannel = resolveFilter(params.channel, channelOptions);
   const selectedCanal =
     selectedChannel === "all" ? null : (selectedChannel as AnalyticsCanal);
   const data = selectedCanal
-    ? await getChannelAnalytics(range.startDate, range.endDate, selectedCanal)
+    ? await timedServerTask("canais", "data.filtered", () =>
+        getChannelAnalytics(range.startDate, range.endDate, selectedCanal)
+      )
     : baseData;
+  const postProcessStartedAt = performance.now();
   const summary = summarizeChannels(data);
   const channelRevenueRows = buildChannelRevenueRows(data.sourceRows);
   const sourceSpendRows = data.redtrackComparable
@@ -455,6 +462,8 @@ export default async function CanaisPage({
   const currentPage = Math.min(resolvePage(params.page), totalPages);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRows = redtrackRows.slice(startIndex, startIndex + pageSize);
+  logServerTiming("canais", "postProcess.tablesAndCharts", postProcessStartedAt);
+  logServerTiming("canais", "total", pageStartedAt);
   const tableStart = redtrackRows.length === 0 ? 0 : startIndex + 1;
   const tableEnd = Math.min(startIndex + pageSize, redtrackRows.length);
 

@@ -11,6 +11,7 @@ import {
   StatusPill,
 } from "@/components/workspace/operational-ui";
 import { getFlynowDataMode, type FlynowDataMode } from "@/lib/data-mode";
+import { logServerTiming } from "@/lib/server-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -355,6 +356,7 @@ function WarningNote({ children }: { children: ReactNode }) {
 }
 
 export default function ConfiguracoesPage() {
+  const pageStartedAt = performance.now();
   const mode = getFlynowDataMode();
   const appUrl = getAppUrl();
   const integrationRows = getIntegrationRows();
@@ -363,6 +365,7 @@ export default function ConfiguracoesPage() {
   const activeEndpointCount = endpointRows.filter((row) => row.tone === "green").length;
   const hasWhatsAppCredentials =
     hasEnv("WHATSAPP_PHONE_NUMBER_ID") && hasEnv("WHATSAPP_ACCESS_TOKEN");
+  logServerTiming("configuracoes", "total", pageStartedAt);
 
   return (
     <Shell>

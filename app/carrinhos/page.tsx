@@ -17,6 +17,7 @@ import {
 } from "@/lib/carrinhos-data";
 import { toAppDateString } from "@/lib/app-dates";
 import { shouldUseMockData } from "@/lib/data-mode";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import CarrinhosLoading from "./loading";
 
 export const dynamic = "force-dynamic";
@@ -96,6 +97,7 @@ async function CarrinhosDataView({
 }: {
   searchParams: CarrinhosSearchParams;
 }) {
+  const pageStartedAt = performance.now();
   const periodo = getPageRange(await searchParams);
   const useMockData = shouldUseMockData();
   const datasetRange = useMockData ? getCarrinhosDatasetRange(30) : periodo;
@@ -106,15 +108,20 @@ async function CarrinhosDataView({
         source: "mock" as const,
         warning: "Modo mock ativo; carrinhos simulados para revisão visual.",
       }
-    : await getCarrinhosForFrontendData(datasetRange, {
-        maxTableCarts: getCarrinhosInitialCartLimit(),
-      });
+    : await timedServerTask("carrinhos", "data.eventsAndMetrics", () =>
+        getCarrinhosForFrontendData(datasetRange, {
+          maxTableCarts: getCarrinhosInitialCartLimit(),
+        })
+      );
+  const postProcessStartedAt = performance.now();
   const { carrinhos } = data;
   const metricCarrinhos = useMockData
     ? filterCarrinhosByRange(carrinhos, periodo)
     : carrinhos;
   const resumoInicial = data.metrics?.resumo ?? getCarrinhosResumo(metricCarrinhos);
   const funilInicial = data.metrics?.funil ?? getCarrinhosFunil(metricCarrinhos);
+  logServerTiming("carrinhos", "postProcess.metrics", postProcessStartedAt);
+  logServerTiming("carrinhos", "total", pageStartedAt);
 
   return (
     <Shell>

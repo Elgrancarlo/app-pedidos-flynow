@@ -9,6 +9,7 @@ import {
 import { shouldUseMockData } from "@/lib/data-mode";
 import { mockMetrics } from "@/lib/mock-data";
 import type { MetricsData } from "@/lib/metrics";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { ANALYTICS_CHANNEL_LABELS, type AnalyticsCanal } from "@/lib/supabase";
 
 export type PerformanceRange = {
@@ -415,25 +416,40 @@ function createMockPerformanceData(range = getDefaultRange()): PerformancePageDa
 }
 
 export async function getPerformancePageData(
-  range = getDefaultRange()
+  range = getDefaultRange(),
+  options: { timingScope?: string } = {}
 ): Promise<PerformancePageData> {
+  const scope = options.timingScope ?? "performance";
+
   if (shouldUseMockData()) {
     return createMockPerformanceData(range);
   }
 
+  const queriesStartedAt = performance.now();
   const [overview, funil, canais, upsells] = await Promise.all([
-    getAnalyticsOverview(range.startDate, range.endDate),
-    getFunilAnalytics(range.startDate, range.endDate, null, null, {
-      skipImpactAnalysis: true,
-    }),
-    getChannelAnalytics(range.startDate, range.endDate),
-    getUpsellAnalytics(range.startDate, range.endDate),
+    timedServerTask(scope, "data.overview", () =>
+      getAnalyticsOverview(range.startDate, range.endDate)
+    ),
+    timedServerTask(scope, "data.funil", () =>
+      getFunilAnalytics(range.startDate, range.endDate, null, null, {
+        skipImpactAnalysis: true,
+      })
+    ),
+    timedServerTask(scope, "data.canais", () =>
+      getChannelAnalytics(range.startDate, range.endDate)
+    ),
+    timedServerTask(scope, "data.upsells", () =>
+      getUpsellAnalytics(range.startDate, range.endDate)
+    ),
   ]);
+  logServerTiming(scope, "data.queriesTotal", queriesStartedAt);
+
+  const postProcessStartedAt = performance.now();
   const summary = overview.summary ?? {};
   const channelsFromOverview = overview.channels ?? [];
   const mediaBySource = canais.mediaBySource ?? [];
 
-  return {
+  const data: PerformancePageData = {
     source: "real",
     range,
     summary: {
@@ -543,4 +559,8 @@ export async function getPerformancePageData(
       takeRateUs2: numberValue(item.takeRateUs2),
     })),
   };
+
+  logServerTiming(scope, "postProcess.normalize", postProcessStartedAt);
+
+  return data;
 }

@@ -28,6 +28,7 @@ import {
   type PerformanceLog,
   type PerformanceRange,
 } from "@/lib/performance-pages";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -566,9 +567,13 @@ export default async function FunilPage({
 }: {
   searchParams: Promise<FunilPageParams>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getPerformancePageData(range);
+  const data = await timedServerTask("funil", "data.total", () =>
+    getPerformancePageData(range, { timingScope: "funil" })
+  );
+  const postProcessStartedAt = performance.now();
   const productOptions = uniqueOptions(
     data.funnelDays.map((item) => item.product),
     "Todos os produtos"
@@ -597,6 +602,8 @@ export default async function FunilPage({
   const paginatedSourceRows = sourceRows.slice(startIndex, startIndex + pageSize);
   const tableStart = sourceRows.length === 0 ? 0 : startIndex + 1;
   const tableEnd = Math.min(startIndex + pageSize, sourceRows.length);
+  logServerTiming("funil", "postProcess.filtersAndCharts", postProcessStartedAt);
+  logServerTiming("funil", "total", pageStartedAt);
 
   return (
     <Shell>

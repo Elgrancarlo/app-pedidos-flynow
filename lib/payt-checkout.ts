@@ -1,5 +1,6 @@
 import { classifyPaytEventGroup, extractPaytItems, normalizePaytEventStatus, type PaytPayload } from "@/lib/payt-events";
 import { inferirGrupo } from "@/lib/produtos";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { createServiceClient } from "@/lib/supabase";
 
 interface RawWebhookRow {
@@ -301,7 +302,9 @@ export async function getPaytCheckoutMonitor(
   let abandonedCount = 0;
 
   try {
-    const streamRows = await fetchStreamEvents(supabase, since, maxEvents);
+    const streamRows = await timedServerTask("checkout", "data.streamEvents", () =>
+      fetchStreamEvents(supabase, since, maxEvents)
+    );
 
     for (const row of streamRows) {
       const event = buildMonitorRowFromStream(row);
@@ -313,15 +316,20 @@ export async function getPaytCheckoutMonitor(
     }
 
     triedRawFallback = true;
-    const rawRows = await fetchRawWebhookRows(supabase, since, maxEvents);
+    const rawRows = await timedServerTask("checkout", "data.rawWebhookFallback", () =>
+      fetchRawWebhookRows(supabase, since, maxEvents)
+    );
     mergeRawWebhookRows(latestByKey, rawRows, since);
   }
 
   if (latestByKey.size === 0 && !triedRawFallback) {
-    const rawRows = await fetchRawWebhookRows(supabase, since, maxEvents);
+    const rawRows = await timedServerTask("checkout", "data.rawWebhookEmptyStream", () =>
+      fetchRawWebhookRows(supabase, since, maxEvents)
+    );
     mergeRawWebhookRows(latestByKey, rawRows, since);
   }
 
+  const postProcessStartedAt = performance.now();
   const allRows = Array.from(latestByKey.values());
   const recoveredCount = allRows.filter(
     (row) => row.status === "paid" && row.timeline.some((item) => item !== "paid"),
@@ -336,6 +344,7 @@ export async function getPaytCheckoutMonitor(
     if (row.eventGroup === "loss") lostCount += 1;
     if (row.eventGroup === "abandonment") abandonedCount += 1;
   }
+  logServerTiming("checkout", "postProcess.summary", postProcessStartedAt);
 
   return {
     windowHours: hours,

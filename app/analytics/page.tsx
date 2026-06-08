@@ -19,6 +19,7 @@ import {
   type PerformanceChannel,
   type PerformanceRange,
 } from "@/lib/performance-pages";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -116,9 +117,13 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<AnalyticsPageParams>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getPerformancePageData(range);
+  const data = await timedServerTask("analytics", "data.total", () =>
+    getPerformancePageData(range, { timingScope: "analytics" })
+  );
+  const postProcessStartedAt = performance.now();
   const attributionRatio =
     data.summary.revenueTotal > 0
       ? data.summary.attributedRevenueTotal / data.summary.revenueTotal
@@ -131,6 +136,8 @@ export default async function AnalyticsPage({
     data.summary.clicksTotal > 0
       ? data.summary.conversionsTotal / data.summary.clicksTotal
       : 0;
+  logServerTiming("analytics", "postProcess.kpis", postProcessStartedAt);
+  logServerTiming("analytics", "total", pageStartedAt);
 
   return (
     <Shell>

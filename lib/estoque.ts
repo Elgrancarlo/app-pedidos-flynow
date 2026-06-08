@@ -6,6 +6,7 @@ import {
 } from "@/lib/app-dates";
 import { shouldUseMockData } from "@/lib/data-mode";
 import { inferirGrupo } from "@/lib/produtos";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import type { EstoqueGrupo, EstoqueMovimentacao } from "@/lib/supabase";
 
 type StockMovementParams = {
@@ -720,11 +721,17 @@ export async function getEstoquePageData(
     return createMockEstoqueData(preset);
   }
 
+  const queriesStartedAt = performance.now();
   const [grupos, movimentacoes, pedidosOfertas] = await Promise.all([
-    getRealGrupos(),
-    getRealMovimentacoes(preset),
-    getRealPedidosOfertas(preset),
+    timedServerTask("estoque", "data.grupos", getRealGrupos),
+    timedServerTask("estoque", "data.movimentacoes", () =>
+      getRealMovimentacoes(preset)
+    ),
+    timedServerTask("estoque", "data.pedidosOfertas", () =>
+      getRealPedidosOfertas(preset)
+    ),
   ]);
+  logServerTiming("estoque", "data.queriesTotal", queriesStartedAt);
 
   return buildEstoqueData({
     grupos,

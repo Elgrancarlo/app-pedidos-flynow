@@ -20,9 +20,8 @@ import {
   type Pedido,
   type PedidoStatusLogistico,
 } from "@/lib/pedidos";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { createServiceClient, STATUS_LABELS, type StatusPedido } from "@/lib/supabase";
-
-const DASHBOARD_TIMING_LOGS_ENV = "DASHBOARD_TIMING_LOGS";
 
 export type DashboardTone = "blue" | "gold" | "green" | "red" | "neutral";
 
@@ -105,35 +104,6 @@ type DashboardAlertRpcRow = {
   data_prometida_entrega: string | null;
   status: string | null;
 };
-
-function shouldLogDashboardTimings() {
-  return process.env[DASHBOARD_TIMING_LOGS_ENV] === "true";
-}
-
-function logDashboardTiming(label: string, startedAt: number) {
-  if (!shouldLogDashboardTimings()) return;
-
-  const durationMs = Math.round(performance.now() - startedAt);
-  console.log(`[dashboard] ${label}: ${durationMs}ms`);
-}
-
-async function timedDashboardTask<T>(
-  label: string,
-  task: () => PromiseLike<T> | T
-): Promise<Awaited<T>> {
-  if (!shouldLogDashboardTimings()) return await task();
-
-  const startedAt = performance.now();
-
-  try {
-    const result = await task();
-    logDashboardTiming(label, startedAt);
-    return result;
-  } catch (error) {
-    logDashboardTiming(`${label} erro`, startedAt);
-    throw error;
-  }
-}
 
 const OPEN_LOGISTICS_STATUSES: PedidoStatusLogistico[] = [
   "postado",
@@ -480,21 +450,29 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     tendencia,
     funilAnalytics,
   ] = await Promise.all([
-    timedDashboardTask("vendasHoje", () =>
+    timedServerTask("dashboard", "vendasHoje", () =>
       fetchPaidSalesRowsForRange(supabase, startTs, endTs)
     ),
-    timedDashboardTask("financeiro", () => getFinancialEventMetrics(today, today)),
-    timedDashboardTask("emTransito", () => supabase.rpc("pedidos_em_transito")),
-    timedDashboardTask("atrasados", () => supabase.rpc("pedidos_atrasados")),
-    timedDashboardTask("checkout", async () => {
+    timedServerTask("dashboard", "financeiro", () =>
+      getFinancialEventMetrics(today, today)
+    ),
+    timedServerTask("dashboard", "emTransito", () =>
+      supabase.rpc("pedidos_em_transito")
+    ),
+    timedServerTask("dashboard", "atrasados", () =>
+      supabase.rpc("pedidos_atrasados")
+    ),
+    timedServerTask("dashboard", "checkout", async () => {
       const { getPaytCheckoutMonitor } = await import("@/lib/payt-checkout");
       return getPaytCheckoutMonitor(24, { includeRows: false });
     }),
-    timedDashboardTask("funilPedidos", () =>
+    timedServerTask("dashboard", "funilPedidos", () =>
       supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs })
     ),
-    timedDashboardTask("tendencia", () => supabase.rpc("tendencia_30_dias")),
-    timedDashboardTask("funilAnalytics", () =>
+    timedServerTask("dashboard", "tendencia", () =>
+      supabase.rpc("tendencia_30_dias")
+    ),
+    timedServerTask("dashboard", "funilAnalytics", () =>
       getFunilAnalytics(
         analyticsRange.startDate,
         analyticsRange.endDate,
@@ -504,7 +482,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       )
     ),
   ]);
-  logDashboardTiming("queries.total", queriesStartedAt);
+  logServerTiming("dashboard", "queries.total", queriesStartedAt);
 
   if (emTransito.error) throw emTransito.error;
   if (atrasados.error) throw atrasados.error;
@@ -545,7 +523,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       })
     )
     .map((row) => normalizeAlert(row, today));
-  const funnelAlerts = await timedDashboardTask("postProcess.funilAiAlerts", () =>
+  const funnelAlerts = await timedServerTask("dashboard", "postProcess.funilAiAlerts", () =>
     buildFunilAiAlerts({
       dailyRows: funilAnalytics.dailyRows,
       logs: funilAnalytics.logs,
@@ -586,8 +564,8 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     trend: ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
   };
 
-  logDashboardTiming("postProcess.total", postProcessStartedAt);
-  logDashboardTiming("total", totalStartedAt);
+  logServerTiming("dashboard", "postProcess.total", postProcessStartedAt);
+  logServerTiming("dashboard", "total", totalStartedAt);
 
   return data;
 }

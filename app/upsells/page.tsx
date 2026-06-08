@@ -19,6 +19,7 @@ import {
   type PerformanceRange,
   type PerformanceUpsellProduct,
 } from "@/lib/performance-pages";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -559,9 +560,13 @@ export default async function UpsellsPage({
 }: {
   searchParams: Promise<UpsellsPageParams>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getPerformancePageData(range);
+  const data = await timedServerTask("upsells", "data.total", () =>
+    getPerformancePageData(range, { timingScope: "upsells" })
+  );
+  const postProcessStartedAt = performance.now();
   const productOptions = uniqueOptions(
     [
       ...data.upsells.map((item) => item.product),
@@ -595,6 +600,8 @@ export default async function UpsellsPage({
     0
   );
   const conversionRate = directSales > 0 ? approved / directSales : 0;
+  logServerTiming("upsells", "postProcess.productCards", postProcessStartedAt);
+  logServerTiming("upsells", "total", pageStartedAt);
 
   return (
     <Shell>

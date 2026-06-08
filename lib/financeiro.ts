@@ -10,6 +10,7 @@ import {
   type PedidoFormaPagamento,
   type PedidoStatusPagamento,
 } from "@/lib/pedidos";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 
 const FINANCEIRO_PEDIDOS_SELECT =
   "valor_total, forma_pagamento, data_pagamento, status_pagamento, chargeback";
@@ -459,10 +460,16 @@ export async function getFinanceiroPageData(
     return createMockFinanceiroData(range);
   }
 
+  const queriesStartedAt = performance.now();
   const [pedidos, financialMetrics] = await Promise.all([
-    getFinanceiroPedidosForFrontend(range),
-    getFinancialEventMetrics(range.startDate, range.endDate),
+    timedServerTask("financeiro", "data.pedidosPagos", () =>
+      getFinanceiroPedidosForFrontend(range)
+    ),
+    timedServerTask("financeiro", "data.eventosFinanceiros", () =>
+      getFinancialEventMetrics(range.startDate, range.endDate)
+    ),
   ]);
+  logServerTiming("financeiro", "data.queriesTotal", queriesStartedAt);
 
   return buildFinanceiroPageData({
     pedidos,

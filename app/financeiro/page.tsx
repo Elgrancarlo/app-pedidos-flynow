@@ -13,6 +13,7 @@ import {
   type FinanceiroRange,
 } from "@/lib/financeiro";
 import { getTodayInAppTimezone } from "@/lib/app-dates";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -73,9 +74,13 @@ export default async function FinanceiroPage({
 }: {
   searchParams: Promise<{ startDate?: string; endDate?: string }>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getFinanceiroPageData(range);
+  const data = await timedServerTask("financeiro", "data.total", () =>
+    getFinanceiroPageData(range)
+  );
+  logServerTiming("financeiro", "total", pageStartedAt);
 
   return (
     <Shell>

@@ -14,6 +14,7 @@ import {
   type PedidoStatusPagamento,
 } from "@/lib/pedidos";
 import { getUtcRangeForAppDates } from "@/lib/app-dates";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 
 const PEDIDOS_SELECT =
   "id, payt_transaction_id, payt_cart_id, ordem_pedido, cliente_nome, cliente_email, cliente_telefone, cliente_cpf, produto_nome, produto_grupo, qtd_potes, valor_total, forma_pagamento, parcelas, data_pagamento, status, status_pagamento, chargeback, codigo_rastreio, data_entrega, data_prometida_entrega, data_chegou_logistica, nfc_numero, nfc_valor, created_at, updated_at";
@@ -197,6 +198,7 @@ export async function getPedidosForFrontend({
   const maxRows = options.maxRows ?? null;
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
 
+  const paidStartedAt = performance.now();
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("pedidos")
@@ -218,7 +220,9 @@ export async function getPedidosForFrontend({
 
     if (data.length < PAGE_SIZE) break;
   }
+  logServerTiming("pedidos", "data.paidRows", paidStartedAt);
 
+  const pendingStartedAt = performance.now();
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("pedidos")
@@ -240,9 +244,11 @@ export async function getPedidosForFrontend({
 
     if (data.length < PAGE_SIZE) break;
   }
+  logServerTiming("pedidos", "data.pendingRows", pendingStartedAt);
 
   const seen = new Set<string>();
-  return rows
+  const normalizeStartedAt = performance.now();
+  const pedidos = rows
     .filter((row) => {
       if (seen.has(row.id)) return false;
       seen.add(row.id);
@@ -255,6 +261,9 @@ export async function getPedidosForFrontend({
       return rightTime - leftTime;
     })
     .slice(0, maxRows ?? undefined);
+  logServerTiming("pedidos", "postProcess.normalizeRows", normalizeStartedAt);
+
+  return pedidos;
 }
 
 async function getPedidosFinanceiroReal(
@@ -272,7 +281,9 @@ export async function getPedidosRealInitialMetrics(
   );
   const contagem = getStatusCountsFromPedidos(periodPedidos);
   const valorPago = getPaidValueFromPedidos(periodPedidos);
-  const financeiro = await getPedidosFinanceiroReal(range);
+  const financeiro = await timedServerTask("pedidos", "data.financeiro", () =>
+    getPedidosFinanceiroReal(range)
+  );
 
   return { contagem, financeiro, valorPago };
 }

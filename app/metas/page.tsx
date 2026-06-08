@@ -18,6 +18,7 @@ import {
   type MetasRange,
   type MetasRisk,
 } from "@/lib/metas";
+import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -196,13 +197,17 @@ export default async function MetasPage({
 }: {
   searchParams: Promise<MetasPageParams>;
 }) {
+  const pageStartedAt = performance.now();
   const params = await searchParams;
   const range = resolveRange(params);
-  const data = await getMetasPageData(range);
+  const data = await timedServerTask("metas", "data.total", () =>
+    getMetasPageData(range)
+  );
   const revenueGap = Math.max(
     data.summary.revenue.target - data.summary.revenue.realized,
     0
   );
+  logServerTiming("metas", "total", pageStartedAt);
 
   return (
     <Shell>
