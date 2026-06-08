@@ -13,20 +13,24 @@ import {
   Funnel,
   Goal,
   TrendingUp,
+  Target,
+  ShieldCheck,
   LogOut,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/dashboard",     label: "Dashboard",     Icone: LayoutDashboard },
-  { href: "/pedidos",       label: "Pedidos",        Icone: ShoppingCart },
-  { href: "/carrinhos",     label: "Carrinhos",      Icone: Boxes },
-  { href: "/financeiro",    label: "Financeiro",     Icone: DollarSign },
-  { href: "/estoque",       label: "Estoque",        Icone: Package },
-  { href: "/analytics",     label: "Analytics",      Icone: ChartNoAxesCombined },
-  { href: "/analytics/funil", label: "Funil",        Icone: Funnel },
-  { href: "/analytics/upsells", label: "Upsells",    Icone: TrendingUp },
-  { href: "/analytics/canais", label: "Canais",      Icone: Goal },
-  { href: "/configuracoes", label: "Configurações",  Icone: Settings },
+  { href: "/dashboard",          label: "Dashboard",     Icone: LayoutDashboard },
+  { href: "/pedidos",            label: "Pedidos",        Icone: ShoppingCart },
+  { href: "/carrinhos",          label: "Carrinhos",      Icone: Boxes },
+  { href: "/financeiro",         label: "Financeiro",     Icone: DollarSign },
+  { href: "/estoque",            label: "Estoque",        Icone: Package },
+  { href: "/analytics",          label: "Analytics",      Icone: ChartNoAxesCombined },
+  { href: "/analytics/funil",    label: "Funil",          Icone: Funnel },
+  { href: "/analytics/upsells",  label: "Upsells",        Icone: TrendingUp },
+  { href: "/analytics/canais",   label: "Canais",         Icone: Goal },
+  { href: "/meta",               label: "Meta",           Icone: Target },
+  { href: "/cfo",                label: "Painel CFO",     Icone: ShieldCheck },
+  { href: "/configuracoes",      label: "Configurações",  Icone: Settings },
 ];
 
 export default function Sidebar() {
