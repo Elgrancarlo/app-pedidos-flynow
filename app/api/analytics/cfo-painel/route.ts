@@ -111,23 +111,34 @@ export async function GET(req: NextRequest) {
   const periodoInicio = semanas[0].inicio;
   const periodoFim = semanas[semanas.length - 1].fim;
 
-  // 3. Buscar RedTrack (investimento, clicks, conversões)
-  const { data: redtrackRows } = await analytics
-    .from("redtrack_daily_campaign")
-    .select("day, cost, revenue, total_revenue, clicks, conversions")
-    .gte("day", periodoInicio)
-    .lte("day", periodoFim);
+  // 3. Buscar RedTrack (investimento, clicks, conversões) — com paginação
+  const rt: RedtrackRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data: page } = await analytics
+      .from("redtrack_daily_campaign")
+      .select("day, cost, revenue, total_revenue, clicks, conversions")
+      .gte("day", periodoInicio)
+      .lte("day", periodoFim)
+      .range(from, from + 999);
+    if (!page || page.length === 0) break;
+    rt.push(...(page as RedtrackRow[]));
+    if (page.length < 1000) break;
+  }
 
-  const rt: RedtrackRow[] = (redtrackRows ?? []) as RedtrackRow[];
-
-  // 4. Buscar Payt Sales (receita, canais, chargebacks, reembolsos)
-  const { data: paytRows } = await analytics
-    .from("payt_sales")
-    .select("day, valor_total, canal, offer_kind, chargeback, status_pagamento, payt_transaction_id")
-    .gte("day", periodoInicio)
-    .lte("day", periodoFim);
-
-  const ps: PaytSaleRow[] = (paytRows ?? []) as PaytSaleRow[];
+  // 4. Buscar Payt Sales (receita, canais, chargebacks, reembolsos) — com paginação
+  const PAGE_SIZE = 1000;
+  const ps: PaytSaleRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data: page } = await analytics
+      .from("payt_sales")
+      .select("day, valor_total, canal, offer_kind, chargeback, status_pagamento, payt_transaction_id")
+      .gte("day", periodoInicio)
+      .lte("day", periodoFim)
+      .range(from, from + PAGE_SIZE - 1);
+    if (!page || page.length === 0) break;
+    ps.push(...(page as PaytSaleRow[]));
+    if (page.length < PAGE_SIZE) break;
+  }
 
   // 5. Montar dados por semana
   const qtdSemanas = semanas.length;
