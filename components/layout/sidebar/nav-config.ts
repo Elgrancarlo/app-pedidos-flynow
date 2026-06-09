@@ -46,6 +46,7 @@ export const WORKSPACE_NAV_SECTIONS: NavSection[] = [
         Icone: ChartNoAxesColumnIncreasing,
       },
       { href: "/metas", label: "Metas", Icone: Target },
+      { href: "/cfo", label: "CFO", Icone: ChartSpline },
       { href: "/funil", label: "Funil", Icone: Funnel },
       { href: "/upsells", label: "Upsells", Icone: TrendingUp },
       { href: "/canais", label: "Canais", Icone: Radio },

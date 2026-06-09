@@ -38,7 +38,13 @@ function buildMonthOptions(activeMonth: string) {
   }));
 }
 
-export function MetasMonthFilter({ month }: { month: string }) {
+export function MetasMonthFilter({
+  basePath = "/metas",
+  month,
+}: {
+  basePath?: string;
+  month: string;
+}) {
   const router = useRouter();
   const options = useMemo(() => buildMonthOptions(month), [month]);
 
@@ -48,7 +54,7 @@ export function MetasMonthFilter({ month }: { month: string }) {
         align="end"
         ariaLabel="Selecionar mês das metas"
         displayLabel="Mês"
-        onValueChange={(nextMonth) => router.push(`/metas?mes=${nextMonth}`)}
+        onValueChange={(nextMonth) => router.push(`${basePath}?mes=${nextMonth}`)}
         options={options}
         selectedLabel={formatMonthLabel(month)}
         triggerClassName="h-10 rounded-[12px] lg:h-9"

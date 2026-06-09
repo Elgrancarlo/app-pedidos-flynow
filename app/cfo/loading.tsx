@@ -20,8 +20,8 @@ function DateFilterSkeleton() {
 
 function MetricCardsSkeleton() {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-      {Array.from({ length: 5 }).map((_, index) => (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
         <SkeletonPanel key={index} className="p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <SkeletonLine className="size-1.5" />
@@ -33,6 +33,32 @@ function MetricCardsSkeleton() {
         </SkeletonPanel>
       ))}
     </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <SkeletonPanel className="overflow-hidden p-0">
+      <div className="border-b border-[var(--fly-divider)] px-4 py-3 sm:px-5 sm:py-4">
+        <SkeletonLine className="h-4 w-40 rounded-md" />
+        <SkeletonLine className="mt-3 h-2.5 w-64 max-w-full" />
+      </div>
+      <div className="p-3 sm:p-4">
+        <div className="h-[320px] rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-4 sm:h-[360px]">
+          <div className="flex h-full items-end gap-3">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <span
+                key={index}
+                className="min-w-0 flex-1 rounded-t-[6px] bg-[var(--fly-skeleton-line)]"
+                style={{
+                  height: `${24 + ((index * 19) % 64)}%`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </SkeletonPanel>
   );
 }
 
@@ -83,33 +109,29 @@ function TableSkeleton() {
   );
 }
 
-export default function MetasLoading() {
+export default function CfoLoading() {
   return (
     <Shell>
       <DashboardHeader
-        title="Metas"
-        description="Planejamento mensal de receita, mídia e operação"
+        title="CFO"
+        description="Acompanhamento financeiro semanal"
         actions={<DateFilterSkeleton />}
       />
 
       <div
         role="status"
-        aria-label="Carregando metas"
+        aria-label="Carregando CFO"
         className="flynow-dashboard-skeleton min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
           <MetricCardsSkeleton />
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
+            <ChartSkeleton />
             <SidePanelSkeleton />
-            <SidePanelSkeleton />
-          </div>
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <SidePanelSkeleton />
-            <TableSkeleton />
           </div>
           <TableSkeleton />
         </div>
-        <span className="sr-only">Carregando dados de metas.</span>
+        <span className="sr-only">Carregando dados de CFO.</span>
       </div>
     </Shell>
   );
