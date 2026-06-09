@@ -73,7 +73,7 @@ function buildInitialState(weeks: CfoWeeklyManualInput[]) {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+    <label className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
       {children}
     </label>
   );
@@ -84,24 +84,42 @@ function TextInput({
   label,
   onChange,
   placeholder,
+  prefix,
+  suffix,
   value,
 }: {
   inputMode?: "decimal" | "text";
   label: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  prefix?: string;
+  suffix?: string;
   value: string;
 }) {
   return (
-    <div className="min-w-0 space-y-1.5">
-      <FieldLabel>{label}</FieldLabel>
-      <input
-        inputMode={inputMode}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        value={value}
-        className="h-10 w-full rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
-      />
+    <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-3 py-2 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]">
+      <div className="flex items-center justify-between gap-2">
+        <FieldLabel>{label}</FieldLabel>
+        {suffix ? (
+          <span className="text-[10px] font-semibold text-[var(--fly-text-dim)]">
+            {suffix}
+          </span>
+        ) : null}
+      </div>
+      <div className="mt-1 flex min-w-0 items-center gap-1.5">
+        {prefix ? (
+          <span className="shrink-0 text-xs font-semibold text-[var(--fly-text-muted)]">
+            {prefix}
+          </span>
+        ) : null}
+        <input
+          inputMode={inputMode}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          value={value}
+          className="h-7 min-w-0 flex-1 bg-transparent text-sm font-semibold tabular-nums text-[var(--fly-text)] outline-none placeholder:text-[var(--fly-text-dim)]"
+        />
+      </div>
     </div>
   );
 }
@@ -208,7 +226,7 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]">
       {weeks.map((week) => {
         const form = forms[week.semana] ?? {
           cmvPct: "",
@@ -224,13 +242,13 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
         return (
           <form
             key={week.semana}
-            className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3 sm:p-4"
+            className="border-b border-[var(--fly-divider-subtle)] p-3 last:border-b-0 sm:p-4"
             onSubmit={(event) => {
               event.preventDefault();
               void saveWeek(week);
             }}
           >
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold text-[var(--fly-text)]">
@@ -258,47 +276,51 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
               </span>
             </div>
 
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
               <TextInput
                 label="Lucro líquido"
                 onChange={(value) => updateWeek(week.semana, { lucroLiquido: value })}
-                placeholder="Ex: 12500,00"
+                placeholder="12500,00"
+                prefix="R$"
                 value={form.lucroLiquido}
               />
               <TextInput
                 label="EBITDA %"
                 onChange={(value) => updateWeek(week.semana, { ebitdaPct: value })}
-                placeholder="Ex: 9,4"
+                placeholder="9,4"
+                suffix="%"
                 value={form.ebitdaPct}
               />
               <TextInput
                 label="CMV %"
                 onChange={(value) => updateWeek(week.semana, { cmvPct: value })}
-                placeholder="Ex: 14"
+                placeholder="14"
+                suffix="%"
                 value={form.cmvPct}
               />
               <TextInput
                 label="Eficiência %"
                 onChange={(value) => updateWeek(week.semana, { eficienciaPct: value })}
-                placeholder="Ex: 4,5"
+                placeholder="4,5"
+                suffix="%"
                 value={form.eficienciaPct}
               />
             </div>
 
-            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="min-w-0 space-y-1.5">
+            <div className="mt-2.5 grid gap-2.5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-3 py-2 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]">
                 <FieldLabel>Notas</FieldLabel>
                 <textarea
                   onChange={(event) =>
                     updateWeek(week.semana, { notas: event.target.value })
                   }
-                  placeholder="Contexto do fechamento, exceções ou observações."
+                  placeholder="Contexto do fechamento, exceções ou observações"
                   value={form.notas}
-                  className="min-h-[74px] w-full resize-y rounded-[10px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 py-2.5 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] hover:bg-[var(--fly-control-hover)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+                  className="mt-1 min-h-[52px] w-full resize-y bg-transparent text-sm leading-5 text-[var(--fly-text)] outline-none placeholder:text-[var(--fly-text-dim)]"
                 />
               </div>
 
-              <div className="flex flex-col items-stretch gap-2 sm:items-end">
+              <div className="flex flex-col items-stretch gap-2 sm:items-end lg:min-w-[124px]">
                 {weekFeedback ? (
                   <p
                     className={
@@ -311,11 +333,11 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
                   </p>
                 ) : null}
                 <button
-                  className="inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[var(--fly-on-brand)] shadow-[0_10px_24px_rgba(214,168,79,0.12)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  className="inline-flex h-9 w-full cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   disabled={isSaving}
                   type="submit"
                 >
-                  {isSaving ? "Salvando..." : "Salvar semana"}
+                  {isSaving ? "Salvando..." : "Salvar"}
                 </button>
               </div>
             </div>
