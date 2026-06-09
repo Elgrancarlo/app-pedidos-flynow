@@ -81,6 +81,31 @@ function getProgress(goal: Pick<MetaGoal, "realized" | "target">) {
   return Math.min(Math.max(goal.realized / goal.target, 0), 1.2);
 }
 
+function getGoal(goals: MetaGoal[], id: string) {
+  return goals.find((goal) => goal.id === id) ?? null;
+}
+
+function getGoalTone(goal: MetaGoal | null) {
+  if (!goal) return "neutral";
+  return STATUS_TONES[goal.status];
+}
+
+function formatCurrencyGap(realized: number, target: number) {
+  const gap = target - realized;
+
+  if (gap > 0) return `${formatCurrency(gap)} faltantes`;
+  if (gap < 0) return `${formatCurrency(Math.abs(gap))} acima da meta`;
+  return "meta atingida";
+}
+
+function formatBudgetGap(realized: number, target: number) {
+  const gap = target - realized;
+
+  if (gap > 0) return `${formatCurrency(gap)} disponível`;
+  if (gap < 0) return `${formatCurrency(Math.abs(gap))} acima do planejado`;
+  return "planejamento consumido";
+}
+
 function StatusLabel({ status }: { status: MetaStatus }) {
   const dotClass = {
     gold: "bg-[var(--fly-chart-revenue)]",
@@ -128,11 +153,23 @@ function RisksList({ risks }: { risks: MetasRisk[] }) {
             </span>
           </div>
           <p className="mt-3 text-xs text-[var(--fly-text-muted)]">
-            Faltam{" "}
-            <span className="font-semibold text-[var(--fly-text-soft)]">
-              {formatGoalValue(risk.gap, risk.unit)}
-            </span>{" "}
-            para bater a meta.
+            {risk.direction === "above_limit" ? (
+              <>
+                Acima do limite em{" "}
+                <span className="font-semibold text-[var(--fly-text-soft)]">
+                  {formatGoalValue(risk.gap, risk.unit)}
+                </span>
+                .
+              </>
+            ) : (
+              <>
+                Faltam{" "}
+                <span className="font-semibold text-[var(--fly-text-soft)]">
+                  {formatGoalValue(risk.gap, risk.unit)}
+                </span>{" "}
+                para bater a meta.
+              </>
+            )}
           </p>
         </article>
       ))}
@@ -159,11 +196,11 @@ function GoalsTable({ goals }: { goals: MetaGoal[] }) {
       <table className="w-full min-w-[820px] table-fixed text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[28%] px-3 py-3">Meta</th>
-            <th className="w-[14%] px-3 py-3">Grupo</th>
-            <th className="w-[15%] px-3 py-3 text-right">Previsto</th>
+            <th className="w-[28%] px-3 py-3">Indicador</th>
+            <th className="w-[14%] px-3 py-3">Área</th>
+            <th className="w-[15%] px-3 py-3 text-right">Referência</th>
             <th className="w-[15%] px-3 py-3 text-right">Realizado</th>
-            <th className="w-[14%] px-3 py-3 text-right">Atingido</th>
+            <th className="w-[14%] px-3 py-3 text-right">Leitura</th>
             <th className="w-[14%] px-3 py-3">Status</th>
           </tr>
         </thead>
@@ -280,31 +317,27 @@ export default async function CfoPage({
   const data = await timedServerTask("cfo", "data.total", () =>
     getMetasPageData(month)
   );
-  const revenueGap = Math.max(
-    data.summary.revenue.target - data.summary.revenue.realized,
-    0
-  );
+  const profitGoal = getGoal(data.goals, "lucro-liquido");
+  const ebitdaGoal = getGoal(data.goals, "ebitda");
+  const roasDelta = data.summary.roas.realized - data.summary.roas.target;
   logServerTiming("cfo", "total", pageStartedAt);
 
   return (
     <Shell>
       <DashboardHeader
         title="CFO"
-        description={`Acompanhamento financeiro semanal · ${data.monthLabel}`}
+        description={`Controle financeiro mensal · ${data.monthLabel}`}
         actions={<MetasMonthFilter basePath="/cfo" month={data.month} />}
       />
 
       <PageBody>
-        <StatGrid columns="xl:grid-cols-5">
+        <StatGrid columns="xl:grid-cols-4">
           <StatCard
-            detail={`${formatCurrency(revenueGap)} faltantes na receita liquida`}
-            label="Progresso geral"
-            tone={data.summary.overallProgress >= 0.9 ? "gold" : "orange"}
-            value={formatPercent(data.summary.overallProgress)}
-          />
-          <StatCard
-            detail={`meta ${formatCurrency(data.summary.revenue.target)}`}
-            label="Receita liquida"
+            detail={`meta ${formatCurrency(data.summary.revenue.target)} · ${formatCurrencyGap(
+              data.summary.revenue.realized,
+              data.summary.revenue.target
+            )}`}
+            label="Receita líquida"
             tone="gold"
             value={formatCurrency(data.summary.revenue.realized)}
             rows={[
@@ -316,50 +349,71 @@ export default async function CfoPage({
             ]}
           />
           <StatCard
-            detail={`meta ${formatCurrency(data.summary.investment.target)}`}
+            detail={`planejado ${formatCurrency(
+              data.summary.investment.target
+            )} · ${formatBudgetGap(
+              data.summary.investment.realized,
+              data.summary.investment.target
+            )}`}
             label="Investimento"
             tone="blue"
             value={formatCurrency(data.summary.investment.realized)}
             rows={[
               {
-                label: "Usado",
+                label: "Consumido",
                 meter: getProgress(data.summary.investment),
                 value: formatPercent(getProgress(data.summary.investment)),
               },
             ]}
           />
           <StatCard
-            detail={`meta ${formatGoalValue(data.summary.roas.target, "ratio")}`}
+            detail={`${formatGoalValue(
+              Math.abs(roasDelta),
+              "ratio"
+            )} ${roasDelta >= 0 ? "acima do piso" : "abaixo do piso"} · piso ${formatGoalValue(
+              data.summary.roas.target,
+              "ratio"
+            )}`}
             label="ROAS"
-            tone="green"
+            tone={roasDelta >= 0 ? "green" : "orange"}
             value={formatGoalValue(data.summary.roas.realized, "ratio")}
           />
           <StatCard
-            detail={`meta ${formatNumber(data.summary.customers.target)} clientes`}
-            label="Clientes"
-            tone="blue"
-            value={formatNumber(data.summary.customers.realized)}
-            rows={[
-              {
-                label: "Atingido",
-                meter: getProgress(data.summary.customers),
-                value: formatPercent(getProgress(data.summary.customers)),
-              },
-            ]}
+            detail={
+              profitGoal
+                ? `meta ${formatCurrency(profitGoal.target)} · EBITDA ${
+                    ebitdaGoal ? formatGoalValue(ebitdaGoal.realized, "percent") : "-"
+                  }`
+                : "sem meta financeira cadastrada"
+            }
+            label="Resultado líquido"
+            tone={getGoalTone(profitGoal)}
+            value={profitGoal ? formatCurrency(profitGoal.realized) : "-"}
+            rows={
+              profitGoal
+                ? [
+                    {
+                      label: "Atingido",
+                      meter: getProgress(profitGoal),
+                      value: formatPercent(getProgress(profitGoal)),
+                    },
+                  ]
+                : undefined
+            }
           />
         </StatGrid>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel
-            title="Ritmo semanal"
-            description="Receita prevista, realizado e investimento por semana"
+            title="Ritmo financeiro semanal"
+            description="Receita prevista, receita realizada e investimento por semana"
           >
             <MetasProgressChart series={data.series} />
           </Panel>
 
           <Panel
-            title="Leitura do mês"
-            description={`${data.summary.atRiskCount} indicadores pedem atenção agora`}
+            title="Alertas financeiros"
+            description={`${data.summary.atRiskCount} indicadores fora do ritmo planejado`}
           >
             <RisksList risks={data.risks} />
           </Panel>
@@ -368,14 +422,14 @@ export default async function CfoPage({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <Panel
             title="Resumo semanal"
-            description="Semanas do mês contra o planejamento configurado"
+            description="Semanas do mês contra o planejamento financeiro"
           >
             <WeeksTable weeks={data.weeks} />
           </Panel>
 
           <Panel
-            title="Indicadores detalhados"
-            description="Previsto, realizado e status por indicador"
+            title="Indicadores por área"
+            description="Realizado, referência e status dos indicadores do CFO"
           >
             <GoalsTable goals={data.goals} />
           </Panel>

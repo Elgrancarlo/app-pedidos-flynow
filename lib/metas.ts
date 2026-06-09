@@ -54,6 +54,7 @@ export type MetasProgressPoint = {
 export type MetasRisk = {
   area: MetaArea;
   detail: string;
+  direction: "above_limit" | "below_target";
   gap: number;
   id: string;
   title: string;
@@ -110,6 +111,13 @@ const MONEY_GOAL_IDS = new Set([
   "receita-liquida",
   "investimento",
   "lucro-liquido",
+]);
+
+const LIMIT_GOAL_IDS = new Set([
+  "investimento",
+  "pct-chargeback",
+  "pct-reembolso",
+  "cmv",
 ]);
 
 export function getMetaAreaLabel(area: MetaArea) {
@@ -274,26 +282,47 @@ function buildProgressSeries(
 }
 
 function buildRisks(goals: MetaGoal[]): MetasRisk[] {
+  const riskRank: Record<MetaStatus, number> = {
+    ahead: 3,
+    attention: 1,
+    critical: 0,
+    empty: 4,
+    on_track: 2,
+  };
+
+  const getSeverity = (goal: MetaGoal) => {
+    if (goal.target <= 0) return 0;
+    const ratio = goal.realized / goal.target;
+
+    return LIMIT_GOAL_IDS.has(goal.id)
+      ? Math.max(ratio - 1, 0)
+      : Math.max(1 - ratio, 0);
+  };
+
   return goals
     .filter((goal) => goal.status === "attention" || goal.status === "critical")
     .sort((first, second) => {
-      const firstRatio = first.target > 0 ? first.realized / first.target : 1;
-      const secondRatio = second.target > 0 ? second.realized / second.target : 1;
+      const rankDiff = riskRank[first.status] - riskRank[second.status];
+      if (rankDiff !== 0) return rankDiff;
 
-      return firstRatio - secondRatio;
+      return getSeverity(second) - getSeverity(first);
     })
     .slice(0, 4)
-    .map((goal) => ({
-      area: goal.area,
-      detail: goal.description,
-      gap:
-        goal.unit === "percent" || goal.unit === "ratio"
-          ? Math.max(goal.target - goal.realized, 0)
+    .map((goal) => {
+      const isLimitGoal = LIMIT_GOAL_IDS.has(goal.id);
+
+      return {
+        area: goal.area,
+        detail: goal.description,
+        direction: isLimitGoal ? "above_limit" : "below_target",
+        gap: isLimitGoal
+          ? Math.max(goal.realized - goal.target, 0)
           : Math.max(goal.target - goal.realized, 0),
-      id: goal.id,
-      title: goal.name,
-      unit: goal.unit,
-    }));
+        id: goal.id,
+        title: goal.name,
+        unit: goal.unit,
+      };
+    });
 }
 
 function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {

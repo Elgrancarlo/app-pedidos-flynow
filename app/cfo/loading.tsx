@@ -114,7 +114,7 @@ export default function CfoLoading() {
     <Shell>
       <DashboardHeader
         title="CFO"
-        description="Acompanhamento financeiro semanal"
+        description="Controle financeiro mensal"
         actions={<DateFilterSkeleton />}
       />
 
