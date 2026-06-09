@@ -49,7 +49,7 @@ export type MetasPlanningBackendChannel = {
 export type MetasPlanningComposition = {
   id: string;
   label: string;
-  tone: "gold" | "green" | "neutral" | "orange" | "red";
+  tone: "blue" | "gold" | "green" | "neutral" | "orange" | "red";
   unit: "currency" | "number" | "percent" | "ratio";
   value: number;
 };
@@ -167,7 +167,7 @@ function buildComposition(meta: MetaRow): MetasPlanningComposition[] {
     {
       id: "pct-recuperada",
       label: "Receita recuperada",
-      tone: "green",
+      tone: "blue",
       unit: "percent",
       value: numberValue(meta.meta_pct_recuperada) / 100,
     },
