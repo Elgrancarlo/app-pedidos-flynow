@@ -177,7 +177,7 @@ export default async function MetasPage({
                     data.summary.revenue > 0
                       ? data.summary.backendRevenue / data.summary.revenue
                       : 0,
-                  tone: "green" as const,
+                  tone: "gold" as const,
                   value: formatCurrency(data.summary.backendRevenue),
                 },
               ]}
