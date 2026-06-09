@@ -110,7 +110,7 @@ function TextInput({
     <label
       className={[
         "min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2.5 py-1.5 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]",
-        disabled ? "pointer-events-none opacity-60" : "",
+        disabled ? "pointer-events-none" : "",
       ].join(" ")}
     >
       <span className="flex items-center justify-between gap-2">
@@ -379,19 +379,19 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
             <div
               aria-hidden={!isEditing}
               className={[
-                "grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none",
+                "grid transition-[grid-template-rows] duration-300 motion-reduce:transition-none",
                 isEditing
-                  ? "grid-rows-[1fr] opacity-100 ease-out"
-                  : "grid-rows-[0fr] opacity-0 ease-in",
+                  ? "grid-rows-[1fr] ease-out"
+                  : "grid-rows-[0fr] ease-in",
               ].join(" ")}
             >
               <div className="overflow-hidden">
                 <form
                   className={[
-                    "border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+                    "border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 transition-[opacity,transform] motion-reduce:transition-none",
                     isEditing
-                      ? "translate-y-0 opacity-100 delay-75"
-                      : "-translate-y-1 opacity-0",
+                      ? "translate-y-0 opacity-100 delay-75 duration-200 ease-out"
+                      : "-translate-y-0.5 opacity-0 duration-[260ms] ease-in",
                   ].join(" ")}
                   onSubmit={(event) => {
                     event.preventDefault();
