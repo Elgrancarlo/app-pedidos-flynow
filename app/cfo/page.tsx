@@ -1,5 +1,6 @@
 import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
 import { CfoWeeklyChart } from "@/components/cfo/cfo-weekly-chart";
+import { CfoWeeklyInputs } from "@/components/cfo/cfo-weekly-inputs";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
@@ -12,6 +13,7 @@ import {
   getMetaAreaLabel,
   getMetasPageData,
   normalizeMetasMonth,
+  type CfoManualFieldKey,
   type MetaGoal,
   type MetaStatus,
   type MetaUnit,
@@ -72,6 +74,13 @@ const EXECUTIVE_TONE_STYLES = {
   "gold" | "green" | "neutral" | "orange" | "red",
   { dot: string; text: string }
 >;
+
+const MANUAL_FIELD_LABELS: Record<CfoManualFieldKey, string> = {
+  cmv_pct: "CMV",
+  ebitda_pct: "EBITDA",
+  eficiencia_pct: "eficiência",
+  lucro_liquido: "lucro líquido",
+};
 
 function resolveMonth(params: CfoPageParams) {
   return normalizeMetasMonth(params.mes ?? params.startDate ?? params.endDate);
@@ -154,6 +163,12 @@ function formatGoalValue(value: number, unit: MetaUnit) {
     }).format(value);
   }
   return formatNumber(value);
+}
+
+function formatManualFieldList(fields: CfoManualFieldKey[]) {
+  if (fields.length === 0) return "nenhum campo pendente";
+
+  return fields.map((field) => MANUAL_FIELD_LABELS[field]).join(", ");
 }
 
 function getProgress(goal: Pick<MetaGoal, "realized" | "target">) {
@@ -401,6 +416,71 @@ function RisksList({ risks }: { risks: MetasRisk[] }) {
   );
 }
 
+function ManualInputReadiness({ data }: { data: MetasPageData }) {
+  const totalWeeks = data.manualInputs.weeks.length;
+  const pendingWeeks = data.manualInputs.pendingWeeks;
+  const completedWeeks = Math.max(totalWeeks - pendingWeeks, 0);
+  const hasPending = pendingWeeks > 0;
+
+  return (
+    <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 sm:px-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.25fr)_minmax(0,1fr)] lg:divide-x lg:divide-[var(--fly-divider)]">
+        <div className="min-w-0 border-b border-[var(--fly-divider-subtle)] pb-3 lg:border-b-0 lg:pb-0 lg:pr-4">
+          <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+            Fechamento do mês
+          </p>
+          <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
+            {completedWeeks}/{totalWeeks || 0}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
+            semanas com os campos obrigatórios preenchidos.
+          </p>
+        </div>
+
+        <div className="min-w-0 border-b border-[var(--fly-divider-subtle)] pb-3 lg:border-b-0 lg:px-4 lg:pb-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={
+                hasPending
+                  ? "size-1.5 shrink-0 rounded-full bg-[var(--fly-warning-strong)]"
+                  : "size-1.5 shrink-0 rounded-full bg-[var(--fly-success)]"
+              }
+            />
+            <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+              Campos necessários
+            </p>
+          </div>
+          <p className="mt-2 text-sm font-medium leading-5 text-[var(--fly-text)]">
+            {hasPending
+              ? formatManualFieldList(data.manualInputs.pendingFields)
+              : "todos os inputs foram preenchidos"}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
+            Sem esses dados, lucro líquido, EBITDA, CMV e eficiência ficam como não
+            informados.
+          </p>
+        </div>
+
+        <div className="min-w-0 lg:pl-4">
+          <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+            Impacto na leitura
+          </p>
+          <p className="mt-2 text-sm font-medium leading-5 text-[var(--fly-text)]">
+            {hasPending
+              ? `${pendingWeeks} semana${pendingWeeks === 1 ? "" : "s"} aguardando o CFO.`
+              : "resultado financeiro liberado para análise."}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
+            Os dados automáticos continuam visíveis; apenas indicadores manuais dependem
+            desse fechamento.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GoalsTable({ goals }: { goals: MetaGoal[] }) {
   if (goals.length === 0) {
     return (
@@ -447,10 +527,10 @@ function GoalsTable({ goals }: { goals: MetaGoal[] }) {
                 {formatGoalValue(goal.target, goal.unit)}
               </td>
               <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
-                {formatGoalValue(goal.realized, goal.unit)}
+                {goal.inputMissing ? "Não informado" : formatGoalValue(goal.realized, goal.unit)}
               </td>
               <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatPercent(Math.min(getProgress(goal), 1))}
+                {goal.inputMissing ? "Preencher" : formatPercent(Math.min(getProgress(goal), 1))}
               </td>
               <td className="px-3 py-3.5">
                 <StatusLabel status={goal.status} />
@@ -479,51 +559,72 @@ function WeeksTable({ weeks }: { weeks: MetasWeekSummary[] }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[900px] table-fixed text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[18%] px-3 py-3">Semana</th>
-            <th className="w-[18%] px-3 py-3 text-right">Meta receita</th>
-            <th className="w-[18%] px-3 py-3 text-right">Realizado</th>
-            <th className="w-[16%] px-3 py-3 text-right">Investimento</th>
-            <th className="w-[12%] px-3 py-3 text-right">ROAS</th>
+            <th className="w-[16%] px-3 py-3">Semana</th>
+            <th className="w-[16%] px-3 py-3 text-right">Meta receita</th>
+            <th className="w-[16%] px-3 py-3 text-right">Realizado</th>
+            <th className="w-[14%] px-3 py-3 text-right">Investimento</th>
+            <th className="w-[10%] px-3 py-3 text-right">ROAS</th>
             <th className="w-[10%] px-3 py-3 text-right">Clientes</th>
-            <th className="w-[14%] px-3 py-3">Status</th>
+            <th className="w-[12%] px-3 py-3">Status</th>
+            <th className="w-[16%] px-3 py-3">Fechamento</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
-          {weeks.map((week) => (
-            <tr
-              key={week.semana}
-              className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
-            >
-              <td className="px-3 py-3.5">
-                <p className="font-medium text-[var(--fly-text)]">{week.label}</p>
-                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                  {formatDateLong(week.inicio).split(",")[1]?.trim()} -{" "}
-                  {formatDateLong(week.fim).split(",")[1]?.trim()}
-                </p>
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                {formatCurrency(week.receitaPrevista)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
-                {formatCurrency(week.receitaRealizada)}
-              </td>
-              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatCurrency(week.investimento)}
-              </td>
-              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatGoalValue(week.roas, "ratio")}
-              </td>
-              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatNumber(week.clientes)}
-              </td>
-              <td className="px-3 py-3.5">
-                <StatusLabel status={week.status} />
-              </td>
-            </tr>
-          ))}
+          {weeks.map((week) => {
+            const missingFields = week.manualInputs?.missingFields ?? [];
+
+            return (
+              <tr
+                key={week.semana}
+                className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
+              >
+                <td className="px-3 py-3.5">
+                  <p className="font-medium text-[var(--fly-text)]">{week.label}</p>
+                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                    {formatDateLong(week.inicio).split(",")[1]?.trim()} -{" "}
+                    {formatDateLong(week.fim).split(",")[1]?.trim()}
+                  </p>
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatCurrency(week.receitaPrevista)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                  {formatCurrency(week.receitaRealizada)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatCurrency(week.investimento)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatGoalValue(week.roas, "ratio")}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatNumber(week.clientes)}
+                </td>
+                <td className="px-3 py-3.5">
+                  <StatusLabel status={week.status} />
+                </td>
+                <td className="px-3 py-3.5">
+                  <p
+                    className={
+                      missingFields.length > 0
+                        ? "text-xs font-medium text-[var(--fly-warning-text)]"
+                        : "text-xs font-medium text-[var(--fly-success-text)]"
+                    }
+                  >
+                    {missingFields.length > 0 ? "Pendente" : "Completo"}
+                  </p>
+                  <p className="mt-1 line-clamp-1 text-[11px] text-[var(--fly-text-muted)]">
+                    {missingFields.length > 0
+                      ? formatManualFieldList(missingFields)
+                      : "inputs do CFO preenchidos"}
+                  </p>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -544,6 +645,11 @@ export default async function CfoPage({
   const profitGoal = getGoal(data.goals, "lucro-liquido");
   const ebitdaGoal = getGoal(data.goals, "ebitda");
   const roasDelta = data.summary.roas.realized - data.summary.roas.target;
+  const hasPendingManualInputs = data.manualInputs.pendingWeeks > 0;
+  const ebitdaValue =
+    ebitdaGoal && !ebitdaGoal.inputMissing
+      ? formatGoalValue(ebitdaGoal.realized, "percent")
+      : "não informado";
   logServerTiming("cfo", "total", pageStartedAt);
 
   return (
@@ -604,17 +710,25 @@ export default async function CfoPage({
           />
           <StatCard
             detail={
-              profitGoal
-                ? `meta ${formatCurrency(profitGoal.target)} · EBITDA ${
-                    ebitdaGoal ? formatGoalValue(ebitdaGoal.realized, "percent") : "-"
-                  }`
+              profitGoal?.inputMissing
+                ? `${data.manualInputs.pendingWeeks} semana${
+                    data.manualInputs.pendingWeeks === 1 ? "" : "s"
+                  } com fechamento pendente · EBITDA ${ebitdaValue}`
+                : profitGoal
+                  ? `meta ${formatCurrency(profitGoal.target)} · EBITDA ${ebitdaValue}`
                 : "sem meta financeira cadastrada"
             }
             label="Resultado líquido"
-            tone={getGoalTone(profitGoal)}
-            value={profitGoal ? formatCurrency(profitGoal.realized) : "-"}
+            tone={profitGoal?.inputMissing ? "orange" : getGoalTone(profitGoal)}
+            value={
+              profitGoal?.inputMissing
+                ? "Não informado"
+                : profitGoal
+                  ? formatCurrency(profitGoal.realized)
+                  : "-"
+            }
             rows={
-              profitGoal
+              profitGoal && !profitGoal.inputMissing
                 ? [
                     {
                       label: "Atingido",
@@ -628,6 +742,20 @@ export default async function CfoPage({
         </StatGrid>
 
         <ExecutiveReadout data={data} />
+
+        <Panel
+          title="Fechamento semanal do CFO"
+          description={
+            hasPendingManualInputs
+              ? "Preencha os campos manuais para liberar lucro, EBITDA, CMV e eficiência"
+              : "Campos manuais do mês preenchidos"
+          }
+        >
+          <div className="space-y-4">
+            <ManualInputReadiness data={data} />
+            <CfoWeeklyInputs month={data.month} weeks={data.manualInputs.weeks} />
+          </div>
+        </Panel>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel

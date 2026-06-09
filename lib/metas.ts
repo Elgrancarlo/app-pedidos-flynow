@@ -34,6 +34,8 @@ export type MetaGoal = {
   area: MetaArea;
   description: string;
   id: string;
+  inputMissing?: boolean;
+  inputRequired?: boolean;
   name: string;
   owner: string;
   realized: number;
@@ -67,6 +69,7 @@ export type MetasWeekSummary = {
   inicio: string;
   investimento: number;
   label: string;
+  manualInputs?: CfoWeeklyManualInput;
   progress: number;
   receitaPrevista: number;
   receitaRealizada: number;
@@ -75,8 +78,33 @@ export type MetasWeekSummary = {
   status: MetaStatus;
 };
 
+export type CfoManualFieldKey =
+  | "cmv_pct"
+  | "ebitda_pct"
+  | "eficiencia_pct"
+  | "lucro_liquido";
+
+export type CfoWeeklyManualInput = {
+  cmvPct: number | null;
+  ebitdaPct: number | null;
+  eficienciaPct: number | null;
+  fim: string;
+  inicio: string;
+  label: string;
+  lucroLiquido: number | null;
+  missingFields: CfoManualFieldKey[];
+  notas: string | null;
+  semana: number;
+};
+
 export type MetasPageData = {
   goals: MetaGoal[];
+  manualInputs: {
+    pendingFields: CfoManualFieldKey[];
+    pendingWeeks: number;
+    requiredFields: CfoManualFieldKey[];
+    weeks: CfoWeeklyManualInput[];
+  };
   month: string;
   monthLabel: string;
   range: MetasRange;
@@ -119,6 +147,13 @@ const LIMIT_GOAL_IDS = new Set([
   "pct-reembolso",
   "cmv",
 ]);
+
+const MANUAL_REQUIRED_FIELDS: CfoManualFieldKey[] = [
+  "lucro_liquido",
+  "ebitda_pct",
+  "cmv_pct",
+  "eficiencia_pct",
+];
 
 export function getMetaAreaLabel(area: MetaArea) {
   return AREA_LABELS[area];
@@ -200,12 +235,30 @@ function sumMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
   return weeks.reduce((total, week) => total + numberValue(getter(week).realizado), 0);
 }
 
-function averageMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
-  const values = weeks
+function metricValues(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
+  return weeks
     .map((week) => getter(week).realizado)
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+}
+
+function sumOptionalMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
+  const values = metricValues(weeks, getter);
+
+  if (values.length === 0) return null;
+  return values.reduce((total, value) => total + value, 0);
+}
+
+function averageMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
+  const values = metricValues(weeks, getter);
 
   if (values.length === 0) return 0;
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function averageOptionalMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => CfoMetric) {
+  const values = metricValues(weeks, getter);
+
+  if (values.length === 0) return null;
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
@@ -242,9 +295,13 @@ function createGoal({
   name,
   owner,
   realized,
+  status,
   target,
   unit,
-}: Omit<MetaGoal, "status" | "updatedAt"> & { inverse?: boolean }): MetaGoal {
+}: Omit<MetaGoal, "status" | "updatedAt"> & {
+  inverse?: boolean;
+  status?: MetaStatus;
+}): MetaGoal {
   return {
     area,
     description,
@@ -252,10 +309,30 @@ function createGoal({
     name,
     owner,
     realized,
-    status: statusFromRatio(target, realized, inverse),
+    status: status ?? statusFromRatio(target, realized, inverse),
     target,
     unit,
     updatedAt: getTodayInAppTimezone(),
+  };
+}
+
+function createManualGoal({
+  realized,
+  ...goal
+}: Omit<MetaGoal, "inputMissing" | "inputRequired" | "realized" | "status" | "updatedAt"> & {
+  inverse?: boolean;
+  realized: number | null;
+}) {
+  const inputMissing = realized == null;
+
+  return {
+    ...createGoal({
+      ...goal,
+      realized: realized ?? 0,
+      status: inputMissing ? "empty" : undefined,
+    }),
+    inputMissing,
+    inputRequired: true,
   };
 }
 
@@ -325,6 +402,76 @@ function buildRisks(goals: MetaGoal[]): MetasRisk[] {
     });
 }
 
+function getMissingManualFields(week: CfoWeek): CfoManualFieldKey[] {
+  const fields: Array<[CfoManualFieldKey, number | null]> = [
+    ["lucro_liquido", week.indicadores.resultado.lucro_liquido.realizado],
+    ["ebitda_pct", week.indicadores.resultado.ebitda_pct.realizado],
+    ["cmv_pct", week.indicadores.custos.cmv.realizado],
+    ["eficiencia_pct", week.indicadores.custos.eficiencia.realizado],
+  ];
+
+  return fields
+    .filter(([, value]) => value == null || !Number.isFinite(value))
+    .map(([key]) => key);
+}
+
+function buildManualInputs(weeks: CfoWeek[]): CfoWeeklyManualInput[] {
+  return weeks.map((week) => ({
+    cmvPct: week.indicadores.custos.cmv.realizado,
+    ebitdaPct: week.indicadores.resultado.ebitda_pct.realizado,
+    eficienciaPct: week.indicadores.custos.eficiencia.realizado,
+    fim: week.fim,
+    inicio: week.inicio,
+    label: `Semana ${week.semana}`,
+    lucroLiquido: week.indicadores.resultado.lucro_liquido.realizado,
+    missingFields: getMissingManualFields(week),
+    notas: week.notas,
+    semana: week.semana,
+  }));
+}
+
+function buildManualInputSummary(weeks: CfoWeeklyManualInput[]): MetasPageData["manualInputs"] {
+  const pendingFields = Array.from(
+    new Set(weeks.flatMap((week) => week.missingFields)),
+  );
+
+  return {
+    pendingFields,
+    pendingWeeks: weeks.filter((week) => week.missingFields.length > 0).length,
+    requiredFields: MANUAL_REQUIRED_FIELDS,
+    weeks,
+  };
+}
+
+function buildDefaultManualInputWeeks(month: string): CfoWeeklyManualInput[] {
+  const start = monthStart(month);
+  const end = monthEnd(month);
+  const weeks: CfoWeeklyManualInput[] = [];
+
+  for (
+    let inicio = start, semana = 1;
+    inicio <= end;
+    inicio = shiftDateString(inicio, 7), semana += 1
+  ) {
+    const fim = shiftDateString(inicio, 6) <= end ? shiftDateString(inicio, 6) : end;
+
+    weeks.push({
+      cmvPct: null,
+      ebitdaPct: null,
+      eficienciaPct: null,
+      fim,
+      inicio,
+      label: `Semana ${semana}`,
+      lucroLiquido: null,
+      missingFields: MANUAL_REQUIRED_FIELDS,
+      notas: null,
+      semana,
+    });
+  }
+
+  return weeks;
+}
+
 function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
   const meta = cfo.meta;
   const weeks = cfo.semanas;
@@ -333,6 +480,15 @@ function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
   const clientes = sumMetrics(weeks, (week) => week.indicadores.receita.clientes);
   const roas = investimento > 0 ? receita / investimento : 0;
   const ticket = clientes > 0 ? receita / clientes : 0;
+  const cmv = averageOptionalMetrics(weeks, (week) => week.indicadores.custos.cmv);
+  const lucroLiquido = sumOptionalMetrics(
+    weeks,
+    (week) => week.indicadores.resultado.lucro_liquido,
+  );
+  const ebitda = averageOptionalMetrics(
+    weeks,
+    (week) => week.indicadores.resultado.ebitda_pct,
+  );
 
   return [
     createGoal({
@@ -438,34 +594,34 @@ function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
       target: numberValue(meta.meta_pct_reembolso, 2) / 100,
       unit: "percent",
     }),
-    createGoal({
+    createManualGoal({
       area: "custos",
       description: "CMV informado pelo CFO para acompanhamento semanal.",
       id: "cmv",
       inverse: true,
       name: "CMV",
       owner: "CFO",
-      realized: averageMetrics(weeks, (week) => week.indicadores.custos.cmv) / 100,
+      realized: cmv == null ? null : cmv / 100,
       target: numberValue(meta.meta_pct_cmv, 14) / 100,
       unit: "percent",
     }),
-    createGoal({
+    createManualGoal({
       area: "resultado",
       description: "Lucro liquido informado no acompanhamento semanal.",
       id: "lucro-liquido",
       name: "Lucro liquido",
       owner: "CFO",
-      realized: sumMetrics(weeks, (week) => week.indicadores.resultado.lucro_liquido),
+      realized: lucroLiquido,
       target: numberValue(meta.meta_lucro_liquido),
       unit: "currency",
     }),
-    createGoal({
+    createManualGoal({
       area: "resultado",
       description: "EBITDA percentual informado no acompanhamento semanal.",
       id: "ebitda",
       name: "EBITDA",
       owner: "CFO",
-      realized: averageMetrics(weeks, (week) => week.indicadores.resultado.ebitda_pct) / 100,
+      realized: ebitda == null ? null : ebitda / 100,
       target: numberValue(meta.meta_ebitda_pct, 9.4) / 100,
       unit: "percent",
     }),
@@ -484,6 +640,18 @@ function buildRealWeeks(cfo: CfoPanelData): MetasWeekSummary[] {
       inicio: week.inicio,
       investimento: numberValue(week.indicadores.aquisicao.investimento.realizado),
       label: `Semana ${week.semana}`,
+      manualInputs: {
+        cmvPct: week.indicadores.custos.cmv.realizado,
+        ebitdaPct: week.indicadores.resultado.ebitda_pct.realizado,
+        eficienciaPct: week.indicadores.custos.eficiencia.realizado,
+        fim: week.fim,
+        inicio: week.inicio,
+        label: `Semana ${week.semana}`,
+        lucroLiquido: week.indicadores.resultado.lucro_liquido.realizado,
+        missingFields: getMissingManualFields(week),
+        notas: week.notas,
+        semana: week.semana,
+      },
       progress: target > 0 ? clamp(realized / target, 0, 1.2) : 0,
       receitaPrevista: target,
       receitaRealizada: realized,
@@ -544,9 +712,11 @@ function createRealMetasPageData(cfo: CfoPanelData): MetasPageData {
   };
   const goals = buildRealGoals(cfo);
   const weeks = buildRealWeeks(cfo);
+  const manualInputs = buildManualInputSummary(buildManualInputs(cfo.semanas));
 
   return {
     goals,
+    manualInputs,
     month,
     monthLabel: monthLabel(month),
     range,
@@ -563,9 +733,11 @@ function createEmptyMetasPageData(month: string): MetasPageData {
     endDate: monthEnd(month),
     startDate: monthStart(month),
   };
+  const manualInputWeeks = buildDefaultManualInputWeeks(month);
 
   return {
     goals: [],
+    manualInputs: buildManualInputSummary(manualInputWeeks),
     month,
     monthLabel: monthLabel(month),
     range,
@@ -661,18 +833,62 @@ export function createMockMetasPageData(
       target: 0.18,
       unit: "percent",
     }),
+    createManualGoal({
+      area: "custos",
+      description: "CMV informado pelo CFO para acompanhamento semanal.",
+      id: "cmv",
+      inverse: true,
+      name: "CMV",
+      owner: "CFO",
+      realized: 0.14,
+      target: 0.14,
+      unit: "percent",
+    }),
+    createManualGoal({
+      area: "resultado",
+      description: "Lucro liquido informado no acompanhamento semanal.",
+      id: "lucro-liquido",
+      name: "Lucro liquido",
+      owner: "CFO",
+      realized: revenueRealized * 0.08,
+      target: revenueTarget * 0.09,
+      unit: "currency",
+    }),
+    createManualGoal({
+      area: "resultado",
+      description: "EBITDA percentual informado no acompanhamento semanal.",
+      id: "ebitda",
+      name: "EBITDA",
+      owner: "CFO",
+      realized: 0.094,
+      target: 0.094,
+      unit: "percent",
+    }),
   ];
 
   const weeks = Array.from({ length: 4 }, (_, index) => {
     const target = revenueTarget / 4;
     const realized = target * (0.82 + index * 0.04);
+    const manualInputs: CfoWeeklyManualInput = {
+      cmvPct: 14,
+      ebitdaPct: 9.4,
+      eficienciaPct: 4.5,
+      fim: shiftDateString(normalizedRange.startDate, index * 7 + 6),
+      inicio: shiftDateString(normalizedRange.startDate, index * 7),
+      label: `Semana ${index + 1}`,
+      lucroLiquido: realized * 0.08,
+      missingFields: [],
+      notas: null,
+      semana: index + 1,
+    };
 
     return {
       clientes: Math.round((ordersTarget / 4) * (0.84 + index * 0.03)),
-      fim: shiftDateString(normalizedRange.startDate, index * 7 + 6),
-      inicio: shiftDateString(normalizedRange.startDate, index * 7),
+      fim: manualInputs.fim,
+      inicio: manualInputs.inicio,
       investimento: investmentTarget / 4,
       label: `Semana ${index + 1}`,
+      manualInputs,
       progress: clamp(realized / target, 0, 1.2),
       receitaPrevista: target,
       receitaRealizada: realized,
@@ -682,8 +898,11 @@ export function createMockMetasPageData(
     };
   });
 
+  const manualInputWeeks = weeks.map((week) => week.manualInputs);
+
   return {
     goals,
+    manualInputs: buildManualInputSummary(manualInputWeeks),
     month: normalizedRange.startDate.slice(0, 7),
     monthLabel: monthLabel(normalizedRange.startDate.slice(0, 7)),
     range: normalizedRange,
