@@ -71,10 +71,7 @@ export default async function MetasPage({
   const data = await timedServerTask("metas", "data.total", () =>
     getMetasPlanningPageData(month),
   );
-  const trafficRoas =
-    data.summary.investment > 0
-      ? data.summary.frontRevenue / data.summary.investment
-      : 0;
+  const plannedRevenue = data.summary.frontRevenue + data.summary.backendRevenue;
 
   logServerTiming("metas", "total", pageStartedAt);
 
@@ -113,10 +110,10 @@ export default async function MetasPage({
             value={formatNumber(data.summary.customers)}
           />
           <StatCard
-            detail={`ROAS planejado ${formatRatio(trafficRoas)}`}
-            label="Receita tráfego"
+            detail={`tráfego ${formatCurrency(data.summary.frontRevenue)} · backend ${formatCurrency(data.summary.backendRevenue)}`}
+            label="Receita planejada"
             tone="gold"
-            value={formatCurrency(data.summary.frontRevenue)}
+            value={formatCurrency(plannedRevenue)}
           />
         </StatGrid>
 
@@ -156,33 +153,67 @@ export default async function MetasPage({
 
           <Panel
             title="Receita planejada"
-            description="Meta de receita por origem de tráfego e backend"
+            description="Como a meta se distribui entre mídia paga e operação"
           >
-            <DataList
-              rows={[
-                ...data.channels.map((channel) => ({
-                  detail: `investimento ${formatCurrency(channel.investment)}`,
-                  label: channel.label,
-                  meter:
-                    data.summary.frontRevenue > 0
-                      ? channel.revenue / data.summary.frontRevenue
-                      : 0,
-                  tone: channel.revenue > 0 ? ("gold" as const) : ("neutral" as const),
-                  value: formatCurrency(channel.revenue),
-                })),
-                {
-                  detail: "call center, WhatsApp, SMS e email",
-                  label: "Backend planejado",
-                  meter:
-                    data.summary.revenue > 0
-                      ? data.summary.backendRevenue / data.summary.revenue
-                      : 0,
-                  tone: "gold" as const,
-                  value: formatCurrency(data.summary.backendRevenue),
-                },
-              ]}
-              valueLabel="Receita"
-            />
+            <div className="grid gap-3 lg:grid-cols-2">
+              <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3">
+                <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--fly-text)]">
+                      Tráfego pago
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                      Receita planejada por canal de mídia
+                    </p>
+                  </div>
+                  <StatusPill tone="gold">
+                    {formatCurrency(data.summary.frontRevenue)}
+                  </StatusPill>
+                </div>
+                <DataList
+                  rows={data.channels.map((channel) => ({
+                    detail: `investimento ${formatCurrency(channel.investment)}`,
+                    label: channel.label,
+                    meter:
+                      data.summary.frontRevenue > 0
+                        ? channel.revenue / data.summary.frontRevenue
+                        : 0,
+                    tone: channel.revenue > 0 ? ("gold" as const) : ("neutral" as const),
+                    value: formatCurrency(channel.revenue),
+                  }))}
+                  valueLabel="Receita"
+                />
+              </div>
+
+              <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3">
+                <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--fly-text)]">
+                      Backend
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                      Receita planejada por canais operacionais
+                    </p>
+                  </div>
+                  <StatusPill tone="gold">
+                    {formatCurrency(data.summary.backendRevenue)}
+                  </StatusPill>
+                </div>
+                <DataList
+                  rows={data.backend.map((channel) => ({
+                    detail: `${formatNumber(channel.conversions)} conversões · ticket ${formatCurrency(channel.ticket)}`,
+                    label: channel.label,
+                    meter:
+                      data.summary.backendRevenue > 0
+                        ? channel.revenue / data.summary.backendRevenue
+                        : 0,
+                    tone: channel.revenue > 0 ? ("gold" as const) : ("neutral" as const),
+                    value: formatCurrency(channel.revenue),
+                  }))}
+                  valueLabel="Receita"
+                />
+              </div>
+            </div>
           </Panel>
         </div>
 
