@@ -9,18 +9,11 @@ function DateFilterSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="hidden rounded-[12px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-1 lg:flex lg:items-center lg:gap-1"
+      className="hidden h-9 w-[220px] rounded-[12px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] px-3 lg:flex lg:items-center lg:gap-2"
     >
-      <span className="h-7 w-[228px] rounded-[10px] bg-[var(--fly-skeleton-line)]" />
-      <span className="h-5 w-px bg-[var(--fly-border)]" />
-      {["Hoje", "7D", "15D", "30D", "Mês"].map((item, index) => (
-        <span
-          key={item}
-          className={`h-7 rounded-[9px] bg-[var(--fly-skeleton-line)] ${
-            index === 0 ? "w-14" : "w-10"
-          }`}
-        />
-      ))}
+      <SkeletonLine className="h-2.5 w-8" />
+      <SkeletonLine className="h-4 w-px rounded-none" />
+      <SkeletonLine className="h-3 w-28" />
     </div>
   );
 }
@@ -121,7 +114,7 @@ export default function MetasLoading() {
     <Shell>
       <DashboardHeader
         title="Metas"
-        description="Planejamento, ritmo e risco do período"
+        description="Planejamento mensal e acompanhamento semanal"
         actions={<DateFilterSkeleton />}
       />
 

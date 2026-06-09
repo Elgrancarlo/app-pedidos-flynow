@@ -1,4 +1,4 @@
-import { MetasPeriodFilter } from "@/components/metas/metas-period-filter";
+import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
 import { MetasProgressChart } from "@/components/metas/metas-progress-chart";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -9,14 +9,14 @@ import {
   StatGrid,
 } from "@/components/workspace/operational-ui";
 import {
-  getDefaultMetasRange,
   getMetaAreaLabel,
   getMetasPageData,
+  normalizeMetasMonth,
   type MetaGoal,
   type MetaStatus,
   type MetaUnit,
-  type MetasRange,
   type MetasRisk,
+  type MetasWeekSummary,
 } from "@/lib/metas";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
@@ -25,35 +25,28 @@ export const dynamic = "force-dynamic";
 
 type MetasPageParams = {
   endDate?: string;
+  mes?: string;
   startDate?: string;
 };
 
 const STATUS_LABELS: Record<MetaStatus, string> = {
   ahead: "Acima",
   attention: "Atenção",
+  critical: "Crítico",
+  empty: "Sem dado",
   on_track: "No ritmo",
 };
 
-const STATUS_TONES: Record<MetaStatus, "gold" | "green" | "orange"> = {
+const STATUS_TONES: Record<MetaStatus, "gold" | "green" | "neutral" | "orange" | "red"> = {
   ahead: "green",
   attention: "orange",
+  critical: "red",
+  empty: "neutral",
   on_track: "gold",
 };
 
-function isDateString(value: string | undefined) {
-  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
-}
-
-function resolveRange(params: MetasPageParams): MetasRange {
-  const defaults = getDefaultMetasRange();
-  const startDate = isDateString(params.startDate)
-    ? params.startDate!
-    : defaults.startDate;
-  const endDate = isDateString(params.endDate) ? params.endDate! : defaults.endDate;
-
-  return startDate <= endDate
-    ? { startDate, endDate }
-    : { startDate: endDate, endDate: startDate };
+function resolveMonth(params: MetasPageParams) {
+  return normalizeMetasMonth(params.mes ?? params.startDate ?? params.endDate);
 }
 
 function formatDateLong(value: string) {
@@ -74,11 +67,17 @@ function formatNumber(value: number) {
 function formatGoalValue(value: number, unit: MetaUnit) {
   if (unit === "currency") return formatCurrency(value);
   if (unit === "percent") return formatPercent(value);
+  if (unit === "ratio") {
+    return new Intl.NumberFormat("pt-BR", {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    }).format(value);
+  }
   return formatNumber(value);
 }
 
 function getProgress(goal: Pick<MetaGoal, "realized" | "target">) {
-  if (goal.target <= 0) return 1;
+  if (goal.target <= 0) return goal.realized > 0 ? 1 : 0;
   return Math.min(Math.max(goal.realized / goal.target, 0), 1.2);
 }
 
@@ -86,7 +85,9 @@ function StatusLabel({ status }: { status: MetaStatus }) {
   const dotClass = {
     gold: "bg-[var(--fly-chart-revenue)]",
     green: "bg-[var(--fly-success)]",
+    neutral: "bg-[var(--fly-text-muted)]",
     orange: "bg-[var(--fly-warning-strong)]",
+    red: "bg-[#F87171]",
   }[STATUS_TONES[status]];
 
   return (
@@ -101,7 +102,7 @@ function RisksList({ risks }: { risks: MetasRisk[] }) {
   if (risks.length === 0) {
     return (
       <div className="rounded-[8px] border border-[var(--fly-success-border)] bg-[var(--fly-success-surface)] px-3 py-3 text-sm text-[var(--fly-success-text)]">
-        Todas as metas monitoradas estão dentro do ritmo esperado.
+        Nenhum desvio relevante nas metas monitoradas.
       </div>
     );
   }
@@ -140,18 +141,30 @@ function RisksList({ risks }: { risks: MetasRisk[] }) {
 }
 
 function GoalsTable({ goals }: { goals: MetaGoal[] }) {
+  if (goals.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-8 text-center">
+        <p className="text-sm font-medium text-[var(--fly-text)]">
+          Nenhuma meta cadastrada para este mês.
+        </p>
+        <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+          Cadastre uma meta mensal para liberar o acompanhamento real.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] table-fixed text-left text-sm">
+      <table className="w-full min-w-[820px] table-fixed text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[25%] px-3 py-3">Meta</th>
-            <th className="w-[14%] px-3 py-3">Area</th>
-            <th className="w-[16%] px-3 py-3">Responsavel</th>
-            <th className="w-[15%] px-3 py-3 text-right">Alvo</th>
+            <th className="w-[28%] px-3 py-3">Meta</th>
+            <th className="w-[14%] px-3 py-3">Grupo</th>
+            <th className="w-[15%] px-3 py-3 text-right">Previsto</th>
             <th className="w-[15%] px-3 py-3 text-right">Realizado</th>
-            <th className="w-[9%] px-3 py-3 text-right">Progresso</th>
-            <th className="w-[12%] px-3 py-3">Status</th>
+            <th className="w-[14%] px-3 py-3 text-right">Atingido</th>
+            <th className="w-[14%] px-3 py-3">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
@@ -168,9 +181,6 @@ function GoalsTable({ goals }: { goals: MetaGoal[] }) {
               </td>
               <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
                 {getMetaAreaLabel(goal.area)}
-              </td>
-              <td className="px-3 py-3.5 text-[var(--fly-text-soft)]">
-                {goal.owner}
               </td>
               <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
                 {formatGoalValue(goal.target, goal.unit)}
@@ -192,6 +202,73 @@ function GoalsTable({ goals }: { goals: MetaGoal[] }) {
   );
 }
 
+function WeeksTable({ weeks }: { weeks: MetasWeekSummary[] }) {
+  if (weeks.length === 0) {
+    return (
+      <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-8 text-center">
+        <p className="text-sm font-medium text-[var(--fly-text)]">
+          Nenhuma semana configurada.
+        </p>
+        <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+          Configure as semanas do mês para ver o ritmo contra a meta.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] table-fixed text-left text-sm">
+        <thead>
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            <th className="w-[18%] px-3 py-3">Semana</th>
+            <th className="w-[18%] px-3 py-3 text-right">Meta receita</th>
+            <th className="w-[18%] px-3 py-3 text-right">Realizado</th>
+            <th className="w-[16%] px-3 py-3 text-right">Investimento</th>
+            <th className="w-[12%] px-3 py-3 text-right">ROAS</th>
+            <th className="w-[10%] px-3 py-3 text-right">Clientes</th>
+            <th className="w-[14%] px-3 py-3">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+          {weeks.map((week) => (
+            <tr
+              key={week.semana}
+              className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
+            >
+              <td className="px-3 py-3.5">
+                <p className="font-medium text-[var(--fly-text)]">{week.label}</p>
+                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                  {formatDateLong(week.inicio).split(",")[1]?.trim()} -{" "}
+                  {formatDateLong(week.fim).split(",")[1]?.trim()}
+                </p>
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                {formatCurrency(week.receitaPrevista)}
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                {formatCurrency(week.receitaRealizada)}
+              </td>
+              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                {formatCurrency(week.investimento)}
+              </td>
+              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                {formatGoalValue(week.roas, "ratio")}
+              </td>
+              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                {formatNumber(week.clientes)}
+              </td>
+              <td className="px-3 py-3.5">
+                <StatusLabel status={week.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default async function MetasPage({
   searchParams,
 }: {
@@ -199,9 +276,9 @@ export default async function MetasPage({
 }) {
   const pageStartedAt = performance.now();
   const params = await searchParams;
-  const range = resolveRange(params);
+  const month = resolveMonth(params);
   const data = await timedServerTask("metas", "data.total", () =>
-    getMetasPageData(range)
+    getMetasPageData(month)
   );
   const revenueGap = Math.max(
     data.summary.revenue.target - data.summary.revenue.realized,
@@ -213,21 +290,21 @@ export default async function MetasPage({
     <Shell>
       <DashboardHeader
         title="Metas"
-        description={`Planejamento, ritmo e risco do período · ${formatDateLong(data.range.endDate)}`}
-        actions={<MetasPeriodFilter range={data.range} />}
+        description={`Planejamento mensal e acompanhamento semanal · ${data.monthLabel}`}
+        actions={<MetasMonthFilter month={data.month} />}
       />
 
       <PageBody>
-        <StatGrid>
+        <StatGrid columns="xl:grid-cols-5">
           <StatCard
-            detail={`${formatCurrency(revenueGap)} faltantes na receita líquida`}
+            detail={`${formatCurrency(revenueGap)} faltantes na receita liquida`}
             label="Progresso geral"
             tone={data.summary.overallProgress >= 0.9 ? "gold" : "orange"}
             value={formatPercent(data.summary.overallProgress)}
           />
           <StatCard
             detail={`meta ${formatCurrency(data.summary.revenue.target)}`}
-            label="Receita líquida"
+            label="Receita liquida"
             tone="gold"
             value={formatCurrency(data.summary.revenue.realized)}
             rows={[
@@ -239,87 +316,66 @@ export default async function MetasPage({
             ]}
           />
           <StatCard
-            detail={`meta ${formatNumber(data.summary.orders.target)} pedidos`}
-            label="Pedidos pagos"
+            detail={`meta ${formatCurrency(data.summary.investment.target)}`}
+            label="Investimento"
             tone="blue"
-            value={formatNumber(data.summary.orders.realized)}
+            value={formatCurrency(data.summary.investment.realized)}
             rows={[
               {
-                label: "Atingido",
-                meter: getProgress(data.summary.orders),
-                value: formatPercent(getProgress(data.summary.orders)),
+                label: "Usado",
+                meter: getProgress(data.summary.investment),
+                value: formatPercent(getProgress(data.summary.investment)),
               },
             ]}
           />
           <StatCard
-            detail={`meta ${formatGoalValue(data.summary.recovery.target, "percent")}`}
-            label="Recuperação"
+            detail={`meta ${formatGoalValue(data.summary.roas.target, "ratio")}`}
+            label="ROAS"
             tone="green"
-            value={formatGoalValue(data.summary.recovery.realized, "percent")}
+            value={formatGoalValue(data.summary.roas.realized, "ratio")}
+          />
+          <StatCard
+            detail={`meta ${formatNumber(data.summary.customers.target)} clientes`}
+            label="Clientes"
+            tone="blue"
+            value={formatNumber(data.summary.customers.realized)}
+            rows={[
+              {
+                label: "Atingido",
+                meter: getProgress(data.summary.customers),
+                value: formatPercent(getProgress(data.summary.customers)),
+              },
+            ]}
           />
         </StatGrid>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel
-            title="Ritmo da receita"
-            description="Meta acumulada, realizado e projeção do período"
+            title="Ritmo semanal"
+            description="Receita prevista, realizado e investimento por semana"
           >
             <MetasProgressChart series={data.series} />
           </Panel>
 
           <Panel
-            title="Metas em risco"
-            description={`${data.summary.atRiskCount} metas pedem atenção agora`}
+            title="Leitura do mês"
+            description={`${data.summary.atRiskCount} indicadores pedem atenção agora`}
           >
             <RisksList risks={data.risks} />
           </Panel>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <Panel
-            title="Sinais rápidos"
-            description="Resumo de metas que ajudam na priorização"
+            title="Resumo semanal"
+            description="Semanas do mês contra o planejamento configurado"
           >
-            <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
-                <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-                  Projeção de receita
-                </p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
-                  {formatCurrency(data.summary.projectedRevenue)}
-                </p>
-                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                  estimativa com o ritmo atual do período
-                </p>
-              </div>
-              <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
-                <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-                  Upsells
-                </p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
-                  {formatCurrency(data.summary.upsell.realized)}
-                </p>
-                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                  {formatPercent(getProgress(data.summary.upsell))} da meta do período
-                </p>
-              </div>
-              <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
-                <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-                  Ticket médio
-                </p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
-                  {formatCurrency(data.summary.ticket.realized)}
-                </p>
-                <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                  meta {formatCurrency(data.summary.ticket.target)}
-                </p>
-              </div>
-            </div>
+            <WeeksTable weeks={data.weeks} />
           </Panel>
 
           <Panel
-            title="Metas do período"
-            description="Acompanhamento por área, responsável e status"
+            title="Metas detalhadas"
+            description="Previsto, realizado e status por indicador"
           >
             <GoalsTable goals={data.goals} />
           </Panel>

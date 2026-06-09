@@ -36,6 +36,10 @@ function compactCurrency(value: number) {
 }
 
 function formatDateLabel(value: string | number) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    return String(value);
+  }
+
   return new Date(`${String(value)}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -43,9 +47,10 @@ function formatDateLabel(value: string | number) {
 }
 
 function getLineLabel(dataKey: string) {
-  if (dataKey === "target") return "Meta acumulada";
-  if (dataKey === "projection") return "Projeção";
-  return "Realizado";
+  if (dataKey === "target") return "Meta de receita";
+  if (dataKey === "investment") return "Investimento";
+  if (dataKey === "projection") return "Previsto";
+  return "Receita realizada";
 }
 
 function ChartTooltip({ active, label, payload }: TooltipProps) {
@@ -87,6 +92,21 @@ export function MetasProgressChart({
 }: {
   series: MetasProgressPoint[];
 }) {
+  if (series.length === 0) {
+    return (
+      <div className="flex h-[320px] min-w-0 items-center justify-center rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-4 text-center sm:h-[360px]">
+        <div>
+          <p className="text-sm font-medium text-[var(--fly-text)]">
+            Nenhuma semana configurada.
+          </p>
+          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+            Configure as metas semanais para visualizar o ritmo do mês.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const ticks =
     series.length <= 5
       ? series.map((item) => item.day)
@@ -142,7 +162,7 @@ export function MetasProgressChart({
             animationDuration={700}
             dataKey="target"
             dot={false}
-            name="Meta acumulada"
+            name="Meta de receita"
             stroke="var(--fly-chart-revenue)"
             strokeLinecap="round"
             strokeWidth={2}
@@ -157,18 +177,22 @@ export function MetasProgressChart({
             animationDuration={760}
             dataKey="realized"
             dot={false}
-            name="Realizado"
+            name="Receita realizada"
             stroke="var(--fly-success)"
             strokeLinecap="round"
             strokeWidth={2}
             type="monotone"
           />
           <Line
-            activeDot={false}
+            activeDot={{
+              r: 4,
+              stroke: "var(--fly-active-dot-stroke)",
+              strokeWidth: 2,
+            }}
             animationDuration={820}
-            dataKey="projection"
+            dataKey="investment"
             dot={false}
-            name="Projeção"
+            name="Investimento"
             stroke="var(--fly-chart-investment)"
             strokeDasharray="4 4"
             strokeLinecap="round"
