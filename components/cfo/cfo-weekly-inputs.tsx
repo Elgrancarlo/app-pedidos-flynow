@@ -88,6 +88,7 @@ function buildInitialState(weeks: CfoWeeklyManualInput[]) {
 }
 
 function TextInput({
+  disabled = false,
   inputMode = "decimal",
   label,
   onChange,
@@ -96,6 +97,7 @@ function TextInput({
   suffix,
   value,
 }: {
+  disabled?: boolean;
   inputMode?: "decimal" | "text";
   label: string;
   onChange: (value: string) => void;
@@ -105,7 +107,12 @@ function TextInput({
   value: string;
 }) {
   return (
-    <label className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2.5 py-1.5 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]">
+    <label
+      className={[
+        "min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2.5 py-1.5 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]",
+        disabled ? "pointer-events-none opacity-60" : "",
+      ].join(" ")}
+    >
       <span className="flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
           {label}
@@ -123,6 +130,7 @@ function TextInput({
           </span>
         ) : null}
         <input
+          disabled={disabled}
           inputMode={inputMode}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
@@ -368,73 +376,101 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
               </div>
             </div>
 
-            {isEditing ? (
-              <form
-                className="border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void saveWeek(week);
-                }}
-              >
-                <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(180px,1.2fr)_auto] xl:items-end">
-                  <TextInput
-                    label="Lucro líquido"
-                    onChange={(value) =>
-                      updateWeek(week.semana, { lucroLiquido: value })
-                    }
-                    placeholder="12500,00"
-                    prefix="R$"
-                    value={form.lucroLiquido}
-                  />
-                  <TextInput
-                    label="EBITDA"
-                    onChange={(value) => updateWeek(week.semana, { ebitdaPct: value })}
-                    placeholder="9,4"
-                    suffix="%"
-                    value={form.ebitdaPct}
-                  />
-                  <TextInput
-                    label="CMV"
-                    onChange={(value) => updateWeek(week.semana, { cmvPct: value })}
-                    placeholder="14"
-                    suffix="%"
-                    value={form.cmvPct}
-                  />
-                  <TextInput
-                    label="Eficiência"
-                    onChange={(value) =>
-                      updateWeek(week.semana, { eficienciaPct: value })
-                    }
-                    placeholder="4,5"
-                    suffix="%"
-                    value={form.eficienciaPct}
-                  />
-                  <TextInput
-                    inputMode="text"
-                    label="Notas"
-                    onChange={(value) => updateWeek(week.semana, { notas: value })}
-                    placeholder="Observação"
-                    value={form.notas}
-                  />
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      className="inline-flex p-0 text-xs font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-divider)] decoration-1 underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-text-soft)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-                      onClick={() => setEditingWeek(null)}
-                      type="button"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isSaving}
-                      type="submit"
-                    >
-                      {isSaving ? "Salvando..." : "Salvar"}
-                    </button>
+            <div
+              aria-hidden={!isEditing}
+              className={[
+                "grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none",
+                isEditing
+                  ? "grid-rows-[1fr] opacity-100 ease-out"
+                  : "grid-rows-[0fr] opacity-0 ease-in",
+              ].join(" ")}
+            >
+              <div className="overflow-hidden">
+                <form
+                  className={[
+                    "border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 transition-[opacity,transform] duration-200 motion-reduce:transition-none",
+                    isEditing
+                      ? "translate-y-0 opacity-100 delay-75"
+                      : "-translate-y-1 opacity-0",
+                  ].join(" ")}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!isEditing) return;
+                    void saveWeek(week);
+                  }}
+                >
+                  <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(180px,1.2fr)_auto] xl:items-end">
+                    <TextInput
+                      disabled={!isEditing}
+                      label="Lucro líquido"
+                      onChange={(value) =>
+                        updateWeek(week.semana, { lucroLiquido: value })
+                      }
+                      placeholder="12500,00"
+                      prefix="R$"
+                      value={form.lucroLiquido}
+                    />
+                    <TextInput
+                      disabled={!isEditing}
+                      label="EBITDA"
+                      onChange={(value) =>
+                        updateWeek(week.semana, { ebitdaPct: value })
+                      }
+                      placeholder="9,4"
+                      suffix="%"
+                      value={form.ebitdaPct}
+                    />
+                    <TextInput
+                      disabled={!isEditing}
+                      label="CMV"
+                      onChange={(value) =>
+                        updateWeek(week.semana, { cmvPct: value })
+                      }
+                      placeholder="14"
+                      suffix="%"
+                      value={form.cmvPct}
+                    />
+                    <TextInput
+                      disabled={!isEditing}
+                      label="Eficiência"
+                      onChange={(value) =>
+                        updateWeek(week.semana, { eficienciaPct: value })
+                      }
+                      placeholder="4,5"
+                      suffix="%"
+                      value={form.eficienciaPct}
+                    />
+                    <TextInput
+                      disabled={!isEditing}
+                      inputMode="text"
+                      label="Notas"
+                      onChange={(value) =>
+                        updateWeek(week.semana, { notas: value })
+                      }
+                      placeholder="Observação"
+                      value={form.notas}
+                    />
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        className="inline-flex p-0 text-xs font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-divider)] decoration-1 underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-text-soft)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                        disabled={!isEditing}
+                        onClick={() => setEditingWeek(null)}
+                        type="button"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!isEditing || isSaving}
+                        type="submit"
+                      >
+                        {isSaving ? "Salvando..." : "Salvar"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </form>
-            ) : null}
+                </form>
+              </div>
+            </div>
           </div>
         );
       })}
