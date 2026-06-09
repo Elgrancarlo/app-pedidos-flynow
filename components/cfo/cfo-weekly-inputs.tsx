@@ -3,14 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { CfoManualFieldKey, CfoWeeklyManualInput } from "@/lib/metas";
-
-const FIELD_LABELS: Record<CfoManualFieldKey, string> = {
-  cmv_pct: "CMV",
-  ebitda_pct: "EBITDA",
-  eficiencia_pct: "Eficiência",
-  lucro_liquido: "Lucro líquido",
-};
+import type { CfoWeeklyManualInput } from "@/lib/metas";
 
 type Feedback = {
   message: string;
@@ -139,12 +132,6 @@ function TextInput({
       </span>
     </label>
   );
-}
-
-function formatMissingFields(fields: CfoManualFieldKey[]) {
-  if (fields.length === 0) return "Completo";
-
-  return fields.map((field) => FIELD_LABELS[field]).join(", ");
 }
 
 function ValueCell({ label, muted = false, value }: ValueCellProps) {
@@ -331,11 +318,6 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
 
               <div className="hidden xl:block">
                 <StatusText isComplete={isComplete} />
-                {!isComplete ? (
-                  <p className="mt-1 truncate text-[11px] text-[var(--fly-text-muted)]">
-                    {formatMissingFields(week.missingFields)}
-                  </p>
-                ) : null}
               </div>
 
               <ValueCell
