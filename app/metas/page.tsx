@@ -60,6 +60,15 @@ function formatCompositionValue(item: MetasPlanningComposition) {
   return formatNumber(item.value);
 }
 
+function getCompositionDotClass(tone: MetasPlanningComposition["tone"]) {
+  if (tone === "green") return "bg-[var(--fly-success)]";
+  if (tone === "orange") return "bg-[var(--fly-warning-strong)]";
+  if (tone === "red") return "bg-[#F87171]";
+  if (tone === "gold") return "bg-[var(--fly-chart-revenue)]";
+
+  return "bg-[var(--fly-text-muted)]";
+}
+
 export default async function MetasPage({
   searchParams,
 }: {
@@ -271,9 +280,10 @@ export default async function MetasPage({
                     <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
                       {item.label}
                     </p>
-                    <StatusPill tone={item.tone}>
-                      {item.unit === "currency" ? "R$" : item.unit === "percent" ? "%" : "Meta"}
-                    </StatusPill>
+                    <span
+                      aria-hidden="true"
+                      className={`size-1.5 shrink-0 rounded-full ${getCompositionDotClass(item.tone)}`}
+                    />
                   </div>
                   <p className="mt-3 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
                     {formatCompositionValue(item)}
