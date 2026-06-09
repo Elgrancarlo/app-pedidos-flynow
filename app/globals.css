@@ -366,6 +366,8 @@ html[data-flynow-theme="dark"],
   --fly-chart-revenue-active: #f0c76a;
   --fly-chart-investment: #60a5fa;
   --fly-chart-investment-active: #93c5fd;
+  --fly-chart-target: rgba(218, 221, 226, 0.46);
+  --fly-chart-target-stroke: rgba(245, 242, 234, 0.28);
   --fly-success: #86efac;
   --fly-success-bg: rgba(13, 31, 20, 0.8);
   --fly-danger-bg: #2b1515;
@@ -448,6 +450,8 @@ html[data-flynow-theme="light"],
   --fly-chart-revenue-active: #805714;
   --fly-chart-investment: #2563eb;
   --fly-chart-investment-active: #1d4ed8;
+  --fly-chart-target: rgba(71, 85, 105, 0.34);
+  --fly-chart-target-stroke: rgba(51, 65, 85, 0.28);
   --fly-success: #15803d;
   --fly-success-bg: #eaf8ee;
   --fly-danger-bg: #fff4f2;
