@@ -71,16 +71,6 @@ export default async function MetasPage({
   const data = await timedServerTask("metas", "data.total", () =>
     getMetasPlanningPageData(month),
   );
-  const plannedRevenue = data.summary.frontRevenue + data.summary.backendRevenue;
-  const plannedCoverage =
-    data.summary.revenue > 0 ? plannedRevenue / data.summary.revenue : 0;
-  const planGap = plannedRevenue - data.summary.revenue;
-  const planCoverageDetail =
-    planGap >= 0
-      ? `${formatCurrency(plannedRevenue)} planejados · ${formatCurrency(planGap)} acima`
-      : `${formatCurrency(plannedRevenue)} planejados · faltam ${formatCurrency(Math.abs(planGap))}`;
-  const planCoverageTone =
-    plannedCoverage >= 1 ? "green" : plannedCoverage >= 0.95 ? "gold" : "orange";
 
   logServerTiming("metas", "total", pageStartedAt);
 
@@ -93,7 +83,7 @@ export default async function MetasPage({
       />
 
       <PageBody>
-        <StatGrid columns="xl:grid-cols-5">
+        <StatGrid columns="xl:grid-cols-4">
           <StatCard
             detail="meta liquida configurada para o mês"
             label="Receita alvo"
@@ -117,12 +107,6 @@ export default async function MetasPage({
             label="Clientes"
             tone="neutral"
             value={formatNumber(data.summary.customers)}
-          />
-          <StatCard
-            detail={planCoverageDetail}
-            label="Cobertura do plano"
-            tone={planCoverageTone}
-            value={formatPercent(plannedCoverage)}
           />
         </StatGrid>
 
