@@ -85,7 +85,7 @@ export default async function MetasPage({
       <PageBody>
         <StatGrid columns="xl:grid-cols-4">
           <StatCard
-            detail="meta liquida configurada para o mês"
+            detail={`tráfego ${formatCurrency(data.summary.frontRevenue)} · canais op. ${formatCurrency(data.summary.backendRevenue)}`}
             label="Receita alvo"
             tone="gold"
             value={formatCurrency(data.summary.revenue)}
