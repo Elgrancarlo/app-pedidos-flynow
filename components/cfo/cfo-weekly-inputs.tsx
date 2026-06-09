@@ -109,23 +109,23 @@ function TextInput({
   return (
     <label
       className={[
-        "min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2.5 py-1.5 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]",
+        "group min-w-0 border-b border-[var(--fly-divider)] pb-1 transition-[border-color,box-shadow] duration-150 hover:border-[var(--fly-border-strong)] focus-within:border-[var(--fly-brand-border)] focus-within:shadow-[0_1px_0_var(--fly-brand-border)]",
         disabled ? "pointer-events-none" : "",
       ].join(" ")}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+        <span className="text-[10px] font-semibold uppercase leading-4 text-[var(--fly-text-dim)]">
           {label}
         </span>
         {suffix ? (
-          <span className="text-[10px] font-semibold text-[var(--fly-text-dim)]">
+          <span className="text-[10px] font-semibold leading-4 text-[var(--fly-text-dim)]">
             {suffix}
           </span>
         ) : null}
       </span>
-      <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
+      <span className="mt-0.5 flex h-6 min-w-0 items-center gap-1.5">
         {prefix ? (
-          <span className="shrink-0 text-xs font-semibold text-[var(--fly-text-muted)]">
+          <span className="shrink-0 text-[11px] font-semibold text-[var(--fly-text-muted)]">
             {prefix}
           </span>
         ) : null}
@@ -388,7 +388,7 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
               <div className="overflow-hidden">
                 <form
                   className={[
-                    "border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 transition-[opacity,transform] motion-reduce:transition-none",
+                    "border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5 transition-[opacity,transform] motion-reduce:transition-none",
                     isEditing
                       ? "translate-y-0 opacity-100 delay-75 duration-200 ease-out"
                       : "-translate-y-0.5 opacity-0 duration-[260ms] ease-in",
@@ -399,7 +399,7 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
                     void saveWeek(week);
                   }}
                 >
-                  <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(180px,1.2fr)_auto] xl:items-end">
+                  <div className="grid gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(180px,1.2fr)_auto] xl:items-end">
                     <TextInput
                       disabled={!isEditing}
                       label="Lucro líquido"
@@ -460,7 +460,7 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
                         Cancelar
                       </button>
                       <button
-                        className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex h-7 cursor-pointer items-center justify-center rounded-[7px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-2.5 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60"
                         disabled={!isEditing || isSaving}
                         type="submit"
                       >
