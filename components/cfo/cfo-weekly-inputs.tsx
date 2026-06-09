@@ -30,6 +30,12 @@ type CfoWeeklyInputsProps = {
   weeks: CfoWeeklyManualInput[];
 };
 
+type ValueCellProps = {
+  label: string;
+  value: string;
+  muted?: boolean;
+};
+
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -43,6 +49,23 @@ function formatInputValue(value: number | null) {
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+function formatCurrencyValue(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "Não informado";
+
+  return new Intl.NumberFormat("pt-BR", {
+    currency: "BRL",
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+    style: "currency",
+  }).format(value);
+}
+
+function formatPercentValue(value: number | null) {
+  if (value == null || !Number.isFinite(value)) return "Não informado";
+
+  return `${formatInputValue(value)}%`;
 }
 
 function parseNumberInput(value: string) {
@@ -72,7 +95,6 @@ function buildInitialState(weeks: CfoWeeklyManualInput[]) {
 }
 
 function TextInput({
-  hideLabelOnDesktop = false,
   inputMode = "decimal",
   label,
   onChange,
@@ -81,7 +103,6 @@ function TextInput({
   suffix,
   value,
 }: {
-  hideLabelOnDesktop?: boolean;
   inputMode?: "decimal" | "text";
   label: string;
   onChange: (value: string) => void;
@@ -93,13 +114,7 @@ function TextInput({
   return (
     <label className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2.5 py-1.5 transition-colors duration-150 hover:border-[var(--fly-border)] hover:bg-[var(--fly-control-hover)] focus-within:border-[var(--fly-brand-border)] focus-within:ring-2 focus-within:ring-[var(--fly-brand-ring)]">
       <span className="flex items-center justify-between gap-2">
-        <span
-          className={
-            hideLabelOnDesktop
-              ? "text-[10px] font-semibold uppercase text-[var(--fly-text-dim)] xl:sr-only"
-              : "text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]"
-          }
-        >
+        <span className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
           {label}
         </span>
         {suffix ? (
@@ -132,14 +147,57 @@ function formatMissingFields(fields: CfoManualFieldKey[]) {
   return fields.map((field) => FIELD_LABELS[field]).join(", ");
 }
 
+function ValueCell({ label, muted = false, value }: ValueCellProps) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)] xl:sr-only">
+        {label}
+      </p>
+      <p
+        className={
+          muted
+            ? "mt-0.5 truncate text-sm font-medium tabular-nums text-[var(--fly-text-muted)] xl:mt-0"
+            : "mt-0.5 truncate text-sm font-semibold tabular-nums text-[var(--fly-text)] xl:mt-0"
+        }
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StatusText({ isComplete }: { isComplete: boolean }) {
+  return (
+    <span
+      className={
+        isComplete
+          ? "inline-flex items-center gap-2 text-xs font-medium text-[var(--fly-success-text)]"
+          : "inline-flex items-center gap-2 text-xs font-medium text-[var(--fly-brand-strong)]"
+      }
+    >
+      <span
+        aria-hidden="true"
+        className={
+          isComplete
+            ? "size-1.5 rounded-full bg-[var(--fly-success)]"
+            : "size-1.5 rounded-full bg-[var(--fly-chart-revenue)]"
+        }
+      />
+      {isComplete ? "Completo" : "Pendente"}
+    </span>
+  );
+}
+
 export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
   const router = useRouter();
   const initialState = useMemo(() => buildInitialState(weeks), [weeks]);
+  const [editingWeek, setEditingWeek] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, Feedback>>({});
   const [forms, setForms] = useState(initialState);
   const [savingWeek, setSavingWeek] = useState<number | null>(null);
 
   useEffect(() => {
+    setEditingWeek(null);
     setForms(initialState);
     setFeedback({});
     setSavingWeek(null);
@@ -197,6 +255,7 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
           type: "success",
         },
       }));
+      setEditingWeek(null);
       router.refresh();
     } catch (error) {
       setFeedback((current) => ({
@@ -229,8 +288,9 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
 
   return (
     <div className="overflow-hidden rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)]">
-      <div className="hidden border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)] xl:grid xl:grid-cols-[132px_repeat(4,minmax(0,1fr))_minmax(150px,1.1fr)_84px] xl:items-center xl:gap-2">
+      <div className="hidden border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] px-3 py-2 text-[10px] font-semibold uppercase text-[var(--fly-text-muted)] xl:grid xl:grid-cols-[132px_104px_repeat(4,minmax(0,1fr))_minmax(150px,1.1fr)_84px] xl:items-center xl:gap-3">
         <span>Semana</span>
+        <span>Status</span>
         <span>Lucro</span>
         <span>EBITDA</span>
         <span>CMV</span>
@@ -249,17 +309,12 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
         const weekFeedback = feedback[week.semana];
         const isSaving = savingWeek === week.semana;
         const isComplete = week.missingFields.length === 0;
+        const isEditing = editingWeek === week.semana;
+        const hasNote = Boolean(week.notas?.trim());
 
         return (
-          <form
-            key={week.semana}
-            className="border-b border-[var(--fly-divider-subtle)] px-3 py-2.5 last:border-b-0"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void saveWeek(week);
-            }}
-          >
-            <div className="grid gap-2 xl:grid-cols-[132px_repeat(4,minmax(0,1fr))_minmax(150px,1.1fr)_84px] xl:items-center">
+          <div key={week.semana} className="border-b border-[var(--fly-divider-subtle)] last:border-b-0">
+            <div className="grid gap-3 px-3 py-3 xl:grid-cols-[132px_104px_repeat(4,minmax(0,1fr))_minmax(150px,1.1fr)_84px] xl:items-center">
               <div className="flex min-w-0 items-start justify-between gap-3 xl:block">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--fly-text)]">
@@ -269,56 +324,46 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
                     {formatDate(week.inicio)} - {formatDate(week.fim)}
                   </p>
                 </div>
-                <p
-                  className={
-                    isComplete
-                      ? "shrink-0 text-xs font-medium text-[var(--fly-success-text)] xl:mt-1 xl:truncate"
-                      : "shrink-0 text-xs font-medium text-[var(--fly-warning-text)] xl:mt-1 xl:truncate"
-                  }
-                >
-                  {isComplete ? "Completo" : formatMissingFields(week.missingFields)}
-                </p>
+                <div className="xl:hidden">
+                  <StatusText isComplete={isComplete} />
+                </div>
               </div>
-              <TextInput
-                hideLabelOnDesktop
+
+              <div className="hidden xl:block">
+                <StatusText isComplete={isComplete} />
+                {!isComplete ? (
+                  <p className="mt-1 truncate text-[11px] text-[var(--fly-text-muted)]">
+                    {formatMissingFields(week.missingFields)}
+                  </p>
+                ) : null}
+              </div>
+
+              <ValueCell
                 label="Lucro líquido"
-                onChange={(value) => updateWeek(week.semana, { lucroLiquido: value })}
-                placeholder="12500,00"
-                prefix="R$"
-                value={form.lucroLiquido}
+                muted={week.lucroLiquido == null}
+                value={formatCurrencyValue(week.lucroLiquido)}
               />
-              <TextInput
-                hideLabelOnDesktop
-                label="EBITDA %"
-                onChange={(value) => updateWeek(week.semana, { ebitdaPct: value })}
-                placeholder="9,4"
-                suffix="%"
-                value={form.ebitdaPct}
+              <ValueCell
+                label="EBITDA"
+                muted={week.ebitdaPct == null}
+                value={formatPercentValue(week.ebitdaPct)}
               />
-              <TextInput
-                hideLabelOnDesktop
-                label="CMV %"
-                onChange={(value) => updateWeek(week.semana, { cmvPct: value })}
-                placeholder="14"
-                suffix="%"
-                value={form.cmvPct}
+              <ValueCell
+                label="CMV"
+                muted={week.cmvPct == null}
+                value={formatPercentValue(week.cmvPct)}
               />
-              <TextInput
-                hideLabelOnDesktop
-                label="Eficiência %"
-                onChange={(value) => updateWeek(week.semana, { eficienciaPct: value })}
-                placeholder="4,5"
-                suffix="%"
-                value={form.eficienciaPct}
+              <ValueCell
+                label="Eficiência"
+                muted={week.eficienciaPct == null}
+                value={formatPercentValue(week.eficienciaPct)}
               />
-              <TextInput
-                hideLabelOnDesktop
-                inputMode="text"
+              <ValueCell
                 label="Notas"
-                onChange={(value) => updateWeek(week.semana, { notas: value })}
-                placeholder="Observação"
-                value={form.notas}
+                muted={!hasNote}
+                value={hasNote ? week.notas ?? "" : "Sem nota"}
               />
+
               <div className="flex items-center justify-between gap-2 xl:justify-end">
                 {weekFeedback ? (
                   <p
@@ -332,15 +377,83 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
                   </p>
                 ) : null}
                 <button
-                  className="inline-flex h-8 w-full cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto xl:w-[76px]"
-                  disabled={isSaving}
-                  type="submit"
+                  className="inline-flex p-0 text-xs font-semibold leading-5 text-[var(--fly-brand-strong)] underline decoration-[var(--fly-brand-border)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                  onClick={() => setEditingWeek(isEditing ? null : week.semana)}
+                  type="button"
                 >
-                  {isSaving ? "Salvando..." : "Salvar"}
+                  {isEditing ? "Fechar" : "Editar"}
                 </button>
               </div>
             </div>
-          </form>
+
+            {isEditing ? (
+              <form
+                className="border-t border-[var(--fly-divider-subtle)] bg-[var(--fly-row-bg)] px-3 py-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void saveWeek(week);
+                }}
+              >
+                <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_minmax(180px,1.2fr)_auto] xl:items-end">
+                  <TextInput
+                    label="Lucro líquido"
+                    onChange={(value) =>
+                      updateWeek(week.semana, { lucroLiquido: value })
+                    }
+                    placeholder="12500,00"
+                    prefix="R$"
+                    value={form.lucroLiquido}
+                  />
+                  <TextInput
+                    label="EBITDA"
+                    onChange={(value) => updateWeek(week.semana, { ebitdaPct: value })}
+                    placeholder="9,4"
+                    suffix="%"
+                    value={form.ebitdaPct}
+                  />
+                  <TextInput
+                    label="CMV"
+                    onChange={(value) => updateWeek(week.semana, { cmvPct: value })}
+                    placeholder="14"
+                    suffix="%"
+                    value={form.cmvPct}
+                  />
+                  <TextInput
+                    label="Eficiência"
+                    onChange={(value) =>
+                      updateWeek(week.semana, { eficienciaPct: value })
+                    }
+                    placeholder="4,5"
+                    suffix="%"
+                    value={form.eficienciaPct}
+                  />
+                  <TextInput
+                    inputMode="text"
+                    label="Notas"
+                    onChange={(value) => updateWeek(week.semana, { notas: value })}
+                    placeholder="Observação"
+                    value={form.notas}
+                  />
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      className="inline-flex p-0 text-xs font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-divider)] decoration-1 underline-offset-4 outline-none transition-colors duration-150 hover:text-[var(--fly-text-soft)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
+                      onClick={() => setEditingWeek(null)}
+                      type="button"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={isSaving}
+                      type="submit"
+                    >
+                      {isSaving ? "Salvando..." : "Salvar"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : null}
+          </div>
         );
       })}
     </div>
