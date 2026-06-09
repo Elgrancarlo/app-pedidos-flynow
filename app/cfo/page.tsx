@@ -15,9 +15,11 @@ import {
   type MetaGoal,
   type MetaStatus,
   type MetaUnit,
+  type MetasPageData,
   type MetasRisk,
   type MetasWeekSummary,
 } from "@/lib/metas";
+import { getTodayInAppTimezone } from "@/lib/app-dates";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 
@@ -45,6 +47,32 @@ const STATUS_TONES: Record<MetaStatus, "gold" | "green" | "neutral" | "orange" |
   on_track: "gold",
 };
 
+const EXECUTIVE_TONE_STYLES = {
+  gold: {
+    dot: "bg-[var(--fly-chart-revenue)]",
+    text: "text-[var(--fly-brand-strong)]",
+  },
+  green: {
+    dot: "bg-[var(--fly-success)]",
+    text: "text-[var(--fly-success-text)]",
+  },
+  neutral: {
+    dot: "bg-[var(--fly-text-muted)]",
+    text: "text-[var(--fly-text)]",
+  },
+  orange: {
+    dot: "bg-[var(--fly-warning-strong)]",
+    text: "text-[var(--fly-warning-text)]",
+  },
+  red: {
+    dot: "bg-[#F87171]",
+    text: "text-[var(--fly-danger-strong)]",
+  },
+} satisfies Record<
+  "gold" | "green" | "neutral" | "orange" | "red",
+  { dot: string; text: string }
+>;
+
 function resolveMonth(params: CfoPageParams) {
   return normalizeMetasMonth(params.mes ?? params.startDate ?? params.endDate);
 }
@@ -62,6 +90,58 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function toDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function getInclusiveDays(startDate: string, endDate: string) {
+  const diff = toDate(endDate).getTime() - toDate(startDate).getTime();
+
+  return Math.max(Math.floor(diff / 86_400_000) + 1, 0);
+}
+
+function getElapsedDays(range: MetasPageData["range"]) {
+  const today = getTodayInAppTimezone();
+
+  if (today <= range.startDate) return 1;
+  if (today >= range.endDate) return getInclusiveDays(range.startDate, range.endDate);
+
+  return getInclusiveDays(range.startDate, today);
+}
+
+function getRemainingDays(range: MetasPageData["range"]) {
+  const today = getTodayInAppTimezone();
+
+  if (today < range.startDate) return getInclusiveDays(range.startDate, range.endDate);
+  if (today > range.endDate) return 0;
+
+  return getInclusiveDays(today, range.endDate);
+}
+
+function getPaceProjection(data: MetasPageData) {
+  const elapsedDays = getElapsedDays(data.range);
+  const totalDays = getInclusiveDays(data.range.startDate, data.range.endDate);
+
+  if (elapsedDays <= 0 || totalDays <= 0) return data.summary.revenue.realized;
+
+  return (data.summary.revenue.realized / elapsedDays) * totalDays;
+}
+
+function getProjectionTone(projection: number, target: number) {
+  if (target <= 0) return "neutral";
+  if (projection >= target) return "green";
+  if (projection >= target * 0.95) return "gold";
+  if (projection >= target * 0.8) return "orange";
+
+  return "red";
+}
+
+function formatDays(value: number) {
+  if (value === 1) return "1 dia";
+
+  return `${value} dias`;
 }
 
 function formatGoalValue(value: number, unit: MetaUnit) {
@@ -104,6 +184,150 @@ function formatBudgetGap(realized: number, target: number) {
   if (gap > 0) return `${formatCurrency(gap)} disponível`;
   if (gap < 0) return `${formatCurrency(Math.abs(gap))} acima do planejado`;
   return "planejamento consumido";
+}
+
+function ExecutiveReadout({ data }: { data: MetasPageData }) {
+  const projection = getPaceProjection(data);
+  const projectionGap = projection - data.summary.revenue.target;
+  const projectionTone = getProjectionTone(projection, data.summary.revenue.target);
+  const projectionStyles = EXECUTIVE_TONE_STYLES[projectionTone];
+  const remainingDays = getRemainingDays(data.range);
+  const revenueGap = Math.max(
+    data.summary.revenue.target - data.summary.revenue.realized,
+    0,
+  );
+  const dailyNeed = remainingDays > 0 ? revenueGap / remainingDays : 0;
+  const requiredPaceValue =
+    revenueGap <= 0
+      ? "Meta coberta"
+      : remainingDays > 0
+        ? formatCurrency(dailyNeed)
+        : formatCurrency(revenueGap);
+  const primaryRisk = data.risks[0] ?? null;
+  const today = getTodayInAppTimezone();
+  const currentWeek =
+    data.weeks.find((week) => week.inicio <= today && today <= week.fim) ??
+    data.weeks.find((week) => week.status === "critical" || week.status === "attention") ??
+    data.weeks.at(-1) ??
+    null;
+
+  const headline =
+    data.summary.revenue.target <= 0
+      ? "Cadastre a meta mensal para liberar a leitura executiva."
+      : projection >= data.summary.revenue.target
+        ? "No ritmo atual, o mês tende a fechar acima da meta de receita."
+        : "No ritmo atual, o mês precisa acelerar para alcançar a meta.";
+
+  const projectionDetail =
+    data.summary.revenue.target <= 0
+      ? "Sem referência mensal cadastrada."
+      : projectionGap >= 0
+        ? `${formatCurrency(projectionGap)} acima da meta mensal.`
+        : `${formatCurrency(Math.abs(projectionGap))} abaixo da meta mensal.`;
+
+  const dailyNeedDetail =
+    revenueGap <= 0
+      ? "Meta de receita já coberta pelo realizado atual."
+      : remainingDays > 0
+        ? `${formatCurrency(revenueGap)} faltantes em ${formatDays(remainingDays)}.`
+        : `${formatCurrency(revenueGap)} ficaram pendentes no fechamento.`;
+
+  const riskDetail = primaryRisk
+    ? primaryRisk.direction === "above_limit"
+      ? `${getMetaAreaLabel(primaryRisk.area)} · ${formatGoalValue(
+          primaryRisk.gap,
+          primaryRisk.unit,
+        )} acima do limite.`
+      : `${getMetaAreaLabel(primaryRisk.area)} · ${formatGoalValue(
+          primaryRisk.gap,
+          primaryRisk.unit,
+        )} faltantes.`
+    : "Nenhum indicador crítico ou em atenção no momento.";
+
+  return (
+    <Panel
+      title="Leitura executiva"
+      description="Projeção, ritmo necessário e principal ponto de atenção"
+    >
+      <div className="space-y-4">
+        <p className="text-sm font-medium leading-6 text-[var(--fly-text)]">
+          {headline}
+        </p>
+
+        <div className="grid gap-4 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-[var(--fly-divider)]">
+          <div className="min-w-0 border-b border-[var(--fly-divider-subtle)] pb-4 lg:border-b-0 lg:pb-0 lg:pr-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={`size-1.5 shrink-0 rounded-full ${projectionStyles.dot}`}
+              />
+              <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                Projeção no ritmo atual
+              </p>
+            </div>
+            <p
+              className={`mt-2 text-[22px] font-semibold leading-none tabular-nums ${projectionStyles.text}`}
+            >
+              {formatCurrency(projection)}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+              {projectionDetail}
+            </p>
+          </div>
+
+          <div className="min-w-0 border-b border-[var(--fly-divider-subtle)] pb-4 lg:border-b-0 lg:px-5 lg:pb-0">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="size-1.5 shrink-0 rounded-full bg-[var(--fly-chart-revenue)]"
+              />
+              <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                Ritmo necessário
+              </p>
+            </div>
+            <p className="mt-2 text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
+              {requiredPaceValue}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+              {revenueGap <= 0 ? dailyNeedDetail : `${dailyNeedDetail} Média diária necessária.`}
+            </p>
+          </div>
+
+          <div className="min-w-0 lg:pl-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={`size-1.5 shrink-0 rounded-full ${
+                  primaryRisk
+                    ? EXECUTIVE_TONE_STYLES[STATUS_TONES[
+                        data.goals.find((goal) => goal.id === primaryRisk.id)?.status ??
+                          "attention"
+                      ]].dot
+                    : EXECUTIVE_TONE_STYLES.green.dot
+                }`}
+              />
+              <p className="truncate text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                Principal atenção
+              </p>
+            </div>
+            <p className="mt-2 truncate text-[22px] font-semibold leading-none text-[var(--fly-text)]">
+              {primaryRisk?.title ?? "Sem desvio"}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+              {riskDetail}
+              {currentWeek ? (
+                <>
+                  {" "}
+                  {currentWeek.label}: {formatPercent(Math.min(currentWeek.progress, 1))} da
+                  meta semanal.
+                </>
+              ) : null}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
 }
 
 function StatusLabel({ status }: { status: MetaStatus }) {
@@ -402,6 +626,8 @@ export default async function CfoPage({
             }
           />
         </StatGrid>
+
+        <ExecutiveReadout data={data} />
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel
