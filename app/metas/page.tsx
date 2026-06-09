@@ -71,6 +71,14 @@ export default async function MetasPage({
   const data = await timedServerTask("metas", "data.total", () =>
     getMetasPlanningPageData(month),
   );
+  const plannedTrafficRoas =
+    data.summary.investment > 0
+      ? data.summary.frontRevenue / data.summary.investment
+      : 0;
+  const topInvestmentChannel = data.channels.reduce(
+    (top, channel) => (channel.investment > top.investment ? channel : top),
+    data.channels[0],
+  );
 
   logServerTiming("metas", "total", pageStartedAt);
 
@@ -132,16 +140,54 @@ export default async function MetasPage({
             title="Investimento por canal"
             description="Distribuição planejada do orçamento de mídia"
           >
-            <DataList
-              rows={data.channels.map((channel) => ({
-                detail: `${formatPercent(channel.share)} do orçamento · ROAS ${formatRatio(channel.roas)}`,
-                label: channel.label,
-                meter: channel.share,
-                tone: "blue" as const,
-                value: formatCurrency(channel.investment),
-              }))}
-              valueLabel="Invest."
-            />
+            <div>
+              <DataList
+                rows={data.channels.map((channel) => ({
+                  detail: `${formatPercent(channel.share)} do orçamento · ROAS ${formatRatio(channel.roas)}`,
+                  label: channel.label,
+                  meter: channel.share,
+                  tone: "blue" as const,
+                  value: formatCurrency(channel.investment),
+                }))}
+                valueLabel="Invest."
+              />
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+                <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
+                  <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Maior orçamento
+                  </p>
+                  <p className="mt-2 truncate text-sm font-semibold text-[var(--fly-text)]">
+                    {topInvestmentChannel?.label ?? "-"}
+                  </p>
+                  <p className="mt-1 text-xs tabular-nums text-[var(--fly-text-muted)]">
+                    {formatCurrency(topInvestmentChannel?.investment ?? 0)}
+                  </p>
+                </div>
+                <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
+                  <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Receita tráfego
+                  </p>
+                  <p className="mt-2 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                    {formatCurrency(data.summary.frontRevenue)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                    soma dos canais pagos
+                  </p>
+                </div>
+                <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3">
+                  <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    ROAS tráfego
+                  </p>
+                  <p className="mt-2 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                    {formatRatio(plannedTrafficRoas)}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+                    receita / investimento
+                  </p>
+                </div>
+              </div>
+            </div>
           </Panel>
 
           <Panel
