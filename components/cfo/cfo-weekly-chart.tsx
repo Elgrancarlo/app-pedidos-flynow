@@ -170,9 +170,12 @@ export function CfoWeeklyChart({
             animationDuration={700}
             barSize={14}
             dataKey="target"
-            fill="var(--fly-border-strong)"
+            fill="var(--fly-chart-investment)"
+            fillOpacity={0.5}
             name="Meta da semana"
             radius={[0, 6, 6, 0]}
+            stroke="var(--fly-chart-investment-active)"
+            strokeOpacity={0.72}
           />
           <Bar
             animationDuration={760}
