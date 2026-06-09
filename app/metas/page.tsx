@@ -15,8 +15,9 @@ import {
   normalizeMetasPlanningMonth,
   type MetasPlanningComposition,
 } from "@/lib/metas-planning";
+import { getTodayInAppTimezone } from "@/lib/app-dates";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,13 @@ function getCompositionDotClass(tone: MetasPlanningComposition["tone"]) {
   return "bg-[var(--fly-text-muted)]";
 }
 
+function getCoverageToneClass(value: number) {
+  if (value >= 1) return "text-[var(--fly-success-text)]";
+  if (value >= 0.9) return "text-[var(--fly-brand-strong)]";
+
+  return "text-[var(--fly-danger-strong)]";
+}
+
 export default async function MetasPage({
   searchParams,
 }: {
@@ -80,13 +88,33 @@ export default async function MetasPage({
   const data = await timedServerTask("metas", "data.total", () =>
     getMetasPlanningPageData(month),
   );
-  const plannedTrafficRoas =
-    data.summary.investment > 0
-      ? data.summary.frontRevenue / data.summary.investment
-      : 0;
   const topInvestmentChannel = data.channels.reduce(
     (top, channel) => (channel.investment > top.investment ? channel : top),
     data.channels[0],
+  );
+  const topRevenueChannel = data.channels.reduce(
+    (top, channel) => (channel.revenue > top.revenue ? channel : top),
+    data.channels[0],
+  );
+  const topRoasChannel = data.channels.reduce(
+    (top, channel) => (channel.roas > top.roas ? channel : top),
+    data.channels[0],
+  );
+  const plannedRevenue = data.summary.frontRevenue + data.summary.backendRevenue;
+  const planCoverage =
+    data.summary.revenue > 0 ? plannedRevenue / data.summary.revenue : 0;
+  const revenueGap = plannedRevenue - data.summary.revenue;
+  const revenueGapLabel = revenueGap >= 0 ? "Folga do plano" : "Falta para meta";
+  const today = getTodayInAppTimezone();
+  const focusWeek = today.startsWith(data.month)
+    ? data.weeks.find((week) => today >= week.inicio && today <= week.fim) ?? null
+    : null;
+  const revenueComposition = data.composition.filter((item) =>
+    ["pct-front", "pct-backend", "pct-recuperada"].includes(item.id),
+  );
+  const revenueCompositionTotal = revenueComposition.reduce(
+    (total, item) => total + item.value,
+    0,
   );
 
   logServerTiming("metas", "total", pageStartedAt);
@@ -126,6 +154,78 @@ export default async function MetasPage({
             value={formatNumber(data.summary.customers)}
           />
         </StatGrid>
+
+        <Panel
+          title="Leitura do plano"
+          description="Resumo compacto para validar se o mês está bem distribuído"
+        >
+          <div className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr_0.85fr_0.85fr]">
+            <div className="rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                  Cobertura da meta
+                </p>
+                <p
+                  className={cn(
+                    "text-sm font-semibold tabular-nums",
+                    getCoverageToneClass(planCoverage),
+                  )}
+                >
+                  {formatPercent(planCoverage)}
+                </p>
+              </div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+                <span
+                  aria-hidden="true"
+                  className="block h-full rounded-full bg-[var(--fly-chart-revenue)]"
+                  style={{ width: `${Math.min(Math.max(planCoverage * 100, 0), 100)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-[var(--fly-text-muted)]">
+                {formatCurrency(plannedRevenue)} planejados de{" "}
+                {formatCurrency(data.summary.revenue)}
+              </p>
+            </div>
+
+            <div className="min-w-0 px-1 py-2">
+              <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                {revenueGapLabel}
+              </p>
+              <p className="mt-1.5 text-base font-semibold tabular-nums text-[var(--fly-text)]">
+                {formatCurrency(Math.abs(revenueGap))}
+              </p>
+              <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+                planejado contra alvo
+              </p>
+            </div>
+
+            <div className="min-w-0 px-1 py-2">
+              <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                Semana em foco
+              </p>
+              <p className="mt-1.5 text-base font-semibold text-[var(--fly-text)]">
+                {focusWeek?.label ?? "Sem janela ativa"}
+              </p>
+              <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+                {focusWeek
+                  ? `${formatShortDate(focusWeek.inicio)} - ${formatShortDate(focusWeek.fim)} · ${formatCurrency(focusWeek.receitaPrevista)}`
+                  : "fora do mês selecionado"}
+              </p>
+            </div>
+
+            <div className="min-w-0 px-1 py-2">
+              <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                Canal líder
+              </p>
+              <p className="mt-1.5 truncate text-base font-semibold text-[var(--fly-text)]">
+                {topRevenueChannel?.label ?? "-"}
+              </p>
+              <p className="mt-1 truncate text-xs text-[var(--fly-text-muted)]">
+                {formatCurrency(topRevenueChannel?.revenue ?? 0)} receita prevista
+              </p>
+            </div>
+          </div>
+        </Panel>
 
         {data.source === "empty" ? (
           <Panel
@@ -186,13 +286,13 @@ export default async function MetasPage({
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    ROAS tráfego
+                    Melhor ROAS
                   </p>
-                  <p className="mt-1.5 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                    {formatRatio(plannedTrafficRoas)}
+                  <p className="mt-1.5 truncate text-sm font-semibold text-[var(--fly-text)]">
+                    {topRoasChannel?.label ?? "-"}
                   </p>
                   <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                    receita / investimento
+                    ROAS {formatRatio(topRoasChannel?.roas ?? 0)}
                   </p>
                 </div>
               </div>
@@ -270,6 +370,56 @@ export default async function MetasPage({
             title="Composição da meta"
             description="Premissas financeiras usadas no acompanhamento"
           >
+            {revenueComposition.length ? (
+              <div className="mb-3 rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Origem da receita
+                  </p>
+                  <p className="text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                    {formatPercent(revenueCompositionTotal)}
+                  </p>
+                </div>
+                <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+                  {revenueComposition.map((item) => (
+                    <span
+                      aria-hidden="true"
+                      key={item.id}
+                      className={getCompositionDotClass(item.tone)}
+                      style={{
+                        width: `${
+                          revenueCompositionTotal > 0
+                            ? (item.value / revenueCompositionTotal) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {revenueComposition.map((item) => (
+                    <div key={item.id} className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "size-1.5 shrink-0 rounded-full",
+                            getCompositionDotClass(item.tone),
+                          )}
+                        />
+                        <p className="truncate text-xs text-[var(--fly-text-muted)]">
+                          {item.label}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+                        {formatCompositionValue(item)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {data.composition.map((item) => (
                 <div
