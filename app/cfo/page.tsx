@@ -1,5 +1,5 @@
 import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
-import { MetasProgressChart } from "@/components/metas/metas-progress-chart";
+import { CfoWeeklyChart } from "@/components/cfo/cfo-weekly-chart";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import {
@@ -406,9 +406,9 @@ export default async function CfoPage({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel
             title="Ritmo financeiro semanal"
-            description="Receita prevista, receita realizada e investimento por semana"
+            description="Receita realizada em barras, investimento em azul e meta semanal como referência"
           >
-            <MetasProgressChart series={data.series} />
+            <CfoWeeklyChart series={data.series} />
           </Panel>
 
           <Panel
