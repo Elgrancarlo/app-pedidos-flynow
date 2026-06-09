@@ -406,7 +406,7 @@ export default async function CfoPage({
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(330px,0.8fr)]">
           <Panel
             title="Ritmo financeiro semanal"
-            description="Receita realizada em barras, investimento em azul e meta semanal como referência"
+            description="Comparativo semanal entre meta de receita e receita realizada"
           >
             <CfoWeeklyChart series={data.series} />
           </Panel>

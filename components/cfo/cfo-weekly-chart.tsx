@@ -2,10 +2,9 @@
 
 import {
   Bar,
+  BarChart,
   CartesianGrid,
-  ComposedChart,
   Legend,
-  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,6 +17,7 @@ import { formatCurrency } from "@/lib/utils";
 type TooltipPayload = {
   dataKey?: string | number;
   name?: string | number;
+  payload?: MetasProgressPoint;
   value?: string | number;
 };
 
@@ -38,7 +38,6 @@ function compactCurrency(value: number) {
 
 function getSeriesLabel(dataKey: string) {
   if (dataKey === "target") return "Meta da semana";
-  if (dataKey === "investment") return "Investimento";
   return "Receita realizada";
 }
 
@@ -54,7 +53,7 @@ function CfoWeeklyTooltip({ active, label, payload }: TooltipProps) {
 
   const realized = getPayloadValue(payload, "realized");
   const target = getPayloadValue(payload, "target");
-  const investment = getPayloadValue(payload, "investment");
+  const investment = payload[0]?.payload?.investment ?? 0;
   const gap = realized - target;
   const roas = investment > 0 ? realized / investment : 0;
 
@@ -128,28 +127,32 @@ export function CfoWeeklyChart({
   return (
     <div className="h-[320px] min-h-[320px] min-w-0 sm:h-[360px] sm:min-h-[360px]">
       <ResponsiveContainer height="100%" minHeight={320} minWidth={240} width="100%">
-        <ComposedChart
-          barCategoryGap="26%"
+        <BarChart
+          barCategoryGap="28%"
+          barGap={4}
           data={series}
+          layout="vertical"
           margin={{ bottom: 4, left: 4, right: 14, top: 8 }}
         >
           <CartesianGrid
             stroke="var(--fly-chart-grid)"
             strokeDasharray="3 3"
-            vertical={false}
+            horizontal={false}
           />
           <XAxis
-            axisLine={false}
-            dataKey="day"
-            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
-            tickLine={false}
-          />
-          <YAxis
             axisLine={false}
             tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
             tickFormatter={(value) => compactCurrency(Number(value))}
             tickLine={false}
-            width={72}
+            type="number"
+          />
+          <YAxis
+            axisLine={false}
+            dataKey="day"
+            tick={{ fill: "var(--fly-chart-axis)", fontSize: 11 }}
+            tickLine={false}
+            type="category"
+            width={40}
           />
           <Tooltip
             content={<CfoWeeklyTooltip />}
@@ -165,35 +168,21 @@ export function CfoWeeklyChart({
           />
           <Bar
             animationDuration={700}
-            dataKey="realized"
-            fill="var(--fly-chart-revenue)"
-            name="Receita realizada"
-            radius={[6, 6, 0, 0]}
+            barSize={14}
+            dataKey="target"
+            fill="var(--fly-border-strong)"
+            name="Meta da semana"
+            radius={[0, 6, 6, 0]}
           />
           <Bar
             animationDuration={760}
-            dataKey="investment"
-            fill="var(--fly-chart-investment)"
-            name="Investimento"
-            radius={[6, 6, 0, 0]}
+            barSize={14}
+            dataKey="realized"
+            fill="var(--fly-chart-revenue)"
+            name="Receita realizada"
+            radius={[0, 6, 6, 0]}
           />
-          <Line
-            activeDot={{
-              r: 4,
-              stroke: "var(--fly-active-dot-stroke)",
-              strokeWidth: 2,
-            }}
-            animationDuration={820}
-            dataKey="target"
-            dot={false}
-            name="Meta da semana"
-            stroke="var(--fly-text-muted)"
-            strokeDasharray="5 5"
-            strokeLinecap="round"
-            strokeWidth={2}
-            type="monotone"
-          />
-        </ComposedChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
