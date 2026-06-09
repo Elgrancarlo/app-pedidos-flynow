@@ -29,6 +29,10 @@ type ValueCellProps = {
   muted?: boolean;
 };
 
+type MobileMetric = ValueCellProps & {
+  wide?: boolean;
+};
+
 function formatDate(value: string) {
   return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -59,6 +63,10 @@ function formatPercentValue(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "Não informado";
 
   return `${formatInputValue(value)}%`;
+}
+
+function formatMobileValue(value: string) {
+  return value === "Não informado" ? "Pendente" : value;
 }
 
 function parseNumberInput(value: string) {
@@ -144,7 +152,7 @@ function TextInput({
 
 function ValueCell({ label, muted = false, value }: ValueCellProps) {
   return (
-    <div className="min-w-0">
+    <div className="hidden min-w-0 xl:block">
       <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)] xl:sr-only">
         {label}
       </p>
@@ -158,6 +166,32 @@ function ValueCell({ label, muted = false, value }: ValueCellProps) {
         {value}
       </p>
     </div>
+  );
+}
+
+function MobileMetricGrid({ items }: { items: MobileMetric[] }) {
+  return (
+    <dl className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-2.5 py-2 xl:hidden">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className={item.wide ? "col-span-2 min-w-0" : "min-w-0"}
+        >
+          <dt className="text-[9px] font-semibold uppercase leading-3 text-[var(--fly-text-dim)]">
+            {item.label}
+          </dt>
+          <dd
+            className={
+              item.muted
+                ? "mt-0.5 truncate text-xs font-medium tabular-nums text-[var(--fly-text-muted)]"
+                : "mt-0.5 truncate text-xs font-semibold tabular-nums text-[var(--fly-text)]"
+            }
+          >
+            {formatMobileValue(item.value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -306,6 +340,34 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
         const isComplete = week.missingFields.length === 0;
         const isEditing = editingWeek === week.semana;
         const hasNote = Boolean(week.notas?.trim());
+        const mobileMetrics: MobileMetric[] = [
+          {
+            label: "Lucro",
+            muted: week.lucroLiquido == null,
+            value: formatCurrencyValue(week.lucroLiquido),
+          },
+          {
+            label: "EBITDA",
+            muted: week.ebitdaPct == null,
+            value: formatPercentValue(week.ebitdaPct),
+          },
+          {
+            label: "CMV",
+            muted: week.cmvPct == null,
+            value: formatPercentValue(week.cmvPct),
+          },
+          {
+            label: "Eficiência",
+            muted: week.eficienciaPct == null,
+            value: formatPercentValue(week.eficienciaPct),
+          },
+          {
+            label: "Notas",
+            muted: !hasNote,
+            value: hasNote ? week.notas ?? "" : "Sem nota",
+            wide: true,
+          },
+        ];
 
         return (
           <div key={week.semana} className="border-b border-[var(--fly-divider-subtle)] last:border-b-0">
@@ -327,6 +389,8 @@ export function CfoWeeklyInputs({ month, weeks }: CfoWeeklyInputsProps) {
               <div className="hidden xl:block">
                 <StatusText isComplete={isComplete} />
               </div>
+
+              <MobileMetricGrid items={mobileMetrics} />
 
               <ValueCell
                 label="Lucro líquido"
