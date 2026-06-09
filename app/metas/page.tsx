@@ -147,7 +147,7 @@ export default async function MetasPage({
                 detail: `${formatPercent(channel.share)} do orçamento · ROAS ${formatRatio(channel.roas)}`,
                 label: channel.label,
                 meter: channel.share,
-                tone: channel.share > 0.3 ? ("gold" as const) : ("neutral" as const),
+                tone: "blue" as const,
                 value: formatCurrency(channel.investment),
               }))}
               valueLabel="Invest."
