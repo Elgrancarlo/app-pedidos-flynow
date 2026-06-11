@@ -99,6 +99,7 @@ type PedidosActionResult = {
 };
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const TABLE_ITEM_LIMIT = 1000;
 const DETAIL_DRAWER_ANIMATION_MS = 220;
 const KANBAN_COLUMN_CARD_LIMIT = 12;
 const KANBAN_PAYMENT_STATUSES = new Set<PedidoStatusPagamento>([
@@ -1156,6 +1157,7 @@ function FilterPanel({
 
 function SummaryStrip({
   filteredCount,
+  limitLabel,
   totalPeriodCount,
   filteredValue,
   periodoLabel,
@@ -1163,6 +1165,7 @@ function SummaryStrip({
   onViewChange,
 }: {
   filteredCount: number;
+  limitLabel?: string | null;
   totalPeriodCount: number;
   filteredValue: number;
   periodoLabel: string;
@@ -1187,6 +1190,7 @@ function SummaryStrip({
         <p className="mt-1 text-xs text-[var(--fly-text-dim)]">
           {periodoLabel} · base do periodo:{" "}
           {totalPeriodCount.toLocaleString("pt-BR")}
+          {limitLabel ? <> · {limitLabel}</> : null}
         </p>
       </div>
       <ViewToggle view={view} onChange={onViewChange} />
@@ -2104,14 +2108,23 @@ export default function PedidosClientView({
     [filteredPedidos]
   );
 
-  const displayPedidos = view === "kanban" ? kanbanPedidos : filteredPedidos;
+  const tablePedidos = useMemo(
+    () => filteredPedidos.slice(0, TABLE_ITEM_LIMIT),
+    [filteredPedidos]
+  );
+  const summaryPedidos = view === "kanban" ? kanbanPedidos : filteredPedidos;
+  const displayPedidos = view === "kanban" ? kanbanPedidos : tablePedidos;
+  const tableLimitLabel =
+    view === "tabela" && filteredPedidos.length > tablePedidos.length
+      ? `tabela: ${tablePedidos.length.toLocaleString("pt-BR")} mais recentes`
+      : null;
 
   const filteredValue = useMemo(
     () =>
-      displayPedidos
+      summaryPedidos
         .filter((pedido) => pedido.paymentStatus === "paid")
         .reduce((total, pedido) => total + (pedido.amount ?? 0), 0),
-    [displayPedidos]
+    [summaryPedidos]
   );
 
   const totalPages = Math.max(Math.ceil(displayPedidos.length / pageSize), 1);
@@ -2354,7 +2367,8 @@ export default function PedidosClientView({
             >
               <div className="space-y-4">
                 <SummaryStrip
-                  filteredCount={displayPedidos.length}
+                  filteredCount={summaryPedidos.length}
+                  limitLabel={tableLimitLabel}
                   totalPeriodCount={periodPedidos.length}
                   filteredValue={filteredValue}
                   periodoLabel={periodoLabel}
