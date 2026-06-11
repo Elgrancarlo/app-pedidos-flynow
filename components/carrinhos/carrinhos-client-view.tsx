@@ -844,12 +844,14 @@ function FilterPanel({
 function SummaryStrip({
   filteredCount,
   filteredEventCount,
+  limitLabel,
   periodoLabel,
   view,
   onViewChange,
 }: {
   filteredCount: number;
   filteredEventCount: number;
+  limitLabel?: string | null;
   periodoLabel: string;
   view: ViewMode;
   onViewChange: (view: ViewMode) => void;
@@ -870,6 +872,12 @@ function SummaryStrip({
           </span>
           <span className="text-[var(--fly-text-dim)]">·</span>
           <span>{periodoLabel}</span>
+          {limitLabel ? (
+            <>
+              <span className="text-[var(--fly-text-dim)]">·</span>
+              <span>{limitLabel}</span>
+            </>
+          ) : null}
         </div>
       </div>
       <ViewToggle view={view} onChange={onViewChange} />
@@ -1280,31 +1288,6 @@ function CarrinhosSkeleton() {
         </div>
       </div>
       <span className="sr-only">Carregando carrinhos.</span>
-    </div>
-  );
-}
-
-function ActionNotice({
-  message,
-  onDismiss,
-}: {
-  message: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-2 text-xs font-medium text-[var(--fly-brand-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
-    >
-      <span>{message}</span>
-      <button
-        type="button"
-        aria-label="Dispensar aviso"
-        onClick={onDismiss}
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded-[7px] text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-soft)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-      >
-        <X aria-hidden="true" className="size-3.5" />
-      </button>
     </div>
   );
 }
@@ -1797,9 +1780,6 @@ export default function CarrinhosClientView({
   const [pageSize, setPageSize] = useState<number>(25);
   const [page, setPage] = useState(1);
   const [selectedCarrinho, setSelectedCarrinho] = useState<Carrinho | null>(null);
-  const [actionNotice, setActionNotice] = useState<string | null>(
-    dataWarning ?? null
-  );
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
@@ -1811,8 +1791,7 @@ export default function CarrinhosClientView({
     setRange(periodoInicial);
     setActiveRange(getRangePresetKey(periodoInicial));
     setStatus("success");
-    setActionNotice(dataWarning ?? null);
-  }, [dataWarning, periodoInicial.endDate, periodoInicial.startDate]);
+  }, [periodoInicial.endDate, periodoInicial.startDate]);
 
   useEffect(() => {
     return () => {
@@ -1944,6 +1923,12 @@ export default function CarrinhosClientView({
     (originCampaign !== "all" ? 1 : 0);
 
   const periodoLabel = formatCarrinhosRange(range.startDate, range.endDate);
+  const tableLimitLabel = useMemo(() => {
+    if (!dataWarning?.toLowerCase().includes("tabela exibe")) return null;
+
+    const match = dataWarning.match(/os\s+([\d.]+)\s+carrinhos/i);
+    return match ? `tabela: ${match[1]} mais recentes` : "tabela limitada";
+  }, [dataWarning]);
   const isRefreshing = status === "refreshing";
   const contentVersion = `${range.startDate}:${range.endDate}`;
   const calendarValue = useMemo<RangeValue>(
@@ -2062,13 +2047,6 @@ export default function CarrinhosClientView({
               isRefreshing && "flynow-dashboard-content--refreshing"
             )}
           >
-            {actionNotice ? (
-              <ActionNotice
-                message={actionNotice}
-                onDismiss={() => setActionNotice(null)}
-              />
-            ) : null}
-
             <div
               className="flynow-dashboard-enter-item"
               style={{ "--flynow-enter-delay": "0ms" } as CSSProperties}
@@ -2093,6 +2071,7 @@ export default function CarrinhosClientView({
                 <SummaryStrip
                   filteredCount={filteredCarrinhos.length}
                   filteredEventCount={filteredEventCount}
+                  limitLabel={tableLimitLabel}
                   periodoLabel={periodoLabel}
                   view={view}
                   onViewChange={setView}
