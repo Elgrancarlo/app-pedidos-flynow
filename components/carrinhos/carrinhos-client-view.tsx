@@ -1803,6 +1803,11 @@ export default function CarrinhosClientView({
   const deferredQuery = useDeferredValue(query);
 
   useEffect(() => {
+    if (refreshTimerRef.current !== null) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+
     setRange(periodoInicial);
     setActiveRange(getRangePresetKey(periodoInicial));
     setStatus("success");
@@ -1969,7 +1974,7 @@ export default function CarrinhosClientView({
     refreshTimerRef.current = window.setTimeout(() => {
       setStatus("success");
       refreshTimerRef.current = null;
-    }, 760);
+    }, 15_000);
   }, []);
 
   const navigateToRange = useCallback((nextRange: { startDate: string; endDate: string }) => {
@@ -1987,12 +1992,10 @@ export default function CarrinhosClientView({
       nextRange.startDate !== range.startDate ||
       nextRange.endDate !== range.endDate;
 
-    setActiveRange(preset);
     if (didChange) {
       startDateRefresh();
       navigateToRange(nextRange);
     }
-    setRange(nextRange);
   }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const selectCalendarRange = useCallback((value: RangeValue | null) => {
@@ -2006,12 +2009,10 @@ export default function CarrinhosClientView({
       normalizedRange.startDate !== range.startDate ||
       normalizedRange.endDate !== range.endDate;
 
-    setActiveRange("custom");
     if (didChange) {
       startDateRefresh();
       navigateToRange(normalizedRange);
     }
-    setRange(normalizedRange);
   }, [navigateToRange, range.endDate, range.startDate, startDateRefresh]);
 
   const retry = useCallback(() => {
