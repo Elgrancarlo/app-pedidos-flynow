@@ -9,6 +9,15 @@ interface FormEntradaProps {
   grupos: string[];
 }
 
+const fieldShell =
+  "group min-w-0 border-b border-[var(--fly-divider)] pb-1 transition-[border-color,box-shadow] duration-150 hover:border-[var(--fly-border-strong)] focus-within:border-[var(--fly-brand-border)] focus-within:shadow-[0_1px_0_var(--fly-brand-border)]";
+const fieldLabel =
+  "text-[10px] font-semibold uppercase leading-4 text-[var(--fly-text-dim)]";
+const inputClass =
+  "h-7 w-full min-w-0 bg-transparent text-[13px] font-semibold text-[var(--fly-text)] outline-none placeholder:text-[var(--fly-text-dim)]";
+const selectTriggerClass =
+  "h-7 rounded-none border-0 bg-transparent px-0 text-[13px] font-semibold text-[var(--fly-text)] shadow-none hover:border-transparent hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-transparent data-[state=open]:bg-transparent";
+
 export default function FormEntrada({ grupos }: FormEntradaProps) {
   const router = useRouter();
   const [grupo, setGrupo] = useState("");
@@ -63,62 +72,41 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid gap-3 md:grid-cols-[minmax(0,1fr)_112px] 2xl:grid-cols-[minmax(0,1fr)_112px_minmax(0,1.1fr)_max-content]"
+      className="grid gap-x-4 gap-y-3 md:grid-cols-[minmax(0,1fr)_92px] 2xl:grid-cols-[minmax(220px,1fr)_92px_minmax(220px,1fr)_auto] 2xl:items-end"
     >
-      <div className="grid min-w-0 gap-1">
-        <label className="text-xs font-medium text-[var(--fly-text-muted)]">
-          Produto
-        </label>
+      <div className={fieldShell}>
+        <label className={fieldLabel}>Produto</label>
         <SystemSelect
           ariaLabel="Selecionar produto"
           value={grupo}
           onValueChange={setGrupo}
           options={grupoOptions}
           placeholder="Selecionar produto..."
+          triggerClassName={selectTriggerClass}
         />
       </div>
 
-      {grupo === "__novo__" && (
-        <div className="grid min-w-0 gap-1 md:col-span-2 2xl:col-span-2">
-          <label className="text-xs font-medium text-[var(--fly-text-muted)]">
-            Nome do produto
-          </label>
-          <input
-            type="text"
-            value={novoGrupo}
-            onChange={(e) => setNovoGrupo(e.target.value)}
-            placeholder="Ex: GlicoRESET"
-            className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
-            required
-          />
-        </div>
-      )}
-
-      <div className="grid min-w-0 gap-1">
-        <label className="text-xs font-medium text-[var(--fly-text-muted)]">
-          Qtd potes
-        </label>
+      <div className={fieldShell}>
+        <label className={fieldLabel}>Qtd potes</label>
         <input
           type="number"
           value={qtd}
           onChange={(e) => setQtd(e.target.value)}
           min="1"
           placeholder="0"
-          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+          className={inputClass}
           required
         />
       </div>
 
-      <div className="grid min-w-0 gap-1 md:col-span-2 2xl:col-span-1">
-        <label className="text-xs font-medium text-[var(--fly-text-muted)]">
-          Observação (opcional)
-        </label>
+      <div className="group min-w-0 border-b border-[var(--fly-divider)] pb-1 transition-[border-color,box-shadow] duration-150 hover:border-[var(--fly-border-strong)] focus-within:border-[var(--fly-brand-border)] focus-within:shadow-[0_1px_0_var(--fly-brand-border)] md:col-span-2 2xl:col-span-1">
+        <label className={fieldLabel}>Observação</label>
         <input
           type="text"
           value={obs}
           onChange={(e) => setObs(e.target.value)}
           placeholder="Ex: NF 12345"
-          className="h-10 w-full min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-sm text-[var(--fly-text-soft)] outline-none transition-colors duration-150 placeholder:text-[var(--fly-text-dim)] hover:border-[var(--fly-border-strong)] focus:border-[var(--fly-brand-border)] focus:ring-2 focus:ring-[var(--fly-brand-ring)]"
+          className={inputClass}
         />
       </div>
 
@@ -127,14 +115,28 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
           type="submit"
           aria-label="Registrar entrada de estoque"
           disabled={loading}
-          className="h-10 w-full whitespace-nowrap rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand)] px-4 text-xs font-semibold text-[#050607] shadow-[0_10px_24px_rgba(214,168,79,0.12)] transition-colors duration-150 hover:bg-[var(--fly-chart-revenue-active)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          className="inline-flex h-7 w-full cursor-pointer items-center justify-center rounded-[7px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
-          {loading ? "Salvando..." : "Registrar"}
+          {loading ? "Salvando..." : "Registrar entrada"}
         </button>
       </div>
 
+      {grupo === "__novo__" && (
+        <div className={`${fieldShell} md:col-span-2 2xl:col-span-4`}>
+          <label className={fieldLabel}>Novo produto</label>
+          <input
+            type="text"
+            value={novoGrupo}
+            onChange={(e) => setNovoGrupo(e.target.value)}
+            placeholder="Ex: Glico Reset"
+            className={inputClass}
+            required
+          />
+        </div>
+      )}
+
       {erro ? (
-        <p className="text-sm text-[var(--fly-danger-strong)] md:col-span-2 2xl:col-span-4">
+        <p className="text-xs font-medium text-[var(--fly-danger-strong)] md:col-span-2 2xl:col-span-4">
           {erro}
         </p>
       ) : null}
