@@ -123,7 +123,7 @@ export function RouteRefreshFrame({
     previousHref.current = href;
     setContentKey(href);
     startRefresh(SETTLED_REFRESH_TIMEOUT_MS);
-  }, [startRefresh]);
+  });
 
   useEffect(() => {
     return () => {
