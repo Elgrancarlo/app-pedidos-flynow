@@ -7,6 +7,7 @@ import {
   SystemDateRangeFilter,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import type { EstoquePeriodoPreset } from "@/lib/estoque";
 
 type EstoquePeriodPreset = SystemDateRangePreset<EstoquePeriodoPreset>;
@@ -38,6 +39,9 @@ export function EstoquePeriodFilter({ active }: EstoquePeriodFilterProps) {
   const presets = useMemo(() => PERIOD_OPTIONS, []);
 
   function selectPreset(preset: EstoquePeriodPreset) {
+    if (preset.key === active) return;
+
+    announceRouteRefreshStart();
     router.push(rangeHref(preset.key));
   }
 
