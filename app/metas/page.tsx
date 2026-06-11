@@ -243,6 +243,26 @@ function formatGoalValue(value: number | null, unit: MetaUnit) {
   return formatNumber(value);
 }
 
+function getExpectedDelta(row: GpdRow) {
+  return row.realized - row.expected;
+}
+
+function formatExpectedDelta(value: number) {
+  if (!Number.isFinite(value) || Math.abs(value) < 1) return "No ritmo";
+
+  return `${value > 0 ? "+" : "-"} ${formatCurrency(Math.abs(value))}`;
+}
+
+function getExpectedDeltaClass(value: number) {
+  if (!Number.isFinite(value) || Math.abs(value) < 1) {
+    return "text-[var(--fly-text-soft)]";
+  }
+
+  if (value > 0) return "text-[var(--fly-success-text)]";
+
+  return "text-[var(--fly-danger-strong)]";
+}
+
 function statusFromRatio(ratio: number | null, inverse = false): GpdStatus {
   if (ratio == null || !Number.isFinite(ratio)) return "empty";
 
@@ -628,39 +648,24 @@ function GpdTable({
   showRoas?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[980px] text-left text-sm">
-        <thead>
-          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[26%] px-3 py-3">Canal / fator</th>
-            <th className="w-[14%] px-3 py-3 text-right">Meta mês</th>
-            <th className="w-[14%] px-3 py-3 text-right">Esperado até hoje</th>
-            <th className="w-[14%] px-3 py-3 text-right">Realizado</th>
-            <th className="w-[10%] px-3 py-3 text-right">% meta</th>
-            <th className="w-[14%] px-3 py-3 text-right">Projeção mês</th>
-            {showRoas ? <th className="w-[10%] px-3 py-3 text-right">ROAS atual</th> : null}
-            <th className="w-[8%] px-3 py-3 text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
-          {rows.map((row) => (
-            <tr
-              key={row.id}
+    <>
+      <div className="space-y-2 lg:hidden">
+        {rows.map((row) => {
+          const delta = getExpectedDelta(row);
+
+          return (
+            <article
               className={cn(
-                "transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
-                row.kind === "group" && "bg-[var(--fly-row-bg)]",
+                "rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3",
+                row.kind === "group" &&
+                  "border-[var(--fly-border)] bg-[var(--fly-surface)]",
                 row.kind === "total" &&
-                  "bg-[var(--fly-surface-elevated)] text-[var(--fly-text)]",
+                  "border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)]",
               )}
+              key={row.id}
             >
-              <td className="px-3 py-3.5">
-                <div
-                  className={cn(
-                    "min-w-0",
-                    row.depth === 1 && "pl-4",
-                    row.kind !== "item" && "font-semibold",
-                  )}
-                >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       aria-hidden="true"
@@ -673,50 +678,247 @@ function GpdTable({
                             : "bg-[var(--fly-border-strong)]",
                       )}
                     />
-                    <span className="truncate text-[var(--fly-text)]">{row.label}</span>
+                    <p
+                      className={cn(
+                        "truncate text-sm text-[var(--fly-text)]",
+                        row.kind !== "item" && "font-semibold",
+                      )}
+                    >
+                      {row.label}
+                    </p>
                   </div>
                   {row.note ? (
-                    <p className="mt-1 truncate text-xs font-normal text-[var(--fly-text-muted)]">
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--fly-text-muted)]">
                       {row.note}
                     </p>
                   ) : null}
                 </div>
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                {formatCurrency(row.meta)}
-              </td>
-              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                {formatCurrency(row.expected)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
-                {formatCurrency(row.realized)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
-                {row.percent == null ? "-" : formatPercent(row.percent)}
-              </td>
-              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
-                {formatCurrency(row.projection)}
-              </td>
-              {showRoas ? (
-                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                  {formatRatio(row.roas)}
-                </td>
-              ) : null}
-              <td className="px-3 py-3.5 text-right">
                 <StatusLabel status={row.status} />
-              </td>
-            </tr>
-          ))}
+              </div>
+
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Realizado
+                  </dt>
+                  <dd className="mt-1 truncate text-lg font-semibold tabular-nums text-[var(--fly-info-text)]">
+                    {formatCurrency(row.realized)}
+                  </dd>
+                </div>
+                <div className="min-w-0 text-right">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    % meta
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold tabular-nums text-[var(--fly-text)]">
+                    {row.percent == null ? "-" : formatPercent(row.percent)}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    vs esperado
+                  </dt>
+                  <dd
+                    className={cn(
+                      "mt-1 truncate text-sm font-semibold tabular-nums",
+                      getExpectedDeltaClass(delta),
+                    )}
+                  >
+                    {formatExpectedDelta(delta)}
+                  </dd>
+                </div>
+                <div className="min-w-0 text-right">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Projeção
+                  </dt>
+                  <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                    {formatCurrency(row.projection)}
+                  </dd>
+                </div>
+                {showRoas ? (
+                  <div className="min-w-0">
+                    <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                      ROAS
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                      {formatRatio(row.roas)}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[1120px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            <th className="w-[24%] px-3 py-3">Canal / fator</th>
+            <th className="w-[12%] px-3 py-3 text-right">Meta mês</th>
+            <th className="w-[13%] px-3 py-3 text-right">Esperado até hoje</th>
+            <th className="w-[13%] px-3 py-3 text-right">Realizado</th>
+            <th className="w-[13%] px-3 py-3 text-right">Desvio vs esperado</th>
+            <th className="w-[9%] px-3 py-3 text-right">% meta</th>
+            <th className="w-[12%] px-3 py-3 text-right">Projeção mês</th>
+            {showRoas ? <th className="w-[10%] px-3 py-3 text-right">ROAS atual</th> : null}
+            <th className="w-[8%] px-3 py-3 text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+          {rows.map((row) => {
+            const delta = getExpectedDelta(row);
+
+            return (
+              <tr
+                key={row.id}
+                className={cn(
+                  "border-l-2 border-l-transparent transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                  row.kind === "group" &&
+                    "border-l-[var(--fly-border-strong)] bg-[var(--fly-row-bg)]",
+                  row.kind === "total" &&
+                    "border-l-[var(--fly-chart-revenue)] bg-[var(--fly-surface-elevated)] text-[var(--fly-text)]",
+                )}
+              >
+                <td className="px-3 py-3.5">
+                  <div
+                    className={cn(
+                      "min-w-0",
+                      row.depth === 1 && "pl-4",
+                      row.kind !== "item" && "font-semibold",
+                    )}
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "size-1.5 shrink-0 rounded-full",
+                          row.kind === "total"
+                            ? "bg-[var(--fly-chart-revenue)]"
+                            : row.kind === "group"
+                              ? "bg-[var(--fly-text-soft)]"
+                              : "bg-[var(--fly-border-strong)]",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "truncate",
+                          row.kind === "item"
+                            ? "text-[var(--fly-text-soft)]"
+                            : "text-[var(--fly-text)]",
+                        )}
+                      >
+                        {row.label}
+                      </span>
+                    </div>
+                    {row.note ? (
+                      <p className="mt-1 truncate text-xs font-normal text-[var(--fly-text-muted)]">
+                        {row.note}
+                      </p>
+                    ) : null}
+                  </div>
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-muted)]">
+                  {formatCurrency(row.meta)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-muted)]">
+                  {formatCurrency(row.expected)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
+                  {formatCurrency(row.realized)}
+                </td>
+                <td
+                  className={cn(
+                    "px-3 py-3.5 text-right font-semibold tabular-nums",
+                    getExpectedDeltaClass(delta),
+                  )}
+                >
+                  {formatExpectedDelta(delta)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                  {row.percent == null ? "-" : formatPercent(row.percent)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatCurrency(row.projection)}
+                </td>
+                {showRoas ? (
+                  <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                    {formatRatio(row.roas)}
+                  </td>
+                ) : null}
+                <td className="px-3 py-3.5 text-right">
+                  <StatusLabel status={row.status} />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
 function LossTable({ rows }: { rows: LossRow[] }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-sm">
+    <>
+      <div className="space-y-2 lg:hidden">
+        {rows.map((row) => {
+          const ratio =
+            row.target && row.actual != null && row.target > 0
+              ? row.actual / row.target
+              : null;
+
+          return (
+            <article
+              className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3"
+              key={row.id}
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
+                    {row.label}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+                    {row.action}
+                  </p>
+                </div>
+                <StatusLabel status={row.status} />
+              </div>
+
+              <dl className="mt-3 grid grid-cols-3 gap-3">
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Meta
+                  </dt>
+                  <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                    {formatGoalValue(row.target, row.unit)}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    Atual
+                  </dt>
+                  <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-[var(--fly-info-text)]">
+                    {formatGoalValue(row.actual, row.unit)}
+                  </dd>
+                </div>
+                <div className="min-w-0 text-right">
+                  <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+                    vs meta
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                    {ratio == null ? "-" : formatPercent(row.inverse ? ratio - 1 : ratio)}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[760px] text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             <th className="w-[24%] px-3 py-3">Indicador</th>
@@ -762,7 +964,8 @@ function LossTable({ rows }: { rows: LossRow[] }) {
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
 
