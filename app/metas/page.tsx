@@ -995,6 +995,14 @@ export default async function MetasPage({
     pace,
     planningData,
   });
+  const financialSummaryRow = createRow({
+    id: "financial-summary",
+    kind: "total",
+    label: "Receita financeira",
+    meta: cfoData.summary.revenue.target || totalRow.meta,
+    pace,
+    realized: cfoData.summary.revenue.realized,
+  });
   const lossRows = buildLossRows(cfoData.goals);
   const visibleOperationRows =
     activeGpdView === "frontend"
@@ -1017,28 +1025,32 @@ export default async function MetasPage({
       <PageBody>
         <StatGrid columns="xl:grid-cols-5">
           <StatCard
-            detail="soma das metas de tráfego front e back-end"
+            detail="meta financeira mensal"
             label="Meta do mês"
             tone="gold"
-            value={formatCurrency(totalRow.meta)}
+            value={formatCurrency(financialSummaryRow.meta)}
           />
           <StatCard
-            detail={`esperado até hoje ${formatCurrency(totalRow.expected)}`}
+            detail={`esperado até hoje ${formatCurrency(financialSummaryRow.expected)}`}
             label="Realizado"
             tone="blue"
-            value={formatCurrency(totalRow.realized)}
+            value={formatCurrency(financialSummaryRow.realized)}
           />
           <StatCard
             detail={`${pace.elapsedDays}/${pace.totalDays} dias considerados`}
             label="% da meta"
-            tone={totalRow.status === "bad" ? "orange" : "green"}
-            value={totalRow.percent == null ? "-" : formatPercent(totalRow.percent)}
+            tone={financialSummaryRow.status === "bad" ? "orange" : "green"}
+            value={
+              financialSummaryRow.percent == null
+                ? "-"
+                : formatPercent(financialSummaryRow.percent)
+            }
           />
           <StatCard
             detail="ritmo atual projetado para o fechamento"
             label="Projeção mês"
             tone="neutral"
-            value={formatCurrency(totalRow.projection)}
+            value={formatCurrency(financialSummaryRow.projection)}
           />
           <StatCard
             detail={`investimento realizado ${formatCurrency(cfoData.summary.investment.realized)}`}
