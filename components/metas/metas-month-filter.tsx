@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import { SystemSelect } from "@/components/workspace/system-select";
 import { getTodayInAppTimezone } from "@/lib/app-dates";
 
@@ -54,7 +55,12 @@ export function MetasMonthFilter({
         align="end"
         ariaLabel="Selecionar mês das metas"
         displayLabel="Mês"
-        onValueChange={(nextMonth) => router.push(`${basePath}?mes=${nextMonth}`)}
+        onValueChange={(nextMonth) => {
+          if (nextMonth === month) return;
+
+          announceRouteRefreshStart();
+          router.push(`${basePath}?mes=${nextMonth}`);
+        }}
         options={options}
         selectedLabel={formatMonthLabel(month)}
         triggerClassName="h-10 rounded-[12px] lg:h-9"

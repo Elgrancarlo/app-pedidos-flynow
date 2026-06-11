@@ -1406,6 +1406,26 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 
 .flynow-dashboard-skeleton {
   animation: flynow-dashboard-content-in 420ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  isolation: isolate;
+  position: relative;
+}
+
+.flynow-dashboard-skeleton::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 12;
+  border-radius: 10px;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(214, 168, 79, 0.04) 42%,
+    rgba(255, 255, 255, 0.055) 50%,
+    transparent 64%
+  );
+  transform: translate3d(-120%, 0, 0);
+  animation: flynow-dashboard-refresh-sweep 1.05s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
 .flynow-dashboard-skeleton-panel {
@@ -1442,6 +1462,16 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 0%,
     rgba(184, 137, 45, 0.045) 42%,
     rgba(255, 255, 255, 0.62) 50%,
+    transparent 64%
+  );
+}
+
+.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-skeleton::before {
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(184, 137, 45, 0.035) 42%,
+    rgba(255, 255, 255, 0.58) 50%,
     transparent 64%
   );
 }
@@ -1889,6 +1919,7 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   .flynow-dashboard-content,
   .flynow-dashboard-enter-item,
   .flynow-dashboard-skeleton,
+  .flynow-dashboard-skeleton::before,
   .flynow-dashboard-skeleton-panel::after,
   .flynow-detail-drawer__overlay,
   .flynow-detail-drawer__panel,
@@ -1912,6 +1943,10 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   }
 
   .flynow-dashboard-content--refreshing::after {
+    display: none;
+  }
+
+  .flynow-dashboard-skeleton::before {
     display: none;
   }
 

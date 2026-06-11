@@ -8,6 +8,7 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import type { MetasRange } from "@/lib/metas";
 
@@ -107,20 +108,34 @@ export function MetasPeriodFilter({ range }: { range: MetasRange }) {
   );
 
   function selectPresetRange(preset: MetasPreset) {
+    if (
+      preset.range.startDate === range.startDate &&
+      preset.range.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
     router.push(rangeHref(preset.range));
   }
 
   function selectCalendarRange(value: RangeValue | null) {
     if (!value?.start || !value.end) return;
 
-    router.push(
-      rangeHref(
-        normalizeRange(
-          toMetasDateString(value.start),
-          toMetasDateString(value.end)
-        )
-      )
+    const nextRange = normalizeRange(
+      toMetasDateString(value.start),
+      toMetasDateString(value.end)
     );
+
+    if (
+      nextRange.startDate === range.startDate &&
+      nextRange.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
+    router.push(rangeHref(nextRange));
   }
 
   return (

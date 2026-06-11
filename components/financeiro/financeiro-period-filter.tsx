@@ -8,6 +8,7 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import type { FinanceiroRange } from "@/lib/financeiro";
 
@@ -111,6 +112,14 @@ export function FinanceiroPeriodFilter({ range }: FinanceiroPeriodFilterProps) {
   );
 
   function selectPresetRange(preset: FinanceiroPreset) {
+    if (
+      preset.range.startDate === range.startDate &&
+      preset.range.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
     router.push(rangeHref(preset.range));
   }
 
@@ -122,6 +131,14 @@ export function FinanceiroPeriodFilter({ range }: FinanceiroPeriodFilterProps) {
       toFinanceiroDateString(value.end)
     );
 
+    if (
+      nextRange.startDate === range.startDate &&
+      nextRange.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
     router.push(rangeHref(nextRange));
   }
 

@@ -8,6 +8,7 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 
 interface FiltroPeriodoProps {
   startDate: string;
@@ -116,7 +117,13 @@ export default function FiltroPeriodo({
 
     const start = toDateString(value.start);
     const end = toDateString(value.end);
-    router.push(rangeHref(basePath, start <= end ? start : end, start <= end ? end : start));
+    const nextStart = start <= end ? start : end;
+    const nextEnd = start <= end ? end : start;
+
+    if (nextStart === startDate && nextEnd === endDate) return;
+
+    announceRouteRefreshStart();
+    router.push(rangeHref(basePath, nextStart, nextEnd));
   }
 
   return (

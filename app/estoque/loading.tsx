@@ -111,7 +111,7 @@ export default function EstoqueLoading() {
         role="status"
         aria-label="Carregando estoque"
         aria-busy="true"
-        className="flynow-dashboard-skeleton flynow-dashboard-content flynow-dashboard-content--refreshing relative min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
+        className="flynow-dashboard-skeleton min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
           <MetricCardsSkeleton />

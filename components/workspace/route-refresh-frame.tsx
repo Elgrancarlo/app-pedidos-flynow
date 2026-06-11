@@ -13,6 +13,12 @@ export function announceRouteRefreshStart() {
   window.dispatchEvent(new Event(ROUTE_REFRESH_START_EVENT));
 }
 
+function getNavigatingAnchor(target: EventTarget | null) {
+  if (!(target instanceof Element)) return null;
+
+  return target.closest<HTMLAnchorElement>("a[href]");
+}
+
 export function RouteRefreshFrame({
   children,
   className,
@@ -37,6 +43,52 @@ export function RouteRefreshFrame({
       refreshTimeout.current = null;
     }, timeoutMs);
   }, []);
+
+  useEffect(() => {
+    const handleInternalLinkClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+
+      const anchor = getNavigatingAnchor(event.target);
+
+      if (
+        !anchor ||
+        anchor.hasAttribute("download") ||
+        (anchor.target && anchor.target !== "_self")
+      ) {
+        return;
+      }
+
+      const url = new URL(anchor.href, window.location.href);
+
+      if (url.origin !== window.location.origin) {
+        return;
+      }
+
+      const currentHref = `${window.location.pathname}${window.location.search}`;
+      const nextHref = `${url.pathname}${url.search}`;
+
+      if (nextHref === currentHref) {
+        return;
+      }
+
+      startRefresh(PENDING_REFRESH_TIMEOUT_MS);
+    };
+
+    document.addEventListener("click", handleInternalLinkClick, true);
+
+    return () => {
+      document.removeEventListener("click", handleInternalLinkClick, true);
+    };
+  }, [startRefresh]);
 
   useEffect(() => {
     const handleRouteRefreshStart = () => {

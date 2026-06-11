@@ -8,6 +8,7 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import type { PerformanceRange } from "@/lib/performance-pages";
 
@@ -127,6 +128,14 @@ export function AnalyticsPeriodFilter({ range }: AnalyticsPeriodFilterProps) {
   );
 
   function selectPresetRange(preset: AnalyticsPreset) {
+    if (
+      preset.range.startDate === range.startDate &&
+      preset.range.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
     router.push(rangeHref(preset.range));
   }
 
@@ -138,6 +147,14 @@ export function AnalyticsPeriodFilter({ range }: AnalyticsPeriodFilterProps) {
       toAnalyticsDateString(value.end)
     );
 
+    if (
+      nextRange.startDate === range.startDate &&
+      nextRange.endDate === range.endDate
+    ) {
+      return;
+    }
+
+    announceRouteRefreshStart();
     router.push(rangeHref(nextRange));
   }
 

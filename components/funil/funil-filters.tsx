@@ -10,6 +10,7 @@ import {
   type RangeValue,
   type SystemDateRangePreset,
 } from "@/components/workspace/system-date-range-filter";
+import { announceRouteRefreshStart } from "@/components/workspace/route-refresh-frame";
 import { getTodayInAppTimezone, shiftDateString } from "@/lib/app-dates";
 import type { PerformanceRange } from "@/lib/performance-pages";
 import { cn } from "@/lib/utils";
@@ -168,10 +169,18 @@ export function FunilPeriodFilter({
   );
 
   function applyRange(nextRange: PerformanceRange) {
+    if (
+      nextRange.startDate === range.startDate &&
+      nextRange.endDate === range.endDate
+    ) {
+      return;
+    }
+
     const params = new URLSearchParams(searchParams.toString());
     params.set("startDate", nextRange.startDate);
     params.set("endDate", nextRange.endDate);
     params.delete("page");
+    announceRouteRefreshStart();
     router.push(buildNextHref(pathname, params));
   }
 
@@ -289,6 +298,8 @@ export function FunilQuerySelect({
   const searchParams = useSearchParams();
 
   function selectValue(nextValue: string) {
+    if (nextValue === value) return;
+
     const params = new URLSearchParams(searchParams.toString());
 
     if (nextValue === "all") {
@@ -298,6 +309,7 @@ export function FunilQuerySelect({
     }
 
     params.delete("page");
+    announceRouteRefreshStart();
     router.push(buildNextHref(pathname, params));
   }
 
