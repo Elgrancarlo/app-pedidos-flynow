@@ -63,7 +63,7 @@ export default async function EstoquePage({
   searchParams: Promise<{ dias?: string }>;
 }) {
   const params = await searchParams;
-  const dias = params.dias ? parseInt(params.dias) : null;
+  const dias = params.dias ? parseInt(params.dias) : 30;
   const desde = periodoParaData(dias);
 
   const [grupos, movimentacoes] = await Promise.all([

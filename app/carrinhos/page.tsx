@@ -1,7 +1,7 @@
 import Shell from "@/components/shell";
 import PageHeader from "@/components/page-header";
 import { PAYMENT_STATUS_COLORS, PAYMENT_STATUS_LABELS } from "@/lib/supabase";
-import { getPaytCheckoutMonitor } from "@/lib/payt-checkout";
+import { getPaytCheckoutMonitorOptimized } from "@/lib/payt-checkout";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,8 @@ const PERIODOS = [
   { label: "15 dias", dias: 15 },
   { label: "30 dias", dias: 30 },
 ] as const;
+
+const PAGE_SIZE = 100;
 
 function formatCurrency(value: number | null) {
   if (value == null) return "—";
@@ -37,13 +39,16 @@ function formatPaymentStatus(status: string) {
 export default async function CarrinhosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dias?: string }>;
+  searchParams: Promise<{ dias?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const dias = Math.max(1, Math.min(30, parseInt(params.dias ?? "1") || 1));
+  const page = Math.max(1, parseInt(params.page ?? "1") || 1);
   const horas = dias * 24;
+  const offset = (page - 1) * PAGE_SIZE;
   const periodoAtivo = PERIODOS.find((p) => p.dias === dias) ?? PERIODOS[0];
-  const monitor = await getPaytCheckoutMonitor(horas);
+  const monitor = await getPaytCheckoutMonitorOptimized(horas, PAGE_SIZE, offset);
+  const totalPages = Math.max(1, Math.ceil((monitor.totalRows ?? monitor.rows.length) / PAGE_SIZE));
 
   return (
     <Shell>
@@ -55,9 +60,9 @@ export default async function CarrinhosPage({
         <div className="flex items-center gap-2">
           {PERIODOS.map((p) => {
             const ativo = p.dias === dias;
-            const params = new URLSearchParams();
-            if (p.dias !== 1) params.set("dias", String(p.dias));
-            const href = `/carrinhos${params.size ? "?" + params.toString() : ""}`;
+            const urlParams = new URLSearchParams();
+            if (p.dias !== 1) urlParams.set("dias", String(p.dias));
+            const href = `/carrinhos${urlParams.size ? "?" + urlParams.toString() : ""}`;
             return (
               <a
                 key={p.dias}
@@ -105,7 +110,7 @@ export default async function CarrinhosPage({
                 A tabela mostra o último status não pago por transação/carrinho recebido no webhook.
               </p>
             </div>
-            <span className="text-sm text-gray-500">{monitor.rows.length} carrinhos · {monitor.totalEvents ?? 0} eventos</span>
+            <span className="text-sm text-gray-500">{monitor.totalRows ?? monitor.rows.length} carrinhos · {monitor.totalEvents ?? 0} eventos</span>
           </div>
 
           <div className="mt-4 overflow-x-auto">
@@ -159,6 +164,33 @@ export default async function CarrinhosPage({
               </tbody>
             </table>
           </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+              <span className="text-sm text-gray-500">
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <a
+                    href={`/carrinhos?dias=${dias}&page=${page - 1}`}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Anterior
+                  </a>
+                )}
+                {page < totalPages && (
+                  <a
+                    href={`/carrinhos?dias=${dias}&page=${page + 1}`}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Próxima
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Shell>

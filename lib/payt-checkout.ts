@@ -41,6 +41,14 @@ export interface PaytCheckoutMonitorRow {
   rawCount: number;
 }
 
+export interface PaytCheckoutSummary {
+  openCount: number;
+  lostCount: number;
+  abandonedCount: number;
+  recoveredCount: number;
+  totalEvents: number;
+}
+
 function textValue(value: unknown) {
   if (value == null) return null;
   const text = String(value).trim();
@@ -126,6 +134,111 @@ function eventSortValue(eventAt: string) {
   const time = new Date(eventAt).getTime();
   return Number.isNaN(time) ? 0 : time;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// OPTIMIZED: RPC-based functions (use SQL aggregation instead of JS)
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Fast summary counts via SQL RPC — used by dashboard widget.
+ * Returns only the 4 counters + totalEvents, no rows.
+ */
+export async function getPaytCheckoutSummary(hours = 24): Promise<{
+  windowHours: number;
+  summary: PaytCheckoutSummary;
+}> {
+  const supabase = createServiceClient();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data, error } = await supabase.rpc("checkout_summary_counts", {
+      p_since: since,
+    });
+
+    if (error) throw error;
+
+    const result = typeof data === "string" ? JSON.parse(data) : data;
+    return {
+      windowHours: hours,
+      summary: {
+        openCount: result.openCount ?? 0,
+        lostCount: result.lostCount ?? 0,
+        abandonedCount: result.abandonedCount ?? 0,
+        recoveredCount: result.recoveredCount ?? 0,
+        totalEvents: result.totalEvents ?? 0,
+      },
+    };
+  } catch {
+    // Fallback: use full monitor if RPC not available yet
+    const full = await getPaytCheckoutMonitor(hours);
+    return {
+      windowHours: hours,
+      summary: { ...full.summary, totalEvents: full.totalEvents },
+    };
+  }
+}
+
+/**
+ * Full checkout monitor via SQL RPC — used by /carrinhos page.
+ * Returns summary + paginated rows with timeline.
+ */
+export async function getPaytCheckoutMonitorOptimized(hours = 24, limit = 100, offset = 0) {
+  const supabase = createServiceClient();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  try {
+    const { data, error } = await supabase.rpc("checkout_monitor_summary", {
+      p_since: since,
+      p_limit: limit,
+      p_offset: offset,
+    });
+
+    if (error) throw error;
+
+    const result = typeof data === "string" ? JSON.parse(data) : data;
+    const rows: PaytCheckoutMonitorRow[] = (result.rows ?? []).map((row: any) => ({
+      key: row.key,
+      transactionId: row.transactionId,
+      cartId: row.cartId,
+      customerName: row.customerName,
+      customerEmail: row.customerEmail,
+      customerPhone: row.customerPhone,
+      productName: row.productName,
+      productGroup: row.productGroup,
+      paymentMethod: row.paymentMethod,
+      totalPrice: row.totalPrice != null ? Number(row.totalPrice) : null,
+      status: row.status,
+      eventGroup: row.eventGroup,
+      eventAt: row.eventAt,
+      timeline: row.timeline ?? [],
+      rawCount: row.rawCount ?? 0,
+    }));
+
+    return {
+      windowHours: result.windowHours ?? hours,
+      totalEvents: result.totalEvents ?? 0,
+      totalRows: result.totalRows ?? rows.length,
+      rows,
+      summary: {
+        openCount: result.summary?.openCount ?? 0,
+        lostCount: result.summary?.lostCount ?? 0,
+        abandonedCount: result.summary?.abandonedCount ?? 0,
+        recoveredCount: result.summary?.recoveredCount ?? 0,
+      },
+    };
+  } catch {
+    // Fallback: use legacy JS-based monitor if RPC not available yet
+    const full = await getPaytCheckoutMonitor(hours);
+    return {
+      ...full,
+      totalRows: full.rows.length,
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LEGACY: JS-based function (kept for validation/comparison)
+// ═══════════════════════════════════════════════════════════════════════
 
 export async function getPaytCheckoutMonitor(hours = 24) {
   const supabase = createServiceClient();
@@ -230,52 +343,6 @@ export async function getPaytCheckoutMonitor(hours = 24) {
           });
         }
       }
-    }
-  }
-
-  // Fallback: if event_stream returned nothing, try payt_webhooks_raw
-  if (latestByKey.size === 0) {
-    try {
-      let rawRows: any[] = [];
-      const primaryQuery = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload, received_at")
-        .gte("received_at", since)
-        .order("received_at", { ascending: false })
-        .limit(queryLimit);
-
-      if (primaryQuery.error) {
-        const fallbackQuery = await supabase
-          .from("payt_webhooks_raw")
-          .select("payload, created_at")
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(queryLimit);
-
-        if (!fallbackQuery.error) {
-          rawRows = (fallbackQuery.data ?? []);
-        }
-      } else {
-        rawRows = (primaryQuery.data ?? []);
-      }
-
-      for (const row of rawRows) {
-        const event = buildMonitorRow({ payload: row.payload, received_at: row.received_at ?? null, created_at: row.created_at ?? null });
-        if (event.eventAt < since) continue;
-        const key = event.cartId ?? event.transactionId ?? event.key;
-        const current = latestByKey.get(key);
-        if (!current) {
-          latestByKey.set(key, { ...event, key, timeline: [event.status], rawCount: 1 });
-        } else {
-          current.timeline.push(event.status);
-          current.rawCount += 1;
-          if (eventSortValue(event.eventAt) > eventSortValue(current.eventAt)) {
-            latestByKey.set(key, { ...event, key, timeline: current.timeline, rawCount: current.rawCount });
-          }
-        }
-      }
-    } catch (_) {
-      // ignore fallback errors
     }
   }
 

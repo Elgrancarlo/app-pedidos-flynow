@@ -408,6 +408,48 @@ async function fetchPaytRawEvents() {
   return [] as Array<{ payload: JsonMap; created_at: string | null }>;
 }
 
+async function fetchPaytRawEventsByIds(transactionIds: string[]) {
+  if (transactionIds.length === 0) return [] as Array<{ payload: JsonMap; created_at: string | null }>;
+
+  const supabase = createServiceClient();
+  const results: Array<{ payload: JsonMap; created_at: string | null }> = [];
+  const BATCH = 500;
+
+  for (let i = 0; i < transactionIds.length; i += BATCH) {
+    const batch = transactionIds.slice(i, i + BATCH);
+    const { data, error } = await supabase
+      .from("payt_webhooks_raw")
+      .select("payload, received_at")
+      .in("transaction_id", batch)
+      .order("received_at", { ascending: false });
+
+    if (error) {
+      // Fallback: try without received_at ordering
+      const fallback = await supabase
+        .from("payt_webhooks_raw")
+        .select("payload")
+        .in("transaction_id", batch);
+
+      if (!fallback.error && fallback.data) {
+        results.push(...fallback.data.map((row: { payload: JsonMap }) => ({
+          payload: row.payload,
+          created_at: null,
+        })));
+      }
+      continue;
+    }
+
+    if (data) {
+      results.push(...data.map((row: { payload: JsonMap; received_at?: string }) => ({
+        payload: row.payload,
+        created_at: row.received_at ?? null,
+      })));
+    }
+  }
+
+  return results;
+}
+
 function buildFunilFacts(sales: AnalyticsPaytSale[]) {
   const daily = new Map<string, FunilDailyAccumulator>();
   const source = new Map<string, FunilSourceAccumulator>();
@@ -600,7 +642,7 @@ export async function syncPaytAnalytics({
   );
 
   const transactionIds = new Set(analyticsPedidos.map((pedido) => pedido.payt_transaction_id));
-  const rawEvents = await fetchPaytRawEvents();
+  const rawEvents = await fetchPaytRawEventsByIds(Array.from(transactionIds));
 
   const latestRawByTransaction = new Map<string, { payload: JsonMap; created_at: string | null }>();
   const latestPaidRawByTransaction = new Map<string, { payload: JsonMap; created_at: string | null }>();

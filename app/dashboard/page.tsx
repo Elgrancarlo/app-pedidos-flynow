@@ -1,7 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
 import { buildFunilAiAlerts, defaultAnalyticsDates, getFunilAnalytics } from "@/lib/analytics";
-import { getPaytCheckoutMonitor } from "@/lib/payt-checkout";
-import { getFinancialEventMetrics } from "@/lib/financeiro";
 import { getTodayInAppTimezone, getUtcRangeForAppDate } from "@/lib/app-dates";
 import Shell from "@/components/shell";
 import PageHeader from "@/components/page-header";
@@ -13,62 +11,72 @@ import { ShoppingBag, DollarSign, RefreshCw, TrendingDown, Truck, Bell, Shopping
 
 export const dynamic = "force-dynamic";
 
+// ── Cache para funilAlerts (LLM call) ─────────────────────────────────────────
+// Evita chamar OpenRouter a cada page load — cacheia por 10 minutos
+let alertsCache: { data: any[]; expiresAt: number } | null = null;
+const ALERTS_TTL_MS = 10 * 60 * 1000; // 10 minutos
+
+async function getCachedFunilAlerts(funilAnalytics: {
+  dailyRows: any[];
+  logs: any[];
+  transcripts: any[];
+}) {
+  const now = Date.now();
+  if (alertsCache && alertsCache.expiresAt > now) {
+    return alertsCache.data;
+  }
+
+  const alerts = await buildFunilAiAlerts({
+    dailyRows: funilAnalytics.dailyRows,
+    logs: funilAnalytics.logs,
+    transcripts: funilAnalytics.transcripts,
+  });
+
+  alertsCache = { data: alerts, expiresAt: now + ALERTS_TTL_MS };
+  return alerts;
+}
+
 async function getDashboardData() {
   const supabase = createServiceClient();
 
   const hoje = getTodayInAppTimezone();
   const { startTs, endTs } = getUtcRangeForAppDate(hoje);
+  const checkoutSince = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const [
-    emTransito,
-    tendencia,
-    funil,
-    atrasados,
-    carrinhos,
-    funilAnalytics,
-    vendasHojeRows,
-    metricasEventoHoje,
-  ] = await Promise.all([
-    supabase.rpc("pedidos_em_transito"),
-    supabase.rpc("tendencia_30_dias"),
-    supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs }),
-    supabase.rpc("pedidos_atrasados"),
-    getPaytCheckoutMonitor(24),
-    getFunilAnalytics(defaultAnalyticsDates(7).startDate, defaultAnalyticsDates(7).endDate, null, null, {
-      skipImpactAnalysis: true,
+  // Uma única chamada RPC retorna: emTransito, tendencia, funil, atrasados,
+  // vendasHoje, carrinhos (summary) e metricas financeiras
+  const [dashboardResult, funilAnalytics] = await Promise.all([
+    supabase.rpc("dashboard_data", {
+      p_start: startTs,
+      p_end: endTs,
+      p_checkout_since: checkoutSince,
     }),
-    supabase
-      .from("pedidos")
-      .select("valor_total")
-      .eq("status_pagamento", "paid")
-      .not("data_pagamento", "is", null)
-      .gte("data_pagamento", startTs)
-      .lte("data_pagamento", endTs),
-    getFinancialEventMetrics(hoje, hoje),
+    getFunilAnalytics(
+      defaultAnalyticsDates(7).startDate,
+      defaultAnalyticsDates(7).endDate,
+      null,
+      null,
+      { skipImpactAnalysis: true },
+    ),
   ]);
 
-  const vendasHoje = {
-    count: vendasHojeRows.data?.length ?? 0,
-    valor: (vendasHojeRows.data ?? []).reduce((sum, pedido) => sum + Number(pedido.valor_total ?? 0), 0),
-  };
+  const d = (dashboardResult.data ?? {}) as Record<string, any>;
 
   return {
-    vendasHoje,
-    emTransito:  emTransito.data  as { count: number; valor: number } | null,
-    metricasHoje: metricasEventoHoje,
-    tendencia: (tendencia.data ?? []) as Array<{ dia: string; receita: number; reembolsos: number }>,
-    funil:     (funil.data ?? [])     as Array<{ status: string; total: number; valor: number }>,
-    atrasados: (atrasados.data ?? []) as Array<{
+    vendasHoje: d.vendasHoje ?? { count: 0, valor: 0 },
+    emTransito: d.emTransito as { count: number; valor: number } | null,
+    metricasHoje: d.metricas ?? { reembolsos: 0, valorReembolsos: 0, chargebacks: 0, valorChargebacks: 0 },
+    tendencia: (d.tendencia ?? []) as Array<{ dia: string; receita: number; reembolsos: number }>,
+    funil: (d.funil ?? []) as Array<{ status: string; total: number; valor: number }>,
+    atrasados: (d.atrasados ?? []) as Array<{
       id: string; ordem_pedido: number | null; cliente_nome: string;
       produto_grupo: string | null; codigo_rastreio: string | null;
       data_prometida_entrega: string | null; status: string;
     }>,
-    carrinhos,
-    funilAlerts: await buildFunilAiAlerts({
-      dailyRows: funilAnalytics.dailyRows,
-      logs: funilAnalytics.logs,
-      transcripts: funilAnalytics.transcripts,
-    }),
+    carrinhos: {
+      summary: d.carrinhos ?? { openCount: 0, lostCount: 0, abandonedCount: 0, recoveredCount: 0, totalEvents: 0 },
+    },
+    funilAlerts: await getCachedFunilAlerts(funilAnalytics),
   };
 }
 
@@ -86,11 +94,9 @@ export default async function DashboardPage() {
   const valorReembolsosHoje = data.metricasHoje?.valorReembolsos ?? 0;
   const carrinhosAbertos = data.carrinhos.summary.openCount + data.carrinhos.summary.abandonedCount + data.carrinhos.summary.lostCount;
 
-  // Taxa de reembolso: reembolsos / vendas * 100
   const taxaReembolso =
     vendasCount > 0 ? ((reembolsosHoje / vendasCount) * 100).toFixed(1) : "0";
 
-  // Receita líquida = vendas - reembolsos - chargebacks (do dia)
   const receitaLiquida =
     vendasValor -
     (data.metricasHoje?.valorReembolsos ?? 0) -
@@ -106,7 +112,7 @@ export default async function DashboardPage() {
       : 0;
   const taxaRecuperacaoCheckout =
     totalCheckoutMonitorado > 0 ? (data.carrinhos.summary.recoveredCount / totalCheckoutMonitorado) * 100 : 0;
-  const totalAlertasFunilCriticos = data.funilAlerts.filter((alert) => alert.level === "alerta").length;
+  const totalAlertasFunilCriticos = data.funilAlerts.filter((alert: any) => alert.level === "alerta").length;
 
   return (
     <Shell>
@@ -231,7 +237,7 @@ export default async function DashboardPage() {
               <span className="text-xs text-gray-400">{data.funilAlerts.length} sinais</span>
             </div>
             <div className="mt-4 space-y-3">
-              {data.funilAlerts.map((alert, index) => (
+              {data.funilAlerts.map((alert: any, index: number) => (
                 <div
                   key={`${alert.title}:${index}`}
                   className={`rounded-lg border px-4 py-3 ${
