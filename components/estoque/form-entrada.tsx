@@ -115,7 +115,7 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
           type="submit"
           aria-label="Registrar entrada de estoque"
           disabled={loading}
-          className="inline-flex h-7 w-full cursor-pointer items-center justify-center rounded-[7px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 text-xs font-semibold text-[var(--fly-brand-strong)] outline-none transition-colors duration-150 hover:bg-[var(--fly-brand-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          className="inline-flex h-7 w-full cursor-pointer items-center justify-center p-0 text-xs font-semibold leading-5 text-[var(--fly-brand-strong)] underline-offset-4 outline-none transition-[color,text-decoration-color,opacity] duration-150 hover:underline hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] disabled:cursor-not-allowed disabled:text-[var(--fly-text-muted)] disabled:no-underline disabled:opacity-60 sm:w-auto"
         >
           {loading ? "Salvando..." : "Registrar entrada"}
         </button>

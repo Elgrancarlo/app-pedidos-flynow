@@ -74,13 +74,9 @@ function MockEntryForm() {
         </label>
       ))}
       <div className="flex min-w-0 items-end justify-end md:col-span-2 2xl:col-span-1">
-        <button
-          type="button"
-          disabled
-          className="inline-flex h-7 w-full items-center justify-center rounded-[7px] border border-[var(--fly-border)] bg-[var(--fly-control)] px-3 text-xs font-semibold text-[var(--fly-text-muted)] opacity-70 sm:w-auto"
-        >
+        <span className="inline-flex h-7 w-full items-center justify-center text-xs font-semibold leading-5 text-[var(--fly-text-muted)] opacity-70 sm:w-auto">
           Registrar entrada
-        </button>
+        </span>
       </div>
     </div>
   );
