@@ -42,6 +42,14 @@ export interface PaytCheckoutMonitorRow {
   rawCount: number;
 }
 
+export interface PaytCheckoutSummary {
+  abandonedCount: number;
+  lostCount: number;
+  openCount: number;
+  recoveredCount: number;
+  totalEvents: number;
+}
+
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 
 type MonitorEvent = Omit<PaytCheckoutMonitorRow, "timeline" | "rawCount">;
@@ -140,10 +148,148 @@ function eventSortValue(eventAt: string) {
   return Number.isNaN(time) ? 0 : time;
 }
 
+function parseRpcObject(value: unknown) {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function normalizeSummary(value: unknown): PaytCheckoutSummary {
+  const summary = parseRpcObject(value);
+
+  return {
+    abandonedCount: numberValue(summary.abandonedCount) ?? 0,
+    lostCount: numberValue(summary.lostCount) ?? 0,
+    openCount: numberValue(summary.openCount) ?? 0,
+    recoveredCount: numberValue(summary.recoveredCount) ?? 0,
+    totalEvents: numberValue(summary.totalEvents) ?? 0,
+  };
+}
+
+function normalizeRpcTimeline(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((item) => normalizePaytEventStatus(item))
+    : [];
+}
+
+function normalizeRpcMonitorRow(value: unknown): PaytCheckoutMonitorRow {
+  const row = parseRpcObject(value);
+  const status = normalizePaytEventStatus(row.status);
+  const eventGroup = textValue(row.eventGroup) ?? classifyPaytEventGroup(status);
+  const eventAt = toIsoTimestamp(row.eventAt, new Date().toISOString());
+  const key =
+    textValue(row.key) ??
+    textValue(row.cartId) ??
+    textValue(row.transactionId) ??
+    `${status}:${eventAt}`;
+
+  return {
+    key,
+    transactionId: textValue(row.transactionId),
+    cartId: textValue(row.cartId),
+    customerName: textValue(row.customerName),
+    customerEmail: textValue(row.customerEmail),
+    customerPhone: textValue(row.customerPhone),
+    productName: textValue(row.productName),
+    productGroup:
+      inferirGrupo(textValue(row.productGroup) ?? textValue(row.productName)) ??
+      textValue(row.productGroup) ??
+      textValue(row.productName),
+    paymentMethod: textValue(row.paymentMethod),
+    totalPrice: numberValue(row.totalPrice),
+    status,
+    eventGroup,
+    eventAt,
+    timeline: normalizeRpcTimeline(row.timeline),
+    rawCount: numberValue(row.rawCount) ?? 0,
+  };
+}
+
 function isMissingEventStream(error: unknown) {
   const message =
     error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   return message.includes("payt_event_stream");
+}
+
+export async function getPaytCheckoutSummary(hours = 24) {
+  const supabase = createServiceClient();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase.rpc("checkout_summary_counts", {
+    p_since: since,
+  });
+
+  if (error) {
+    const legacy = await getPaytCheckoutMonitor(hours, { includeRows: false });
+
+    return {
+      windowHours: hours,
+      summary: {
+        ...legacy.summary,
+        totalEvents: legacy.totalEvents,
+      },
+    };
+  }
+
+  return {
+    windowHours: hours,
+    summary: normalizeSummary(data),
+  };
+}
+
+export async function getPaytCheckoutMonitorOptimized(
+  hours = 24,
+  limit = 100,
+  offset = 0,
+) {
+  const supabase = createServiceClient();
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase.rpc("checkout_monitor_summary", {
+    p_limit: limit,
+    p_offset: offset,
+    p_since: since,
+  });
+
+  if (error) {
+    const legacy = await getPaytCheckoutMonitor(hours, {
+      maxEvents: null,
+    });
+
+    return {
+      ...legacy,
+      totalRows: legacy.rows.length,
+      summary: {
+        ...legacy.summary,
+        totalEvents: legacy.totalEvents,
+      },
+    };
+  }
+
+  const payload = parseRpcObject(data);
+  const rowsData = Array.isArray(payload.rows) ? payload.rows : [];
+  const summary = normalizeSummary(payload.summary);
+  const totalEvents = numberValue(payload.totalEvents) ?? summary.totalEvents;
+  const totalRows = numberValue(payload.totalRows) ?? rowsData.length;
+
+  return {
+    windowHours: numberValue(payload.windowHours) ?? hours,
+    totalEvents,
+    totalRows,
+    rows: rowsData.map(normalizeRpcMonitorRow),
+    summary: {
+      ...summary,
+      totalEvents,
+    },
+  };
 }
 
 function mergeMonitorEvent(

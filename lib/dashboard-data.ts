@@ -463,8 +463,8 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       supabase.rpc("pedidos_atrasados")
     ),
     timedServerTask("dashboard", "checkout", async () => {
-      const { getPaytCheckoutMonitor } = await import("@/lib/payt-checkout");
-      return getPaytCheckoutMonitor(24, { includeRows: false });
+      const { getPaytCheckoutSummary } = await import("@/lib/payt-checkout");
+      return getPaytCheckoutSummary(24);
     }),
     timedServerTask("dashboard", "funilPedidos", () =>
       supabase.rpc("funil_pedidos", { p_start: startTs, p_end: endTs })

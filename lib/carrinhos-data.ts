@@ -1,7 +1,12 @@
 import { shouldUseMockData } from "@/lib/data-mode";
 import { createServiceClient } from "@/lib/supabase";
-import { getUtcRangeForAppDates } from "@/lib/app-dates";
+import { getTodayInAppTimezone, getUtcRangeForAppDates } from "@/lib/app-dates";
 import { buildPaytEventStreamRow, type PaytPayload } from "@/lib/payt-events";
+import {
+  getPaytCheckoutMonitorOptimized,
+  type PaytCheckoutMonitorRow,
+  type PaytCheckoutSummary,
+} from "@/lib/payt-checkout";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
@@ -24,6 +29,7 @@ const CARRINHOS_SELECT =
 
 const PAGE_SIZE = 1000;
 const DEFAULT_TABLE_CART_LIMIT = 1000;
+const MAX_OPTIMIZED_CHECKOUT_DAYS = 31;
 
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
@@ -109,6 +115,30 @@ function textValue(value: unknown) {
   if (value == null) return null;
   const text = String(value).trim();
   return text.length > 0 ? text : null;
+}
+
+function getInclusiveDayCount(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T12:00:00Z`);
+  const end = new Date(`${endDate}T12:00:00Z`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return null;
+  }
+
+  const days = Math.floor(
+    (end.getTime() - start.getTime()) / 86_400_000,
+  ) + 1;
+
+  return days > 0 ? days : null;
+}
+
+function getOptimizedCheckoutHours({ startDate, endDate }: CarrinhosDataRange) {
+  if (endDate !== getTodayInAppTimezone()) return null;
+
+  const days = getInclusiveDayCount(startDate, endDate);
+  if (!days || days > MAX_OPTIMIZED_CHECKOUT_DAYS) return null;
+
+  return days * 24;
 }
 
 function getPayloadField(
@@ -446,6 +476,102 @@ function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
   };
 }
 
+function statusFromOptimizedMonitorRow(row: PaytCheckoutMonitorRow): CarrinhoStatus {
+  if (row.eventGroup === "loss") return "perdido";
+  if (row.eventGroup === "abandonment") return "abandonado";
+  if (row.eventGroup === "checkout") return "checkout";
+  return "ativo";
+}
+
+function timelineToneFromEventGroup(
+  eventGroup: string,
+): CarrinhoTimelineEvent["tone"] {
+  if (eventGroup === "loss") return "danger";
+  if (eventGroup === "abandonment") return "brand";
+  if (eventGroup === "sale") return "success";
+  return "neutral";
+}
+
+function mapOptimizedMonitorRowToCarrinho(row: PaytCheckoutMonitorRow): Carrinho {
+  const status = statusFromOptimizedMonitorRow(row);
+  const externalId = row.cartId ?? row.transactionId ?? row.key;
+  const potentialValue = row.totalPrice ?? 0;
+  const productName = row.productName ?? row.productGroup ?? "Produto";
+  const productGroup = row.productGroup ?? row.productName ?? "Sem grupo";
+  const origin: CarrinhoOrigem = "organico";
+  const recoveryChannel = getRecoveryChannel(origin);
+  const attempts = buildRecoveryAttempts({
+    externalId,
+    latestEventAt: row.eventAt,
+    status,
+    channel: recoveryChannel,
+  });
+  const statusTimeline = (row.timeline.length > 0 ? row.timeline : [row.status]).slice(-8);
+  const timeline = [
+    ...statusTimeline.map<CarrinhoTimelineEvent>((statusItem, index) => ({
+      id: `${externalId}_event_${index}`,
+      label: statusItem.replace(/_/g, " "),
+      description: row.eventGroup,
+      occurredAt: row.eventAt,
+      tone: timelineToneFromEventGroup(row.eventGroup),
+    })),
+    ...attempts.map<CarrinhoTimelineEvent>((attempt) => ({
+      id: `${attempt.id}_timeline`,
+      label: attempt.label,
+      description: CARRINHO_RECOVERY_CHANNEL_LABELS[attempt.channel],
+      occurredAt: attempt.occurredAt,
+      tone: attempt.status === "converted" ? "success" : "brand",
+    })),
+  ];
+
+  return {
+    id: externalId,
+    externalCartId: externalId,
+    eventCount: row.rawCount,
+    customerName: row.customerName ?? "Cliente sem nome",
+    customerEmail: row.customerEmail,
+    customerPhone: row.customerPhone,
+    customerDocument: null,
+    items: [
+      {
+        sku: productGroup,
+        productName,
+        variation: row.paymentMethod ?? "Checkout Payt",
+        jars: 1,
+        quantity: 1,
+        unitPrice: potentialValue,
+      },
+    ],
+    productName,
+    productGroup,
+    jars: 1,
+    variation: row.paymentMethod ?? "Checkout Payt",
+    potentialValue,
+    recoveredValue: null,
+    discountValue: null,
+    stage: getStage(status),
+    status,
+    funnelStage: getFunnelStage(status),
+    origin,
+    campaign: "Sem campanha",
+    recoveryStatus: getRecoveryStatus(status),
+    recoveryChannel,
+    recoveryAttempts: attempts,
+    nextActionAt:
+      status === "abandonado" || status === "checkout"
+        ? addMinutes(row.eventAt, 30)
+        : null,
+    nextSteps: buildNextSteps(status, recoveryChannel),
+    timeline: timeline.sort(
+      (first, second) =>
+        new Date(first.occurredAt).getTime() -
+        new Date(second.occurredAt).getTime(),
+    ),
+    createdAt: row.eventAt,
+    lastActivityAt: row.eventAt,
+  };
+}
+
 function compactCarrinhoForTable(carrinho: Carrinho): Carrinho {
   const latestTimelineEvent = carrinho.timeline.at(-1);
   const relevantNextStep = carrinho.nextSteps.at(0);
@@ -521,6 +647,38 @@ function buildMetricsFromGroups(groupedEvents: PaytEventRow[][]) {
       abandonado: resumo.abandonados + resumo.recuperados + resumo.perdidos,
       recuperado: resumo.recuperados,
       perdido: resumo.perdidos,
+    } satisfies Record<CarrinhoFunilEtapa, number>,
+  };
+}
+
+function buildMetricsFromOptimizedSummary(summary: PaytCheckoutSummary) {
+  const checkout = summary.openCount;
+  const abandonados = summary.abandonedCount;
+  const recuperados = summary.recoveredCount;
+  const perdidos = summary.lostCount;
+  const total = checkout + abandonados + recuperados + perdidos;
+  const recoveryBase = abandonados + recuperados + perdidos;
+  const resumo: CarrinhosResumo = {
+    total,
+    checkout,
+    abandonados,
+    emRecuperacao: 0,
+    recuperados,
+    perdidos,
+    receitaPotencial: 0,
+    receitaRecuperada: 0,
+    taxaRecuperacao: recoveryBase > 0 ? recuperados / recoveryBase : 0,
+    ticketMedio: 0,
+  };
+
+  return {
+    resumo,
+    funil: {
+      iniciado: total,
+      checkout: checkout + abandonados + recuperados + perdidos,
+      abandonado: abandonados + recuperados + perdidos,
+      recuperado: recuperados,
+      perdido: perdidos,
     } satisfies Record<CarrinhoFunilEtapa, number>,
   };
 }
@@ -768,8 +926,41 @@ async function fetchCarrinhosFromPaytEvents(
   { startDate, endDate }: CarrinhosDataRange,
   options: CarrinhosFetchOptions = {},
 ) {
-  const supabase = createServiceClient();
+  const optimizedHours = getOptimizedCheckoutHours({ startDate, endDate });
   const maxTableCarts = options.maxTableCarts ?? null;
+  const tableLimit = maxTableCarts ?? DEFAULT_TABLE_CART_LIMIT;
+
+  if (optimizedHours != null) {
+    const monitor = await timedServerTask(
+      "carrinhos",
+      "data.optimizedCheckoutMonitor",
+      () =>
+        getPaytCheckoutMonitorOptimized(
+          optimizedHours,
+          tableLimit,
+          0,
+        ),
+    );
+    const groupStartedAt = performance.now();
+    const carrinhos = monitor.rows
+      .map(mapOptimizedMonitorRowToCarrinho)
+      .map(compactCarrinhoForTable)
+      .sort(
+        (first, second) =>
+          new Date(second.lastActivityAt).getTime() -
+          new Date(first.lastActivityAt).getTime(),
+      );
+
+    logServerTiming("carrinhos", "postProcess.optimizedRows", groupStartedAt);
+
+    return {
+      carrinhos,
+      reachedTableLimit: monitor.totalRows > tableLimit,
+      metrics: buildMetricsFromOptimizedSummary(monitor.summary),
+    };
+  }
+
+  const supabase = createServiceClient();
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
   const eventResult = await timedServerTask(
     "carrinhos",
