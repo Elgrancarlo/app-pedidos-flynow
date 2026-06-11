@@ -15,6 +15,7 @@ const BACKEND_CHANNELS = [
   { id: "whatsapp", label: "WhatsApp" },
   { id: "sms", label: "SMS" },
   { id: "email", label: "Email" },
+  { id: "s2clube", label: "S2Clube (UP1)" },
 ] as const;
 
 type MetaRow = Record<string, unknown>;
@@ -280,6 +281,9 @@ function createMockMetasPlanningPageData(month: string): MetasPlanningPageData {
       backend_sms_conversoes: 42,
       backend_sms_receita: 19800,
       backend_sms_ticket: 471,
+      backend_s2clube_conversoes: 0,
+      backend_s2clube_receita: 0,
+      backend_s2clube_ticket: 0,
       backend_whatsapp_conversoes: 88,
       backend_whatsapp_receita: 42240,
       backend_whatsapp_ticket: 480,

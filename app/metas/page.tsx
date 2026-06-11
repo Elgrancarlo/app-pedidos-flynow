@@ -1,21 +1,29 @@
-import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
+import { CfoWeeklyInputs } from "@/components/cfo/cfo-weekly-inputs";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
+import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
 import {
-  DataList,
   PageBody,
   Panel,
-  SimpleTable,
   StatCard,
   StatGrid,
-  StatusPill,
 } from "@/components/workspace/operational-ui";
+import { getTodayInAppTimezone } from "@/lib/app-dates";
+import { getChannelAnalytics } from "@/lib/analytics";
+import {
+  getMetasPageData,
+  normalizeMetasMonth,
+  type MetaGoal,
+  type MetaStatus,
+  type MetaUnit,
+} from "@/lib/metas";
 import {
   getMetasPlanningPageData,
-  normalizeMetasPlanningMonth,
-  type MetasPlanningComposition,
+  type MetasPlanningBackendChannel,
+  type MetasPlanningChannel,
 } from "@/lib/metas-planning";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
+import type { AnalyticsCanal } from "@/lib/supabase";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -26,10 +34,149 @@ type MetasPageParams = {
   startDate?: string;
 };
 
+type MonthPace = {
+  elapsedDays: number;
+  endDate: string;
+  startDate: string;
+  totalDays: number;
+};
+
+type GpdStatus = "good" | "ok" | "bad" | "empty";
+
+type GpdRow = {
+  depth?: 0 | 1;
+  expected: number;
+  id: string;
+  kind?: "group" | "item" | "total";
+  label: string;
+  meta: number;
+  note?: string;
+  percent: number | null;
+  projection: number;
+  realized: number;
+  roas?: number | null;
+  status: GpdStatus;
+};
+
+type LossRow = {
+  action: string;
+  actual: number | null;
+  id: string;
+  inverse?: boolean;
+  label: string;
+  status: GpdStatus;
+  target: number | null;
+  unit: MetaUnit;
+};
+
+const TRAFFIC_DEFS = [
+  {
+    id: "facebook",
+    label: "Facebook",
+    planIds: ["facebook"],
+    sources: ["FACEBOOK"],
+  },
+  {
+    id: "tiktok",
+    label: "TikTok",
+    planIds: ["tiktok"],
+    sources: ["TIKTOK"],
+  },
+  {
+    id: "taboola-mgid",
+    label: "Taboola + MGID",
+    planIds: ["taboola", "mgid"],
+    sources: ["TABOOLA", "MGID"],
+  },
+  {
+    id: "google",
+    label: "Google",
+    planIds: ["google"],
+    sources: ["GOOGLE"],
+  },
+] as const;
+
+const BACKEND_DEFS = [
+  {
+    canals: ["IA_WHATSAPP"] satisfies AnalyticsCanal[],
+    id: "whatsapp",
+    label: "WhatsApp",
+    planIds: ["whatsapp"],
+  },
+  {
+    canals: ["CALLCENTER"] satisfies AnalyticsCanal[],
+    id: "callcenter",
+    label: "Call Center",
+    planIds: ["callcenter"],
+  },
+  {
+    canals: ["SMS", "EMAIL_MAUTIC"] satisfies AnalyticsCanal[],
+    id: "sms-email",
+    label: "SMS + Email",
+    planIds: ["sms", "email"],
+  },
+  {
+    canals: [] satisfies AnalyticsCanal[],
+    id: "s2clube",
+    label: "S2Clube (UP1)",
+    planIds: ["s2clube"],
+  },
+] as const;
+
+const STATUS_LABELS: Record<GpdStatus, string> = {
+  bad: "Ruim",
+  empty: "Sem dado",
+  good: "Bom",
+  ok: "OK",
+};
+
+const STATUS_STYLES: Record<GpdStatus, string> = {
+  bad: "bg-[#F87171]",
+  empty: "bg-[var(--fly-text-muted)]",
+  good: "bg-[var(--fly-success)]",
+  ok: "bg-[var(--fly-chart-revenue)]",
+};
+
 function resolveMonth(params: MetasPageParams) {
-  return normalizeMetasPlanningMonth(
-    params.mes ?? params.startDate ?? params.endDate,
-  );
+  return normalizeMetasMonth(params.mes ?? params.startDate ?? params.endDate);
+}
+
+function monthRange(month: string): Pick<MonthPace, "endDate" | "startDate"> {
+  const [year, monthIndex] = month.split("-").map(Number);
+  const endDate = new Date(year, monthIndex, 0).toISOString().slice(0, 10);
+
+  return {
+    endDate,
+    startDate: `${month}-01`,
+  };
+}
+
+function toDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function inclusiveDays(startDate: string, endDate: string) {
+  const diff = toDate(endDate).getTime() - toDate(startDate).getTime();
+
+  return Math.max(Math.floor(diff / 86_400_000) + 1, 1);
+}
+
+function getMonthPace(month: string): MonthPace {
+  const range = monthRange(month);
+  const today = getTodayInAppTimezone();
+  const totalDays = inclusiveDays(range.startDate, range.endDate);
+  const elapsedDays =
+    today < range.startDate
+      ? 0
+      : today > range.endDate
+        ? totalDays
+        : inclusiveDays(range.startDate, today);
+
+  return {
+    ...range,
+    elapsedDays,
+    totalDays,
+  };
 }
 
 function formatNumber(value: number) {
@@ -38,36 +185,505 @@ function formatNumber(value: number) {
   }).format(value);
 }
 
-function formatRatio(value: number) {
+function formatRatio(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "-";
+
   return new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(value);
 }
 
-function formatShortDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
+function formatGoalValue(value: number | null, unit: MetaUnit) {
+  if (value == null || !Number.isFinite(value)) return "Não informado";
+  if (unit === "currency") return formatCurrency(value);
+  if (unit === "percent") return formatPercent(value);
+  if (unit === "ratio") return formatRatio(value);
+
+  return formatNumber(value);
+}
+
+function statusFromRatio(ratio: number | null, inverse = false): GpdStatus {
+  if (ratio == null || !Number.isFinite(ratio)) return "empty";
+
+  if (inverse) {
+    if (ratio <= 1) return "good";
+    if (ratio <= 1.05) return "ok";
+    return "bad";
+  }
+
+  if (ratio >= 0.95) return "good";
+  if (ratio >= 0.8) return "ok";
+  return "bad";
+}
+
+function statusFromMetaStatus(status: MetaStatus): GpdStatus {
+  if (status === "ahead" || status === "on_track") return "good";
+  if (status === "attention") return "ok";
+  if (status === "critical") return "bad";
+
+  return "empty";
+}
+
+function createRow({
+  depth = 0,
+  id,
+  kind = "item",
+  label,
+  meta,
+  note,
+  pace,
+  realized,
+  roas = null,
+}: {
+  depth?: 0 | 1;
+  id: string;
+  kind?: GpdRow["kind"];
+  label: string;
+  meta: number;
+  note?: string;
+  pace: MonthPace;
+  realized: number;
+  roas?: number | null;
+}): GpdRow {
+  const expected = pace.totalDays > 0 ? (meta / pace.totalDays) * pace.elapsedDays : 0;
+  const projection =
+    pace.elapsedDays > 0 && pace.elapsedDays < pace.totalDays
+      ? (realized / pace.elapsedDays) * pace.totalDays
+      : realized;
+  const percent = meta > 0 ? realized / meta : realized > 0 ? 1 : null;
+
+  return {
+    depth,
+    expected,
+    id,
+    kind,
+    label,
+    meta,
+    note,
+    percent,
+    projection,
+    realized,
+    roas,
+    status: statusFromRatio(percent),
+  };
+}
+
+function sumPlanningChannels(
+  channels: MetasPlanningChannel[],
+  ids: readonly string[],
+  field: "investment" | "revenue",
+) {
+  return ids.reduce((total, id) => {
+    const channel = channels.find((item) => item.id === id);
+
+    return total + (channel?.[field] ?? 0);
+  }, 0);
+}
+
+function sumBackendTargets(
+  backend: MetasPlanningBackendChannel[],
+  ids: readonly string[],
+) {
+  return ids.reduce((total, id) => {
+    const channel = backend.find((item) => item.id === id);
+
+    return total + (channel?.revenue ?? 0);
+  }, 0);
+}
+
+function sumMedia(
+  mediaBySource: Awaited<ReturnType<typeof getChannelAnalytics>>["mediaBySource"],
+  sources: readonly string[],
+) {
+  return mediaBySource
+    .filter((item) => sources.includes(item.source))
+    .reduce(
+      (total, item) => ({
+        clicks: total.clicks + item.clicks,
+        conversions: total.conversions + item.conversions,
+        revenue: total.revenue + item.revenue,
+        spend: total.spend + item.spend,
+      }),
+      { clicks: 0, conversions: 0, revenue: 0, spend: 0 },
+    );
+}
+
+function sumCanalRevenue(
+  sourceRows: Awaited<ReturnType<typeof getChannelAnalytics>>["sourceRows"],
+  canals: readonly AnalyticsCanal[],
+) {
+  return sourceRows
+    .filter((item) => canals.includes(item.canal))
+    .reduce((total, item) => total + item.receita_total, 0);
+}
+
+function buildTrafficRows({
+  mediaBySource,
+  pace,
+  planningChannels,
+  target,
+}: {
+  mediaBySource: Awaited<ReturnType<typeof getChannelAnalytics>>["mediaBySource"];
+  pace: MonthPace;
+  planningChannels: MetasPlanningChannel[];
+  target: number;
+}) {
+  const itemRows = TRAFFIC_DEFS.map((definition) => {
+    const media = sumMedia(mediaBySource, definition.sources);
+    const meta = sumPlanningChannels(planningChannels, definition.planIds, "revenue");
+    const roas = media.spend > 0 ? media.revenue / media.spend : null;
+
+    return createRow({
+      depth: 1,
+      id: definition.id,
+      label: definition.label,
+      meta,
+      pace,
+      realized: media.revenue,
+      roas,
+    });
   });
+  const plannedChildrenTotal = itemRows.reduce((total, row) => total + row.meta, 0);
+  const realizedChildrenTotal = itemRows.reduce((total, row) => total + row.realized, 0);
+  const reserveTarget = Math.max(target - plannedChildrenTotal, 0);
+  const reserveRow =
+    reserveTarget > 0
+      ? createRow({
+          depth: 1,
+          id: "traffic-reserve",
+          label: "Reserva / ajuste tráfego",
+          meta: reserveTarget,
+          note: "Fecha a meta de tráfego sem depender de uma fonte específica.",
+          pace,
+          realized: 0,
+        })
+      : null;
+
+  const rows = reserveRow ? [...itemRows, reserveRow] : itemRows;
+  const groupRow = createRow({
+    id: "traffic-total",
+    kind: "group",
+    label: "F1 · Tráfego front",
+    meta: target,
+    pace,
+    realized: realizedChildrenTotal,
+  });
+
+  return [groupRow, ...rows];
 }
 
-function formatCompositionValue(item: MetasPlanningComposition) {
-  if (item.unit === "currency") return formatCurrency(item.value);
-  if (item.unit === "percent") return formatPercent(item.value);
-  if (item.unit === "ratio") return formatRatio(item.value);
+function buildBackendRows({
+  backendTargets,
+  pace,
+  sourceRows,
+  target,
+}: {
+  backendTargets: MetasPlanningBackendChannel[];
+  pace: MonthPace;
+  sourceRows: Awaited<ReturnType<typeof getChannelAnalytics>>["sourceRows"];
+  target: number;
+}) {
+  const itemRows = BACKEND_DEFS.map((definition) =>
+    createRow({
+      depth: 1,
+      id: definition.id,
+      label: definition.label,
+      meta: sumBackendTargets(backendTargets, definition.planIds),
+      pace,
+      realized: sumCanalRevenue(sourceRows, definition.canals),
+    }),
+  ).filter((row) => row.meta > 0 || row.realized > 0 || row.id !== "s2clube");
+  const realizedChildrenTotal = itemRows.reduce((total, row) => total + row.realized, 0);
+  const plannedChildrenTotal = itemRows.reduce((total, row) => total + row.meta, 0);
+  const groupRow = createRow({
+    id: "backend-total",
+    kind: "group",
+    label: "F3 · Back-end",
+    meta: Math.max(target, plannedChildrenTotal),
+    pace,
+    realized: realizedChildrenTotal,
+  });
 
-  return formatNumber(item.value);
+  return [groupRow, ...itemRows];
 }
 
-function getCompositionDotClass(tone: MetasPlanningComposition["tone"]) {
-  if (tone === "blue") return "bg-[var(--fly-chart-investment)]";
-  if (tone === "green") return "bg-[var(--fly-success)]";
-  if (tone === "orange") return "bg-[var(--fly-warning-strong)]";
-  if (tone === "red") return "bg-[#F87171]";
-  if (tone === "gold") return "bg-[var(--fly-chart-revenue)]";
+function buildGpdRows({
+  channelData,
+  cfoData,
+  pace,
+  planningData,
+}: {
+  channelData: Awaited<ReturnType<typeof getChannelAnalytics>>;
+  cfoData: Awaited<ReturnType<typeof getMetasPageData>>;
+  pace: MonthPace;
+  planningData: Awaited<ReturnType<typeof getMetasPlanningPageData>>;
+}) {
+  const trafficRows = buildTrafficRows({
+    mediaBySource: channelData.mediaBySource,
+    pace,
+    planningChannels: planningData.channels,
+    target: planningData.summary.frontRevenue,
+  });
+  const backendRows = buildBackendRows({
+    backendTargets: planningData.backend,
+    pace,
+    sourceRows: channelData.sourceRows,
+    target: planningData.summary.backendRevenue,
+  });
+  const operationRows = [...trafficRows, ...backendRows];
+  const totalMeta = operationRows
+    .filter((row) => row.kind === "group")
+    .reduce((total, row) => total + row.meta, 0);
+  const totalRealized = operationRows
+    .filter((row) => row.kind === "group")
+    .reduce((total, row) => total + row.realized, 0);
+  const target = totalMeta || cfoData.summary.revenue.target;
+  const realized = totalRealized || cfoData.summary.revenue.realized;
+  const totalRow = createRow({
+    id: "operation-total",
+    kind: "total",
+    label: "Total operação",
+    meta: target,
+    pace,
+    realized,
+  });
 
-  return "bg-[var(--fly-text-muted)]";
+  return {
+    backendRows,
+    operationRows: [...operationRows, totalRow],
+    totalRow,
+    trafficRows,
+  };
+}
+
+function findGoal(goals: MetaGoal[], id: string) {
+  return goals.find((goal) => goal.id === id) ?? null;
+}
+
+function buildLossRows(goals: MetaGoal[]): LossRow[] {
+  const chargeback = findGoal(goals, "pct-chargeback");
+  const refund = findGoal(goals, "pct-reembolso");
+  const recovery = findGoal(goals, "pct-recuperada");
+  const blendedTarget =
+    chargeback?.target != null && refund?.target != null
+      ? chargeback.target + refund.target
+      : null;
+  const blendedActual =
+    chargeback?.realized != null && refund?.realized != null
+      ? chargeback.realized + refund.realized
+      : null;
+
+  return [
+    {
+      action: "Manter abaixo da meta blended.",
+      actual: blendedActual,
+      id: "blended",
+      inverse: true,
+      label: "Taxa CB + reembolso",
+      status:
+        blendedTarget != null && blendedActual != null
+          ? statusFromRatio(blendedActual / blendedTarget, true)
+          : "empty",
+      target: blendedTarget,
+      unit: "percent",
+    },
+    {
+      action: "Acompanhar disputas e chargebacks recebidos.",
+      actual: chargeback?.realized ?? null,
+      id: "chargeback",
+      inverse: true,
+      label: "Chargeback",
+      status: chargeback ? statusFromMetaStatus(chargeback.status) : "empty",
+      target: chargeback?.target ?? null,
+      unit: "percent",
+    },
+    {
+      action: "Monitorar reversões e reembolsos do período.",
+      actual: refund?.realized ?? null,
+      id: "refund",
+      inverse: true,
+      label: "Reembolso",
+      status: refund ? statusFromMetaStatus(refund.status) : "empty",
+      target: refund?.target ?? null,
+      unit: "percent",
+    },
+    {
+      action: "Validar se a recuperação está sustentando a operação.",
+      actual: recovery?.realized ?? null,
+      id: "recovery",
+      label: "Receita recuperada",
+      status: recovery ? statusFromMetaStatus(recovery.status) : "empty",
+      target: recovery?.target ?? null,
+      unit: "percent",
+    },
+  ];
+}
+
+function StatusLabel({ status }: { status: GpdStatus }) {
+  return (
+    <span className="inline-flex items-center justify-end gap-2 text-xs font-medium text-[var(--fly-text-soft)]">
+      <span
+        aria-hidden="true"
+        className={cn("size-2 rounded-full", STATUS_STYLES[status])}
+      />
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+function SourceBadge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-[7px] bg-[var(--fly-row-bg)] px-2 py-1 text-[11px] font-medium text-[var(--fly-text-muted)]">
+      {children}
+    </span>
+  );
+}
+
+function GpdTable({
+  rows,
+  showRoas = false,
+}: {
+  rows: GpdRow[];
+  showRoas?: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[980px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            <th className="w-[26%] px-3 py-3">Canal / fator</th>
+            <th className="w-[14%] px-3 py-3 text-right">Meta mês</th>
+            <th className="w-[14%] px-3 py-3 text-right">Esperado até hoje</th>
+            <th className="w-[14%] px-3 py-3 text-right">Realizado</th>
+            <th className="w-[10%] px-3 py-3 text-right">% meta</th>
+            <th className="w-[14%] px-3 py-3 text-right">Projeção mês</th>
+            {showRoas ? <th className="w-[10%] px-3 py-3 text-right">ROAS atual</th> : null}
+            <th className="w-[8%] px-3 py-3 text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+          {rows.map((row) => (
+            <tr
+              key={row.id}
+              className={cn(
+                "transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
+                row.kind === "group" && "bg-[var(--fly-row-bg)]",
+                row.kind === "total" &&
+                  "bg-[var(--fly-surface-elevated)] text-[var(--fly-text)]",
+              )}
+            >
+              <td className="px-3 py-3.5">
+                <div
+                  className={cn(
+                    "min-w-0",
+                    row.depth === 1 && "pl-4",
+                    row.kind !== "item" && "font-semibold",
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        row.kind === "total"
+                          ? "bg-[var(--fly-chart-revenue)]"
+                          : row.kind === "group"
+                            ? "bg-[var(--fly-text-soft)]"
+                            : "bg-[var(--fly-border-strong)]",
+                      )}
+                    />
+                    <span className="truncate text-[var(--fly-text)]">{row.label}</span>
+                  </div>
+                  {row.note ? (
+                    <p className="mt-1 truncate text-xs font-normal text-[var(--fly-text-muted)]">
+                      {row.note}
+                    </p>
+                  ) : null}
+                </div>
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                {formatCurrency(row.meta)}
+              </td>
+              <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                {formatCurrency(row.expected)}
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
+                {formatCurrency(row.realized)}
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text)]">
+                {row.percent == null ? "-" : formatPercent(row.percent)}
+              </td>
+              <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
+                {formatCurrency(row.projection)}
+              </td>
+              {showRoas ? (
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {formatRatio(row.roas)}
+                </td>
+              ) : null}
+              <td className="px-3 py-3.5 text-right">
+                <StatusLabel status={row.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LossTable({ rows }: { rows: LossRow[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
+            <th className="w-[24%] px-3 py-3">Indicador</th>
+            <th className="w-[14%] px-3 py-3 text-right">Meta</th>
+            <th className="w-[14%] px-3 py-3 text-right">Atual</th>
+            <th className="w-[12%] px-3 py-3 text-right">vs meta</th>
+            <th className="w-[26%] px-3 py-3">Ação</th>
+            <th className="w-[10%] px-3 py-3 text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
+          {rows.map((row) => {
+            const ratio =
+              row.target && row.actual != null && row.target > 0
+                ? row.actual / row.target
+                : null;
+
+            return (
+              <tr
+                key={row.id}
+                className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
+              >
+                <td className="px-3 py-3.5 font-semibold text-[var(--fly-text)]">
+                  {row.label}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatGoalValue(row.target, row.unit)}
+                </td>
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
+                  {formatGoalValue(row.actual, row.unit)}
+                </td>
+                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
+                  {ratio == null ? "-" : formatPercent(row.inverse ? ratio - 1 : ratio)}
+                </td>
+                <td className="px-3 py-3.5 text-[var(--fly-text-muted)]">
+                  {row.action}
+                </td>
+                <td className="px-3 py-3.5 text-right">
+                  <StatusLabel status={row.status} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default async function MetasPage({
@@ -78,28 +694,24 @@ export default async function MetasPage({
   const pageStartedAt = performance.now();
   const params = await searchParams;
   const month = resolveMonth(params);
-  const data = await timedServerTask("metas", "data.total", () =>
-    getMetasPlanningPageData(month),
+  const pace = getMonthPace(month);
+  const [planningData, cfoData, channelData] = await timedServerTask(
+    "metas",
+    "data.total",
+    () =>
+      Promise.all([
+        getMetasPlanningPageData(month),
+        getMetasPageData(month),
+        getChannelAnalytics(pace.startDate, pace.endDate),
+      ]),
   );
-  const topInvestmentChannel = data.channels.reduce(
-    (top, channel) => (channel.investment > top.investment ? channel : top),
-    data.channels[0],
-  );
-  const topRoasChannel = data.channels.reduce(
-    (top, channel) => (channel.roas > top.roas ? channel : top),
-    data.channels[0],
-  );
-  const revenueCompositionIds = ["pct-front", "pct-backend", "pct-recuperada"];
-  const revenueComposition = data.composition.filter((item) =>
-    revenueCompositionIds.includes(item.id),
-  );
-  const operationalComposition = data.composition.filter(
-    (item) => !revenueCompositionIds.includes(item.id),
-  );
-  const revenueCompositionTotal = revenueComposition.reduce(
-    (total, item) => total + item.value,
-    0,
-  );
+  const { backendRows, operationRows, totalRow, trafficRows } = buildGpdRows({
+    channelData,
+    cfoData,
+    pace,
+    planningData,
+  });
+  const lossRows = buildLossRows(cfoData.goals);
 
   logServerTiming("metas", "total", pageStartedAt);
 
@@ -107,284 +719,101 @@ export default async function MetasPage({
     <Shell>
       <DashboardHeader
         title="Metas"
-        description={`Planejamento mensal de receita, mídia e operação · ${data.monthLabel}`}
-        actions={<MetasMonthFilter month={data.month} />}
+        description={`Realizado vs meta mensal · ${planningData.monthLabel}`}
+        actions={<MetasMonthFilter month={planningData.month} />}
       />
 
       <PageBody>
-        <StatGrid columns="xl:grid-cols-4">
+        <StatGrid columns="xl:grid-cols-5">
           <StatCard
-            detail={`tráfego ${formatCurrency(data.summary.frontRevenue)} · canais op. ${formatCurrency(data.summary.backendRevenue)}`}
-            label="Receita alvo"
+            detail="soma das metas de tráfego front e back-end"
+            label="Meta do mês"
             tone="gold"
-            value={formatCurrency(data.summary.revenue)}
+            value={formatCurrency(totalRow.meta)}
           />
           <StatCard
-            detail="orçamento total de tráfego"
-            label="Investimento"
+            detail={`esperado até hoje ${formatCurrency(totalRow.expected)}`}
+            label="Realizado"
             tone="blue"
-            value={formatCurrency(data.summary.investment)}
+            value={formatCurrency(totalRow.realized)}
           />
           <StatCard
-            detail={`break-even ${formatRatio(data.summary.breakevenRoas)}`}
-            label="ROAS exigido"
-            tone="green"
-            value={formatRatio(data.summary.requiredRoas)}
+            detail={`${pace.elapsedDays}/${pace.totalDays} dias considerados`}
+            label="% da meta"
+            tone={totalRow.status === "bad" ? "orange" : "green"}
+            value={totalRow.percent == null ? "-" : formatPercent(totalRow.percent)}
           />
           <StatCard
-            detail={`ticket médio ${formatCurrency(data.summary.ticket)}`}
-            label="Clientes"
+            detail="ritmo atual projetado para o fechamento"
+            label="Projeção mês"
             tone="neutral"
-            value={formatNumber(data.summary.customers)}
+            value={formatCurrency(totalRow.projection)}
+          />
+          <StatCard
+            detail={`investimento realizado ${formatCurrency(cfoData.summary.investment.realized)}`}
+            label="ROAS consolidado"
+            tone="gold"
+            value={formatRatio(cfoData.summary.roas.realized)}
           />
         </StatGrid>
 
-        {data.source === "empty" ? (
+        {planningData.source === "empty" ? (
           <Panel
             title="Nenhuma meta cadastrada"
-            description="Quando o backend cadastrar as metas mensais, este painel passa a exibir o planejamento automaticamente."
+            description="Cadastre as metas mensais para liberar o acompanhamento real."
           >
-            <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-4 py-8 text-center">
+            <div className="rounded-[8px] bg-[var(--fly-row-bg)] px-4 py-8 text-center">
               <p className="text-sm font-medium text-[var(--fly-text)]">
-                Sem planejamento para {data.monthLabel}.
+                Sem planejamento para {planningData.monthLabel}.
               </p>
               <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                As metas mensais e semanas configuradas aparecerão aqui assim que
-                houver cadastro.
+                A tela já está pronta para exibir o contrato assim que houver dados.
               </p>
             </div>
           </Panel>
         ) : null}
 
+        <Panel
+          title="GPD · Realizado vs meta"
+          description="Leitura principal no mesmo eixo da planilha: meta, esperado, realizado, projeção e status"
+          action={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <SourceBadge>{pace.startDate} - {pace.endDate}</SourceBadge>
+              <SourceBadge>{pace.elapsedDays} dias decorridos</SourceBadge>
+            </div>
+          }
+        >
+          <GpdTable rows={operationRows} />
+        </Panel>
+
         <div className="grid gap-4 xl:grid-cols-2">
           <Panel
-            title="Investimento por canal"
-            description="Distribuição planejada do orçamento de mídia"
+            title="Tráfego por fonte"
+            description="Meta de receita por fonte paga, realizado RedTrack e ROAS atual"
           >
-            <div>
-              <DataList
-                rows={data.channels.map((channel) => ({
-                  detail: `${formatPercent(channel.share)} do orçamento · ROAS ${formatRatio(channel.roas)}`,
-                  label: channel.label,
-                  meter: channel.share,
-                  tone: "blue" as const,
-                  value: formatCurrency(channel.investment),
-                }))}
-                valueLabel="Invest."
-              />
-
-              <div className="mt-3 grid gap-3 rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    Maior orçamento
-                  </p>
-                  <p className="mt-1.5 truncate text-sm font-semibold text-[var(--fly-text)]">
-                    {topInvestmentChannel?.label ?? "-"}
-                  </p>
-                  <p className="mt-1 text-xs tabular-nums text-[var(--fly-text-muted)]">
-                    {formatCurrency(topInvestmentChannel?.investment ?? 0)}
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    Receita tráfego
-                  </p>
-                  <p className="mt-1.5 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                    {formatCurrency(data.summary.frontRevenue)}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                    soma dos canais pagos
-                  </p>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    Melhor ROAS
-                  </p>
-                  <p className="mt-1.5 truncate text-sm font-semibold text-[var(--fly-text)]">
-                    {topRoasChannel?.label ?? "-"}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                    ROAS {formatRatio(topRoasChannel?.roas ?? 0)}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <GpdTable rows={trafficRows.filter((row) => row.kind !== "group")} showRoas />
           </Panel>
 
           <Panel
-            title="Receita planejada"
-            description="Como a meta se distribui entre mídia paga e operação"
+            title="Back-end"
+            description="Receita operacional planejada e realizada por canal"
           >
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3">
-                <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[var(--fly-text)]">
-                      Tráfego pago
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                      Receita planejada por canal de mídia
-                    </p>
-                  </div>
-                  <StatusPill tone="gold">
-                    {formatCurrency(data.summary.frontRevenue)}
-                  </StatusPill>
-                </div>
-                <DataList
-                  rows={data.channels.map((channel) => ({
-                    detail: `investimento ${formatCurrency(channel.investment)}`,
-                    label: channel.label,
-                    meter:
-                      data.summary.frontRevenue > 0
-                        ? channel.revenue / data.summary.frontRevenue
-                        : 0,
-                    tone: channel.revenue > 0 ? ("gold" as const) : ("neutral" as const),
-                    value: formatCurrency(channel.revenue),
-                  }))}
-                  valueLabel="Receita"
-                />
-              </div>
-
-              <div className="min-w-0 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3">
-                <div className="mb-3 flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[var(--fly-text)]">
-                      Backend
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-                      Receita planejada por canais operacionais
-                    </p>
-                  </div>
-                  <StatusPill tone="gold">
-                    {formatCurrency(data.summary.backendRevenue)}
-                  </StatusPill>
-                </div>
-                <DataList
-                  rows={data.backend.map((channel) => ({
-                    detail: `${formatNumber(channel.conversions)} conversões · ticket ${formatCurrency(channel.ticket)}`,
-                    label: channel.label,
-                    meter:
-                      data.summary.backendRevenue > 0
-                        ? channel.revenue / data.summary.backendRevenue
-                        : 0,
-                    tone: channel.revenue > 0 ? ("gold" as const) : ("neutral" as const),
-                    value: formatCurrency(channel.revenue),
-                  }))}
-                  valueLabel="Receita"
-                />
-              </div>
-            </div>
-          </Panel>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <Panel
-            title="Composição da meta"
-            description="Premissas financeiras usadas no acompanhamento"
-          >
-            {revenueComposition.length ? (
-              <div className="mb-3 rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    Origem da receita
-                  </p>
-                  <p className="text-xs font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                    {formatPercent(revenueCompositionTotal)}
-                  </p>
-                </div>
-                <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-[var(--fly-divider)]">
-                  {revenueComposition.map((item) => (
-                    <span
-                      aria-hidden="true"
-                      key={item.id}
-                      className={getCompositionDotClass(item.tone)}
-                      style={{
-                        width: `${
-                          revenueCompositionTotal > 0
-                            ? (item.value / revenueCompositionTotal) * 100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {revenueComposition.map((item) => (
-                    <div key={item.id} className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            "size-1.5 shrink-0 rounded-full",
-                            getCompositionDotClass(item.tone),
-                          )}
-                        />
-                        <p className="truncate text-xs text-[var(--fly-text-muted)]">
-                          {item.label}
-                        </p>
-                      </div>
-                      <p className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
-                        {formatCompositionValue(item)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {operationalComposition.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
-                      {item.label}
-                    </p>
-                    <span
-                      aria-hidden="true"
-                      className={`size-1.5 shrink-0 rounded-full ${getCompositionDotClass(item.tone)}`}
-                    />
-                  </div>
-                  <p className="mt-3 text-xl font-semibold tabular-nums text-[var(--fly-text)]">
-                    {formatCompositionValue(item)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel
-            title="Backend planejado"
-            description="Conversões, receita e ticket esperados por canal"
-          >
-            <SimpleTable
-              columns={["Canal", "Conversões", "Receita", "Ticket"]}
-              rows={data.backend.map((item) => [
-                item.label,
-                formatNumber(item.conversions),
-                formatCurrency(item.revenue),
-                formatCurrency(item.ticket),
-              ])}
-            />
+            <GpdTable rows={backendRows.filter((row) => row.kind !== "group")} />
           </Panel>
         </div>
 
         <Panel
-          title="Semanas configuradas"
-          description="Janelas que alimentam o painel de CFO"
+          title="CB + reembolso"
+          description="Taxas de perda e recuperação acompanhadas em formato de semáforo"
         >
-          <SimpleTable
-            columns={["Semana", "Período", "Receita prevista", "Investimento", "ROAS"]}
-            rows={data.weeks.map((week) => [
-              week.label,
-              `${formatShortDate(week.inicio)} - ${formatShortDate(week.fim)}`,
-              formatCurrency(week.receitaPrevista),
-              formatCurrency(week.investimentoPrevisto),
-              formatRatio(week.roasPrevisto),
-            ])}
-          />
+          <LossTable rows={lossRows} />
+        </Panel>
+
+        <Panel
+          title="Fechamento semanal do CFO"
+          description="Inputs manuais que completam lucro líquido, EBITDA, CMV e eficiência"
+        >
+          <CfoWeeklyInputs month={cfoData.month} weeks={cfoData.manualInputs.weeks} />
         </Panel>
       </PageBody>
     </Shell>
