@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { CfoWeeklyInputs } from "@/components/cfo/cfo-weekly-inputs";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
@@ -32,6 +34,8 @@ type MetasPageParams = {
   endDate?: string;
   mes?: string;
   startDate?: string;
+  view?: string;
+  visao?: string;
 };
 
 type MonthPace = {
@@ -68,6 +72,8 @@ type LossRow = {
   target: number | null;
   unit: MetaUnit;
 };
+
+type GpdView = "geral" | "frontend" | "backend";
 
 const TRAFFIC_DEFS = [
   {
@@ -137,8 +143,42 @@ const STATUS_STYLES: Record<GpdStatus, string> = {
   ok: "bg-[var(--fly-chart-revenue)]",
 };
 
+const GPD_VIEW_OPTIONS: Array<{
+  description: string;
+  label: string;
+  value: GpdView;
+}> = [
+  {
+    description: "Operação completa",
+    label: "Geral",
+    value: "geral",
+  },
+  {
+    description: "Tráfego pago",
+    label: "Front-end",
+    value: "frontend",
+  },
+  {
+    description: "Canais operacionais",
+    label: "Back-end",
+    value: "backend",
+  },
+];
+
 function resolveMonth(params: MetasPageParams) {
   return normalizeMetasMonth(params.mes ?? params.startDate ?? params.endDate);
+}
+
+function resolveGpdView(params: MetasPageParams): GpdView {
+  const view = params.visao ?? params.view;
+
+  if (view === "frontend" || view === "backend") return view;
+
+  return "geral";
+}
+
+function buildMetasViewHref(month: string, view: GpdView) {
+  return `/metas?mes=${month}&visao=${view}`;
 }
 
 function monthRange(month: string): Pick<MonthPace, "endDate" | "startDate"> {
@@ -540,6 +580,46 @@ function SourceBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
+function GpdViewSelector({
+  activeView,
+  month,
+}: {
+  activeView: GpdView;
+  month: string;
+}) {
+  return (
+    <div className="mb-3 flex flex-col gap-2 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-[var(--fly-text)]">Visão da tabela</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-1 rounded-[12px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-1 shadow-[var(--fly-panel-inset)] sm:inline-grid sm:w-auto">
+        {GPD_VIEW_OPTIONS.map((option) => {
+          const isActive = option.value === activeView;
+
+          return (
+            <Link
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "inline-flex h-7 min-w-0 items-center justify-center rounded-[8px] px-3 text-xs font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]",
+                isActive
+                  ? "bg-[var(--fly-control-active)] text-[var(--fly-text)] shadow-[var(--fly-panel-shadow)]"
+                  : "text-[var(--fly-text-muted)] hover:bg-[var(--fly-control)] hover:text-[var(--fly-text-soft)]",
+              )}
+              href={buildMetasViewHref(month, option.value)}
+              key={option.value}
+              prefetch={false}
+              title={option.description}
+            >
+              {option.label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function GpdTable({
   rows,
   showRoas = false,
@@ -694,6 +774,7 @@ export default async function MetasPage({
   const pageStartedAt = performance.now();
   const params = await searchParams;
   const month = resolveMonth(params);
+  const activeGpdView = resolveGpdView(params);
   const pace = getMonthPace(month);
   const [planningData, cfoData, channelData] = await timedServerTask(
     "metas",
@@ -712,6 +793,13 @@ export default async function MetasPage({
     planningData,
   });
   const lossRows = buildLossRows(cfoData.goals);
+  const visibleOperationRows =
+    activeGpdView === "frontend"
+      ? trafficRows
+      : activeGpdView === "backend"
+        ? backendRows
+        : operationRows;
+  const showOperationRoas = activeGpdView === "frontend";
 
   logServerTiming("metas", "total", pageStartedAt);
 
@@ -783,24 +871,9 @@ export default async function MetasPage({
             </div>
           }
         >
-          <GpdTable rows={operationRows} />
+          <GpdViewSelector activeView={activeGpdView} month={planningData.month} />
+          <GpdTable rows={visibleOperationRows} showRoas={showOperationRoas} />
         </Panel>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Panel
-            title="Tráfego por fonte"
-            description="Meta de receita por fonte paga, realizado RedTrack e ROAS atual"
-          >
-            <GpdTable rows={trafficRows.filter((row) => row.kind !== "group")} showRoas />
-          </Panel>
-
-          <Panel
-            title="Back-end"
-            description="Receita operacional planejada e realizada por canal"
-          >
-            <GpdTable rows={backendRows.filter((row) => row.kind !== "group")} />
-          </Panel>
-        </div>
 
         <Panel
           title="CB + reembolso"
