@@ -1,10 +1,7 @@
 import { shouldUseMockData } from "@/lib/data-mode";
 import { createServiceClient } from "@/lib/supabase";
 import { getUtcRangeForAppDates } from "@/lib/app-dates";
-import {
-  buildPaytEventStreamRow,
-  type PaytPayload,
-} from "@/lib/payt-events";
+import { buildPaytEventStreamRow, type PaytPayload } from "@/lib/payt-events";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 import {
   CARRINHO_RECOVERY_CHANNEL_LABELS,
@@ -114,7 +111,10 @@ function textValue(value: unknown) {
   return text.length > 0 ? text : null;
 }
 
-function getPayloadField(payload: Record<string, unknown> | null, ...keys: string[]) {
+function getPayloadField(
+  payload: Record<string, unknown> | null,
+  ...keys: string[]
+) {
   if (!payload) return null;
 
   for (const key of keys) {
@@ -133,7 +133,7 @@ function inferOrigin(payload: Record<string, unknown> | null): CarrinhoOrigem {
       "utm_source",
       "tracking.utm_source",
       "source",
-      "source_vendas"
+      "source_vendas",
     ) ?? ""
   ).toLowerCase();
 
@@ -141,7 +141,8 @@ function inferOrigin(payload: Record<string, unknown> | null): CarrinhoOrigem {
   if (source.includes("tiktok") || source.includes("ttk")) return "tiktok_ads";
   if (source.includes("whatsapp") || source.includes("wpp")) return "whatsapp";
   if (source.includes("email") || source.includes("mautic")) return "email";
-  if (source.includes("televendas") || source.includes("call")) return "televendas";
+  if (source.includes("televendas") || source.includes("call"))
+    return "televendas";
   if (
     source.includes("meta") ||
     source.includes("facebook") ||
@@ -156,9 +157,10 @@ function inferOrigin(payload: Record<string, unknown> | null): CarrinhoOrigem {
 
 function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
   const latest = events[events.length - 1];
-  const latestIsSale = latest.event_status === "paid" || latest.event_group === "sale";
+  const latestIsSale =
+    latest.event_status === "paid" || latest.event_group === "sale";
   const hasPreviousNonPaid = events.some(
-    (event) => event.event_status !== "paid" && event.event_group !== "sale"
+    (event) => event.event_status !== "paid" && event.event_group !== "sale",
   );
 
   if (latestIsSale && hasPreviousNonPaid) {
@@ -174,7 +176,8 @@ function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
 
 function getLatestPaytEvent(events: PaytEventRow[]) {
   return events.reduce((latest, event) => {
-    return new Date(event.event_at).getTime() > new Date(latest.event_at).getTime()
+    return new Date(event.event_at).getTime() >
+      new Date(latest.event_at).getTime()
       ? event
       : latest;
   }, events[0]);
@@ -186,10 +189,7 @@ function isSaleEvent(event: PaytEventRow) {
 
 function isLegacyRecoveredGroup(events: PaytEventRow[]) {
   const latest = getLatestPaytEvent(events);
-  return (
-    isSaleEvent(latest) &&
-    events.some((event) => !isSaleEvent(event))
-  );
+  return isSaleEvent(latest) && events.some((event) => !isSaleEvent(event));
 }
 
 function isLegacyMonitorGroup(events: PaytEventRow[]) {
@@ -212,7 +212,8 @@ function getFunnelStage(status: CarrinhoStatus): CarrinhoFunilEtapa {
   if (status === "recuperado") return "recuperado";
   if (status === "perdido") return "perdido";
   if (status === "checkout") return "checkout";
-  if (status === "abandonado" || status === "em_recuperacao") return "abandonado";
+  if (status === "abandonado" || status === "em_recuperacao")
+    return "abandonado";
   return "iniciado";
 }
 
@@ -224,11 +225,17 @@ function getRecoveryStatus(status: CarrinhoStatus): CarrinhoRecoveryStatus {
   return "none";
 }
 
-function getRecoveryChannel(origin: CarrinhoOrigem): CarrinhoRecoveryChannel | null {
+function getRecoveryChannel(
+  origin: CarrinhoOrigem,
+): CarrinhoRecoveryChannel | null {
   if (origin === "email") return "email";
   if (origin === "televendas") return "televendas";
   if (origin === "whatsapp") return "whatsapp";
-  if (origin === "meta_ads" || origin === "google_ads" || origin === "tiktok_ads") {
+  if (
+    origin === "meta_ads" ||
+    origin === "google_ads" ||
+    origin === "tiktok_ads"
+  ) {
     return "whatsapp";
   }
   return null;
@@ -281,20 +288,22 @@ function buildTimeline({
   events: PaytEventRow[];
   attempts: CarrinhoRecoveryAttempt[];
 }): CarrinhoTimelineEvent[] {
-  const eventItems = events.slice(0, 8).map<CarrinhoTimelineEvent>((event, index) => ({
-    id: `${externalId}_event_${index}`,
-    label: event.event_status.replace(/_/g, " "),
-    description: event.event_name ?? event.event_group,
-    occurredAt: event.event_at,
-    tone:
-      event.event_group === "sale"
-        ? "success"
-        : event.event_group === "loss"
-          ? "danger"
-          : event.event_group === "abandonment"
-            ? "brand"
-            : "neutral",
-  }));
+  const eventItems = events
+    .slice(0, 8)
+    .map<CarrinhoTimelineEvent>((event, index) => ({
+      id: `${externalId}_event_${index}`,
+      label: event.event_status.replace(/_/g, " "),
+      description: event.event_name ?? event.event_group,
+      occurredAt: event.event_at,
+      tone:
+        event.event_group === "sale"
+          ? "success"
+          : event.event_group === "loss"
+            ? "danger"
+            : event.event_group === "abandonment"
+              ? "brand"
+              : "neutral",
+    }));
 
   const attemptItems = attempts.map<CarrinhoTimelineEvent>((attempt) => ({
     id: `${attempt.id}_timeline`,
@@ -306,13 +315,14 @@ function buildTimeline({
 
   return [...eventItems, ...attemptItems].sort(
     (first, second) =>
-      new Date(first.occurredAt).getTime() - new Date(second.occurredAt).getTime()
+      new Date(first.occurredAt).getTime() -
+      new Date(second.occurredAt).getTime(),
   );
 }
 
 function buildNextSteps(
   status: CarrinhoStatus,
-  channel: CarrinhoRecoveryChannel | null
+  channel: CarrinhoRecoveryChannel | null,
 ): CarrinhoNextStep[] {
   if (status === "recuperado") {
     return [
@@ -362,20 +372,23 @@ function buildNextSteps(
 function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
   const sortedEvents = [...events].sort(
     (first, second) =>
-      new Date(first.event_at).getTime() - new Date(second.event_at).getTime()
+      new Date(first.event_at).getTime() - new Date(second.event_at).getTime(),
   );
   const first = sortedEvents[0];
   const latest = sortedEvents[sortedEvents.length - 1];
   const sale = sortedEvents.findLast(
-    (event) => event.event_status === "paid" || event.event_group === "sale"
+    (event) => event.event_status === "paid" || event.event_group === "sale",
   );
   const status = inferStatus(sortedEvents);
   const origin = inferOrigin(latest.payload);
   const recoveryChannel = getRecoveryChannel(origin);
-  const externalId = latest.cart_id ?? latest.transaction_id ?? latest.event_key;
+  const externalId =
+    latest.cart_id ?? latest.transaction_id ?? latest.event_key;
   const potentialValue =
-    sortedEvents.findLast((event) => event.total_price != null)?.total_price ?? 0;
-  const recoveredValue = status === "recuperado" ? sale?.total_price ?? potentialValue : null;
+    sortedEvents.findLast((event) => event.total_price != null)?.total_price ??
+    0;
+  const recoveredValue =
+    status === "recuperado" ? (sale?.total_price ?? potentialValue) : null;
   const jars = latest.product_quantity ?? 1;
   const attempts = buildRecoveryAttempts({
     externalId,
@@ -414,8 +427,11 @@ function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
     funnelStage: getFunnelStage(status),
     origin,
     campaign:
-      getPayloadField(latest.payload, "link.sources.utm_campaign", "utm_campaign") ??
-      "Sem campanha",
+      getPayloadField(
+        latest.payload,
+        "link.sources.utm_campaign",
+        "utm_campaign",
+      ) ?? "Sem campanha",
     recoveryStatus: getRecoveryStatus(status),
     recoveryChannel,
     recoveryAttempts: attempts,
@@ -447,14 +463,16 @@ function buildMetricsFromGroups(groupedEvents: PaytEventRow[][]) {
     (acc, events) => {
       const sortedEvents = [...events].sort(
         (first, second) =>
-          new Date(first.event_at).getTime() - new Date(second.event_at).getTime()
+          new Date(first.event_at).getTime() -
+          new Date(second.event_at).getTime(),
       );
       const status = inferStatus(sortedEvents);
       const potentialValue =
-        sortedEvents.findLast((event) => event.total_price != null)?.total_price ?? 0;
+        sortedEvents.findLast((event) => event.total_price != null)
+          ?.total_price ?? 0;
       const sale = sortedEvents.findLast(isSaleEvent);
       const recoveredValue =
-        status === "recuperado" ? sale?.total_price ?? potentialValue : 0;
+        status === "recuperado" ? (sale?.total_price ?? potentialValue) : 0;
 
       acc.total += 1;
       acc.receitaPotencial += potentialValue;
@@ -481,12 +499,15 @@ function buildMetricsFromGroups(groupedEvents: PaytEventRow[][]) {
       receitaRecuperada: 0,
       taxaRecuperacao: 0,
       ticketMedio: 0,
-    }
+    },
   );
-  const recoveryBase = resumo.abandonados + resumo.recuperados + resumo.perdidos;
+  const recoveryBase =
+    resumo.abandonados + resumo.recuperados + resumo.perdidos;
 
-  resumo.taxaRecuperacao = recoveryBase > 0 ? resumo.recuperados / recoveryBase : 0;
-  resumo.ticketMedio = resumo.total > 0 ? resumo.receitaPotencial / resumo.total : 0;
+  resumo.taxaRecuperacao =
+    recoveryBase > 0 ? resumo.recuperados / recoveryBase : 0;
+  resumo.ticketMedio =
+    resumo.total > 0 ? resumo.receitaPotencial / resumo.total : 0;
 
   return {
     resumo,
@@ -505,7 +526,10 @@ function buildMetricsFromGroups(groupedEvents: PaytEventRow[][]) {
 }
 
 function isMissingEventStream(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  const message =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : String(error).toLowerCase();
   return (
     message.includes("payt_event_stream") ||
     message.includes("relation") ||
@@ -542,7 +566,7 @@ function timestampValue(value: string | null | undefined) {
 function sortPaytEventsByNewest(rows: PaytEventRow[]) {
   return [...rows].sort(
     (first, second) =>
-      new Date(second.event_at).getTime() - new Date(first.event_at).getTime()
+      new Date(second.event_at).getTime() - new Date(first.event_at).getTime(),
   );
 }
 
@@ -559,7 +583,7 @@ function groupPaytEvents(rows: PaytEventRow[]) {
 async function getLatestStreamEventAt(
   supabase: SupabaseServiceClient,
   startTs: string,
-  endTs: string
+  endTs: string,
 ) {
   const { data, error } = await supabase
     .from("payt_event_stream")
@@ -578,7 +602,7 @@ async function getLatestStreamEventAt(
 async function getLatestRawReceivedAt(
   supabase: SupabaseServiceClient,
   startTs: string,
-  endTs: string
+  endTs: string,
 ) {
   const { data, error } = await supabase
     .from("payt_webhooks_raw")
@@ -598,7 +622,7 @@ async function fetchStreamEventRows(
   supabase: SupabaseServiceClient,
   startTs: string,
   endTs: string,
-  maxEvents: number | null
+  maxEvents: number | null,
 ): Promise<CarrinhosEventFetchResult> {
   const rows: PaytEventRow[] = [];
   let reachedEventLimit = false;
@@ -606,9 +630,10 @@ async function fetchStreamEventRows(
   for (let offset = 0; ; offset += PAGE_SIZE) {
     if (maxEvents != null && offset >= maxEvents) break;
 
-    const to = maxEvents == null
-      ? offset + PAGE_SIZE - 1
-      : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
+    const to =
+      maxEvents == null
+        ? offset + PAGE_SIZE - 1
+        : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
 
     const { data, error } = await supabase
       .from("payt_event_stream")
@@ -641,7 +666,7 @@ async function fetchRawWebhookEventRows(
   supabase: SupabaseServiceClient,
   startTs: string,
   endTs: string,
-  maxEvents: number | null
+  maxEvents: number | null,
 ): Promise<CarrinhosEventFetchResult> {
   const rows: PaytEventRow[] = [];
   let reachedEventLimit = false;
@@ -649,9 +674,10 @@ async function fetchRawWebhookEventRows(
   for (let offset = 0; ; offset += PAGE_SIZE) {
     if (maxEvents != null && offset >= maxEvents) break;
 
-    const to = maxEvents == null
-      ? offset + PAGE_SIZE - 1
-      : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
+    const to =
+      maxEvents == null
+        ? offset + PAGE_SIZE - 1
+        : Math.min(offset + PAGE_SIZE - 1, maxEvents - 1);
 
     const { data, error } = await supabase
       .from("payt_webhooks_raw")
@@ -689,16 +715,16 @@ async function fetchCurrentPeriodEvents(
   supabase: SupabaseServiceClient,
   startTs: string,
   endTs: string,
-  maxEvents: number | null
+  maxEvents: number | null,
 ) {
   try {
     const latestStartedAt = performance.now();
     const [streamLatest, rawLatest] = await Promise.all([
       timedServerTask("carrinhos", "data.latestStreamEventAt", () =>
-        getLatestStreamEventAt(supabase, startTs, endTs)
+        getLatestStreamEventAt(supabase, startTs, endTs),
       ),
       timedServerTask("carrinhos", "data.latestRawReceivedAt", () =>
-        getLatestRawReceivedAt(supabase, startTs, endTs)
+        getLatestRawReceivedAt(supabase, startTs, endTs),
       ),
     ]);
     logServerTiming("carrinhos", "data.latestChecksTotal", latestStartedAt);
@@ -709,7 +735,7 @@ async function fetchCurrentPeriodEvents(
       const rawResult = await timedServerTask(
         "carrinhos",
         "data.rawWebhookEvents",
-        () => fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
+        () => fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents),
       );
 
       if (rawResult.rows.length > 0 || streamLatest === null) {
@@ -720,7 +746,7 @@ async function fetchCurrentPeriodEvents(
     const streamResult = await timedServerTask(
       "carrinhos",
       "data.streamEvents",
-      () => fetchStreamEventRows(supabase, startTs, endTs, maxEvents)
+      () => fetchStreamEventRows(supabase, startTs, endTs, maxEvents),
     );
 
     if (streamResult.rows.length > 0 || rawLatest === null) {
@@ -728,27 +754,27 @@ async function fetchCurrentPeriodEvents(
     }
 
     return timedServerTask("carrinhos", "data.rawWebhookFallback", () =>
-      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
+      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents),
     );
   } catch (error) {
     if (!isMissingEventStream(error)) throw error;
     return timedServerTask("carrinhos", "data.rawWebhookMissingStream", () =>
-      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents)
+      fetchRawWebhookEventRows(supabase, startTs, endTs, maxEvents),
     );
   }
 }
 
-async function fetchCarrinhosFromPaytEvents({
-  startDate,
-  endDate,
-}: CarrinhosDataRange, options: CarrinhosFetchOptions = {}) {
+async function fetchCarrinhosFromPaytEvents(
+  { startDate, endDate }: CarrinhosDataRange,
+  options: CarrinhosFetchOptions = {},
+) {
   const supabase = createServiceClient();
   const maxTableCarts = options.maxTableCarts ?? null;
   const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
   const eventResult = await timedServerTask(
     "carrinhos",
     "data.currentPeriodEvents",
-    () => fetchCurrentPeriodEvents(supabase, startTs, endTs, null)
+    () => fetchCurrentPeriodEvents(supabase, startTs, endTs, null),
   );
   const groupStartedAt = performance.now();
   const rows = sortPaytEventsByNewest(eventResult.rows);
@@ -761,7 +787,9 @@ async function fetchCarrinhosFromPaytEvents({
   ];
   const metrics = buildMetricsFromGroups(metricGroups);
   const tableGroups =
-    maxTableCarts == null ? monitorGroups : monitorGroups.slice(0, maxTableCarts);
+    maxTableCarts == null
+      ? monitorGroups
+      : monitorGroups.slice(0, maxTableCarts);
   const reachedTableLimit =
     maxTableCarts != null && monitorGroups.length > maxTableCarts;
   const carrinhos = tableGroups
@@ -770,7 +798,7 @@ async function fetchCarrinhosFromPaytEvents({
     .sort(
       (first, second) =>
         new Date(second.lastActivityAt).getTime() -
-        new Date(first.lastActivityAt).getTime()
+        new Date(first.lastActivityAt).getTime(),
     );
 
   logServerTiming("carrinhos", "postProcess.groupEvents", groupStartedAt);
@@ -784,7 +812,7 @@ async function fetchCarrinhosFromPaytEvents({
 
 export async function getCarrinhosForFrontendData(
   range: CarrinhosDataRange,
-  options: CarrinhosFetchOptions = {}
+  options: CarrinhosFetchOptions = {},
 ): Promise<CarrinhosFrontendData> {
   try {
     const maxTableCarts = options.maxTableCarts ?? null;
@@ -818,7 +846,7 @@ export async function getCarrinhosForFrontendData(
 }
 
 export async function getCarrinhosForFrontend(
-  range: CarrinhosDataRange
+  range: CarrinhosDataRange,
 ): Promise<Carrinho[]> {
   const data = await getCarrinhosForFrontendData(range);
 
