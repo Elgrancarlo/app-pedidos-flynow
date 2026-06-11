@@ -41,6 +41,14 @@ const STATUS_LABELS: Record<MetaStatus, string> = {
   on_track: "No ritmo",
 };
 
+const INDICATOR_STATUS_LABELS: Record<MetaStatus, string> = {
+  ahead: "Bom",
+  attention: "Ruim",
+  critical: "Ruim",
+  empty: "Sem dado",
+  on_track: "OK",
+};
+
 const STATUS_TONES: Record<MetaStatus, "gold" | "green" | "neutral" | "orange" | "red"> = {
   ahead: "green",
   attention: "orange",
@@ -345,7 +353,13 @@ function ExecutiveReadout({ data }: { data: MetasPageData }) {
   );
 }
 
-function StatusLabel({ status }: { status: MetaStatus }) {
+function StatusLabel({
+  labels = STATUS_LABELS,
+  status,
+}: {
+  labels?: Record<MetaStatus, string>;
+  status: MetaStatus;
+}) {
   const dotClass = {
     gold: "bg-[var(--fly-chart-revenue)]",
     green: "bg-[var(--fly-success)]",
@@ -357,7 +371,7 @@ function StatusLabel({ status }: { status: MetaStatus }) {
   return (
     <span className="inline-flex items-center gap-2 text-xs font-medium text-[var(--fly-text-soft)]">
       <span aria-hidden="true" className={`size-1.5 rounded-full ${dotClass}`} />
-      {STATUS_LABELS[status]}
+      {labels[status]}
     </span>
   );
 }
@@ -533,7 +547,7 @@ function GoalsTable({ goals }: { goals: MetaGoal[] }) {
                 {goal.inputMissing ? "Preencher" : formatPercent(Math.min(getProgress(goal), 1))}
               </td>
               <td className="px-3 py-3.5">
-                <StatusLabel status={goal.status} />
+                <StatusLabel labels={INDICATOR_STATUS_LABELS} status={goal.status} />
               </td>
             </tr>
           ))}
