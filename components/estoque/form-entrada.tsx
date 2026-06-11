@@ -37,8 +37,9 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro("");
+    const quantidade = Number(qtd);
 
-    if (!grupoFinal || !qtd || Number(qtd) <= 0) {
+    if (!grupoFinal || !qtd || !Number.isFinite(quantidade) || quantidade <= 0) {
       setErro("Informe o produto e a quantidade.");
       return;
     }
@@ -50,7 +51,7 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           produto_grupo: grupoFinal,
-          qtd_potes: Number(qtd),
+          qtd_potes: quantidade,
           observacao: obs || null,
         }),
       });
@@ -89,10 +90,11 @@ export default function FormEntrada({ grupos }: FormEntradaProps) {
       <div className={fieldShell}>
         <label className={fieldLabel}>Qtd potes</label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
           value={qtd}
-          onChange={(e) => setQtd(e.target.value)}
-          min="1"
+          onChange={(e) => setQtd(e.target.value.replace(/\D/g, ""))}
           placeholder="0"
           className={inputClass}
           required
