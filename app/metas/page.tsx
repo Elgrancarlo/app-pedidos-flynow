@@ -1080,11 +1080,11 @@ function LossTable({ rows }: { rows: LossRow[] }) {
         <table className="w-full min-w-[880px] text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
-            <th className="w-[24%] px-3 py-3">Indicador</th>
+            <th className="w-[24%] px-3 py-3 text-center">Indicador</th>
             <th className="w-[13%] px-3 py-3 text-right">Atual</th>
             <th className="w-[13%] px-3 py-3 text-right">Limite/meta</th>
-            <th className="w-[17%] px-3 py-3 text-right">Margem</th>
-            <th className="w-[23%] px-3 py-3">Leitura</th>
+            <th className="w-[17%] px-3 py-3 text-center">Margem</th>
+            <th className="w-[23%] px-3 py-3 text-center">Leitura</th>
             <th className="w-[10%] px-3 py-3 text-right">Status</th>
           </tr>
         </thead>
