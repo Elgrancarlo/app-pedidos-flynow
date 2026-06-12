@@ -316,20 +316,29 @@ function LossRangeGauge({ row }: { row: LossRow }) {
   const scale = Math.max(row.target * 1.35, row.actual * 1.12, 0.01);
   const actualPosition = clampNumber((row.actual / scale) * 100);
   const targetPosition = clampNumber((row.target / scale) * 100);
+  const isRecovery = row.id === "recovery";
   const fillClass = row.inverse
     ? "bg-[var(--fly-success)] opacity-30"
-    : row.id === "recovery"
+    : isRecovery
       ? "bg-[var(--fly-chart-investment)] opacity-75"
       : "bg-[var(--fly-chart-revenue)] opacity-75";
 
   return (
     <div className="min-w-[180px] space-y-1.5">
       <div className="relative h-1.5 rounded-full bg-[var(--fly-row-bg)]">
+        {isRecovery ? (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 rounded-full bg-[var(--fly-chart-investment)] opacity-20"
+            style={{ width: `${targetPosition}%` }}
+          />
+        ) : null}
         <span
           aria-hidden="true"
           className={cn("absolute inset-y-0 left-0 rounded-full", fillClass)}
           style={{
             width: `${row.inverse ? targetPosition : actualPosition}%`,
+            minWidth: !row.inverse && row.actual > 0 ? "10px" : undefined,
           }}
         />
         {row.inverse ? (
@@ -341,13 +350,13 @@ function LossRangeGauge({ row }: { row: LossRow }) {
         ) : null}
         <span
           aria-hidden="true"
-          className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-[var(--fly-text-muted)]"
+          className="absolute top-1/2 z-10 h-3 w-px -translate-y-1/2 bg-[var(--fly-text-muted)]"
           style={{ left: `${targetPosition}%` }}
         />
         <span
           aria-hidden="true"
           className={cn(
-            "absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-[var(--fly-surface)]",
+            "absolute top-1/2 z-10 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-[var(--fly-surface)]",
             STATUS_STYLES[row.status],
           )}
           style={{ left: `${actualPosition}%` }}
