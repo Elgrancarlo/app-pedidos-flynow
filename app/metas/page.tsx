@@ -248,20 +248,19 @@ function clampNumber(value: number, min = 0, max = 100) {
   return Math.min(Math.max(value, min), max);
 }
 
-function formatPercentagePoints(value: number) {
+function formatPercentMargin(value: number) {
   const formatted = new Intl.NumberFormat("pt-BR", {
     maximumFractionDigits: 1,
     minimumFractionDigits: 1,
   }).format(Math.abs(value) * 100);
 
-  return `${formatted} p.p.`;
+  return `${formatted}%`;
 }
 
 function formatLossTarget(row: LossRow) {
   const value = formatGoalValue(row.target, row.unit);
 
   if (row.target == null) return value;
-  if (row.inverse) return `<= ${value}`;
 
   return value;
 }
@@ -289,7 +288,7 @@ function getLossMargin(row: LossRow) {
     : "text-[var(--fly-danger-strong)]";
 
   if (row.unit === "percent") {
-    const value = formatPercentagePoints(delta);
+    const value = formatPercentMargin(delta);
 
     return {
       className,
@@ -317,16 +316,18 @@ function LossRangeGauge({ row }: { row: LossRow }) {
   const scale = Math.max(row.target * 1.35, row.actual * 1.12, 0.01);
   const actualPosition = clampNumber((row.actual / scale) * 100);
   const targetPosition = clampNumber((row.target / scale) * 100);
+  const fillClass = row.inverse
+    ? "bg-[var(--fly-success)] opacity-30"
+    : row.id === "recovery"
+      ? "bg-[var(--fly-chart-investment)] opacity-75"
+      : "bg-[var(--fly-chart-revenue)] opacity-75";
 
   return (
     <div className="min-w-[180px] space-y-1.5">
       <div className="relative h-1.5 rounded-full bg-[var(--fly-row-bg)]">
         <span
           aria-hidden="true"
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full opacity-30",
-            row.inverse ? "bg-[var(--fly-success)]" : "bg-[var(--fly-chart-revenue)]",
-          )}
+          className={cn("absolute inset-y-0 left-0 rounded-full", fillClass)}
           style={{
             width: `${row.inverse ? targetPosition : actualPosition}%`,
           }}
