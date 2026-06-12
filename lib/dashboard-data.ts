@@ -2,6 +2,7 @@ import { buildFunilAiAlerts, defaultAnalyticsDates, getFunilAnalytics } from "@/
 import {
   getTodayInAppTimezone,
   getUtcRangeForAppDate,
+  getUtcRangeForAppDates,
   shiftDateString,
 } from "@/lib/app-dates";
 import {
@@ -60,7 +61,7 @@ export type DashboardFunnelAlert = {
 export type DashboardTrendPoint = {
   data: string;
   receita: number;
-  reembolsos: number;
+  reversoes: number;
 };
 
 export type DashboardPageData = {
@@ -93,6 +94,12 @@ type DashboardTrendRpcRow = {
   dia: string;
   receita: number | string | null;
   reembolsos: number | string | null;
+};
+
+type DashboardChargebackEventRow = {
+  event_at: string | null;
+  total_price: number | string | null;
+  transaction_id: string | null;
 };
 
 type DashboardAlertRpcRow = {
@@ -151,6 +158,62 @@ async function fetchPaidSalesRowsForRange(
   return rows;
 }
 
+async function fetchChargebackTotalsByDay(
+  supabase: ReturnType<typeof createServiceClient>,
+  startDate: string,
+  endDate: string
+) {
+  const { startTs, endTs } = getUtcRangeForAppDates(startDate, endDate);
+  const rows: DashboardChargebackEventRow[] = [];
+
+  try {
+    for (let offset = 0; ; offset += DASHBOARD_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("payt_event_stream")
+        .select("transaction_id, total_price, event_at")
+        .gte("event_at", startTs)
+        .lte("event_at", endTs)
+        .in("event_status", ["chargeback", "charged_back"])
+        .order("event_at", { ascending: false })
+        .range(offset, offset + DASHBOARD_PAGE_SIZE - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      rows.push(...(data as DashboardChargebackEventRow[]));
+
+      if (data.length < DASHBOARD_PAGE_SIZE) break;
+    }
+  } catch (error) {
+    if (isMissingPaytEventStream(error)) return new Map<string, number>();
+    throw error;
+  }
+
+  const latestByTransaction = new Map<string, { day: string; value: number }>();
+
+  for (const row of rows) {
+    const transactionId = String(row.transaction_id ?? "").trim();
+    const day = appDateKeyFromIso(row.event_at);
+
+    if (!transactionId || !day || latestByTransaction.has(transactionId)) {
+      continue;
+    }
+
+    latestByTransaction.set(transactionId, {
+      day,
+      value: numberValue(row.total_price),
+    });
+  }
+
+  const totals = new Map<string, number>();
+
+  for (const { day, value } of latestByTransaction.values()) {
+    totals.set(day, (totals.get(day) ?? 0) + value);
+  }
+
+  return totals;
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -181,6 +244,29 @@ function formatGeneratedAt() {
 function dateKeyFromIso(value: string | null | undefined) {
   if (!value) return null;
   return value.slice(0, 10);
+}
+
+function appDateKeyFromIso(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+  }).format(date);
+}
+
+function isMissingPaytEventStream(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : String(error).toLowerCase();
+
+  return message.includes("payt_event_stream") || message.includes("relation");
 }
 
 function appDayTime(date: string) {
@@ -229,7 +315,7 @@ function normalizeTrendPoint(row: DashboardTrendRpcRow): DashboardTrendPoint {
   return {
     data: String(row.dia).slice(0, 10),
     receita: numberValue(row.receita),
-    reembolsos: numberValue(row.reembolsos),
+    reversoes: numberValue(row.reembolsos),
   };
 }
 
@@ -239,7 +325,7 @@ function fillTrendWindow(rows: DashboardTrendPoint[], today: string) {
   const series: DashboardTrendPoint[] = [];
 
   for (let day = startDate; day <= today; day = shiftDateString(day, 1)) {
-    series.push(byDay.get(day) ?? { data: day, receita: 0, reembolsos: 0 });
+    series.push(byDay.get(day) ?? { data: day, receita: 0, reversoes: 0 });
   }
 
   return series;
@@ -269,18 +355,18 @@ function normalizeFunnelRows(rows: DashboardFunnelRpcRow[]) {
 }
 
 function buildOverviewCards({
+  chargebackCount,
   chargebackValue,
   netRevenue,
   refundCount,
-  refundRate,
   refundValue,
   salesCount,
   salesValue,
 }: {
+  chargebackCount: number;
   chargebackValue: number;
   netRevenue: number;
   refundCount: number;
-  refundRate: number;
   refundValue: number;
   salesCount: number;
   salesValue: number;
@@ -311,11 +397,11 @@ function buildOverviewCards({
       value: formatCurrency(refundValue),
     },
     {
-      detail: "com base nas vendas de hoje",
-      label: "Taxa de reembolso",
+      detail: `${formatNumber(chargebackCount)} ocorrências no dia`,
+      label: "Chargebacks hoje",
       period: "Hoje",
       tone: "gold",
-      value: formatPercent(refundRate),
+      value: formatCurrency(chargebackValue),
     },
   ];
 }
@@ -438,6 +524,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   const today = getTodayInAppTimezone();
   const { startTs, endTs } = getUtcRangeForAppDate(today);
   const analyticsRange = defaultAnalyticsDates(7);
+  const trendStartDate = shiftDateString(today, -29);
 
   const queriesStartedAt = performance.now();
   const [
@@ -448,6 +535,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     checkout,
     funilPedidos,
     tendencia,
+    chargebacksTrend,
     funilAnalytics,
   ] = await Promise.all([
     timedServerTask("dashboard", "vendasHoje", () =>
@@ -471,6 +559,9 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     ),
     timedServerTask("dashboard", "tendencia", () =>
       supabase.rpc("tendencia_30_dias")
+    ),
+    timedServerTask("dashboard", "chargebacksTrend", () =>
+      fetchChargebackTotalsByDay(supabase, trendStartDate, today)
     ),
     timedServerTask("dashboard", "funilAnalytics", () =>
       getFunilAnalytics(
@@ -499,7 +590,6 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   const refundValue = financialMetrics.valorReembolsos;
   const chargebackValue = financialMetrics.valorChargebacks;
   const netRevenue = salesValue - refundValue - chargebackValue;
-  const refundRate = salesCount > 0 ? financialMetrics.reembolsos / salesCount : 0;
   const checkoutSummary = checkout.summary;
   const carts24h =
     checkoutSummary.openCount +
@@ -553,15 +643,21 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       openCount: checkoutSummary.openCount,
     }),
     overviewCards: buildOverviewCards({
+      chargebackCount: financialMetrics.chargebacks,
       chargebackValue,
       netRevenue,
       refundCount: financialMetrics.reembolsos,
-      refundRate,
       refundValue,
       salesCount,
       salesValue,
     }),
-    trend: ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
+    trend: fillTrendWindow(
+      ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
+      today
+    ).map((point) => ({
+      ...point,
+      reversoes: point.reversoes + (chargebacksTrend.get(point.data) ?? 0),
+    })),
   };
 
   logServerTiming("dashboard", "postProcess.total", postProcessStartedAt);
@@ -582,7 +678,6 @@ function getMockDashboardData(): DashboardPageData {
   const refundValue = todayFinanceiro.valorReembolsos;
   const chargebackValue = todayFinanceiro.valorChargebacks;
   const netRevenue = salesValue - refundValue - chargebackValue;
-  const refundRate = salesCount > 0 ? todayFinanceiro.reembolsos / salesCount : 0;
   const allStatusCounts = getPedidosContagemPorStatus(pedidos);
   const emTransito = OPEN_LOGISTICS_STATUSES.reduce(
     (sum, status) => sum + allStatusCounts[status],
@@ -634,7 +729,8 @@ function getMockDashboardData(): DashboardPageData {
       const pulse = index % 6 === 2 ? 1.16 : index % 7 === 4 ? 0.82 : 1;
       const receita = Math.round((45_000 + index * 2_650) * pulse * 100) / 100;
       const reembolsos = index % 5 === 1 ? Math.round(receita * 0.018 * 100) / 100 : 0;
-      return { data: day, receita, reembolsos };
+      const chargebacks = index % 9 === 3 ? Math.round(receita * 0.012 * 100) / 100 : 0;
+      return { data: day, receita, reversoes: reembolsos + chargebacks };
     }),
     today
   );
@@ -669,10 +765,10 @@ function getMockDashboardData(): DashboardPageData {
       openCount: checkout.openCount,
     }),
     overviewCards: buildOverviewCards({
+      chargebackCount: todayFinanceiro.chargebacks,
       chargebackValue,
       netRevenue,
       refundCount: todayFinanceiro.reembolsos,
-      refundRate,
       refundValue,
       salesCount,
       salesValue,

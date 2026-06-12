@@ -127,6 +127,63 @@ function normalizeRedtrackSource(row: AnalyticsRedtrackDailyCampaign) {
   return source;
 }
 
+export type RedtrackAnalyticsMetricRow = {
+  attributedRevenue: number;
+  campaign?: string;
+  clicks: number;
+  conversions: number;
+  cpa: number;
+  cpc: number;
+  cvr: number;
+  lpClickRate: number;
+  lpClicks: number;
+  lpViews: number;
+  roas: number;
+  source?: string;
+  spend: number;
+  uniqueClicks: number;
+};
+
+export type RedtrackAnalyticsSeriesPoint = RedtrackAnalyticsMetricRow & {
+  day: string;
+};
+
+export type RedtrackAnalyticsData = {
+  configured: boolean;
+  summary: RedtrackAnalyticsMetricRow;
+  series: RedtrackAnalyticsSeriesPoint[];
+  sources: Array<RedtrackAnalyticsMetricRow & { source: string }>;
+  campaigns: Array<RedtrackAnalyticsMetricRow & { campaign: string; source: string }>;
+};
+
+function withRedtrackDerivedMetrics<T extends RedtrackAnalyticsMetricRow>(row: T): T {
+  return {
+    ...row,
+    cpa: row.conversions > 0 ? row.spend / row.conversions : 0,
+    cpc: row.clicks > 0 ? row.spend / row.clicks : 0,
+    cvr: row.clicks > 0 ? row.conversions / row.clicks : 0,
+    lpClickRate: row.lpViews > 0 ? row.lpClicks / row.lpViews : 0,
+    roas: row.spend > 0 ? row.attributedRevenue / row.spend : 0,
+  };
+}
+
+function createRedtrackMetricBase(): RedtrackAnalyticsMetricRow {
+  return {
+    attributedRevenue: 0,
+    clicks: 0,
+    conversions: 0,
+    cpa: 0,
+    cpc: 0,
+    cvr: 0,
+    lpClickRate: 0,
+    lpClicks: 0,
+    lpViews: 0,
+    roas: 0,
+    spend: 0,
+    uniqueClicks: 0,
+  };
+}
+
 function fmtDateKey(date: string) {
   return date.slice(0, 10);
 }
@@ -565,6 +622,105 @@ export async function getAnalyticsOverview(startDate: string, endDate: string) {
     series: Array.from(seriesMap.values()).sort((left, right) => left.day.localeCompare(right.day)),
     products: productRows,
     channels: channelRows,
+  };
+}
+
+export async function getRedtrackAnalytics(startDate: string, endDate: string): Promise<RedtrackAnalyticsData> {
+  let redtrackRows: AnalyticsRedtrackDailyCampaign[] = [];
+
+  try {
+    redtrackRows = await fetchAnalyticsRows<AnalyticsRedtrackDailyCampaign>(
+      "redtrack_daily_campaign",
+      "*",
+      (query) =>
+        query
+          .gte("day", startDate)
+          .lte("day", endDate)
+          .order("day", { ascending: true }),
+    );
+  } catch (error) {
+    if (!shouldIgnoreMissingAnalyticsSchema(error)) throw error;
+  }
+
+  const summary = createRedtrackMetricBase();
+  const seriesMap = new Map<string, RedtrackAnalyticsSeriesPoint>();
+  const sourceMap = new Map<string, RedtrackAnalyticsMetricRow & { source: string }>();
+  const campaignMap = new Map<string, RedtrackAnalyticsMetricRow & { campaign: string; source: string }>();
+
+  for (const row of redtrackRows) {
+    const day = fmtDateKey(row.day);
+    const source = normalizeRedtrackSource(row);
+    const campaign = textValue(row.campaign) ?? "Sem nome";
+    const spend = numberValue(row.cost);
+    const attributedRevenue = numberValue(row.total_revenue, numberValue(row.revenue));
+    const clicks = Math.round(numberValue(row.clicks));
+    const uniqueClicks = Math.round(numberValue(row.unique_clicks));
+    const conversions = Math.round(numberValue(row.conversions));
+    const lpViews = Math.round(numberValue(row.lp_views));
+    const lpClicks = Math.round(numberValue(row.lp_clicks));
+
+    summary.spend += spend;
+    summary.attributedRevenue += attributedRevenue;
+    summary.clicks += clicks;
+    summary.uniqueClicks += uniqueClicks;
+    summary.conversions += conversions;
+    summary.lpViews += lpViews;
+    summary.lpClicks += lpClicks;
+
+    const series = seriesMap.get(day) ?? {
+      ...createRedtrackMetricBase(),
+      day,
+    };
+    series.spend += spend;
+    series.attributedRevenue += attributedRevenue;
+    series.clicks += clicks;
+    series.uniqueClicks += uniqueClicks;
+    series.conversions += conversions;
+    series.lpViews += lpViews;
+    series.lpClicks += lpClicks;
+    seriesMap.set(day, series);
+
+    const sourceRow = sourceMap.get(source) ?? {
+      ...createRedtrackMetricBase(),
+      source,
+    };
+    sourceRow.spend += spend;
+    sourceRow.attributedRevenue += attributedRevenue;
+    sourceRow.clicks += clicks;
+    sourceRow.uniqueClicks += uniqueClicks;
+    sourceRow.conversions += conversions;
+    sourceRow.lpViews += lpViews;
+    sourceRow.lpClicks += lpClicks;
+    sourceMap.set(source, sourceRow);
+
+    const campaignKey = `${campaign}|${source}`;
+    const campaignRow = campaignMap.get(campaignKey) ?? {
+      ...createRedtrackMetricBase(),
+      campaign,
+      source,
+    };
+    campaignRow.spend += spend;
+    campaignRow.attributedRevenue += attributedRevenue;
+    campaignRow.clicks += clicks;
+    campaignRow.uniqueClicks += uniqueClicks;
+    campaignRow.conversions += conversions;
+    campaignRow.lpViews += lpViews;
+    campaignRow.lpClicks += lpClicks;
+    campaignMap.set(campaignKey, campaignRow);
+  }
+
+  return {
+    configured: redtrackRows.length > 0,
+    summary: withRedtrackDerivedMetrics(summary),
+    series: Array.from(seriesMap.values())
+      .map((row) => withRedtrackDerivedMetrics(row))
+      .sort((left, right) => left.day.localeCompare(right.day)),
+    sources: Array.from(sourceMap.values())
+      .map((row) => withRedtrackDerivedMetrics(row))
+      .sort((left, right) => right.spend - left.spend),
+    campaigns: Array.from(campaignMap.values())
+      .map((row) => withRedtrackDerivedMetrics(row))
+      .sort((left, right) => right.spend - left.spend),
   };
 }
 

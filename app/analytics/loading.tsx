@@ -25,19 +25,59 @@ function DateFilterSkeleton() {
   );
 }
 
-function MetricCardsSkeleton() {
+function SectionHeaderSkeleton({
+  descriptionWidth = "w-64",
+}: {
+  descriptionWidth?: string;
+}) {
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, index) => (
-        <SkeletonPanel key={index} className="p-3 sm:p-4">
-          <div className="flex items-center gap-2">
-            <SkeletonLine className="size-1.5" />
-            <SkeletonLine className="h-2.5 w-28" />
-          </div>
-          <SkeletonLine className="mt-4 h-7 w-36 rounded-md" />
-          <SkeletonLine className="mt-3 h-2.5 w-40 max-w-full" />
-        </SkeletonPanel>
-      ))}
+    <div className="flex min-w-0 items-start gap-3">
+      <span
+        aria-hidden="true"
+        className="mt-0.5 h-8 w-px shrink-0 rounded-full bg-gradient-to-b from-[var(--fly-border-strong)] via-[var(--fly-divider)] to-transparent"
+      />
+      <div className="min-w-0">
+        <SkeletonLine className="h-3.5 w-28 rounded-md" />
+        <SkeletonLine className={`mt-2 h-2.5 max-w-full ${descriptionWidth}`} />
+      </div>
+    </div>
+  );
+}
+
+function ViewSwitchSkeleton() {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex w-full rounded-[12px] border border-[var(--fly-border)] bg-[var(--fly-surface-elevated)] p-1 sm:w-fit"
+    >
+      <SkeletonLine className="h-8 w-24 rounded-[9px]" />
+      <SkeletonLine className="ml-1 h-8 w-20 rounded-[9px]" />
+    </div>
+  );
+}
+
+function MetricCardsSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
+      {Array.from({ length: count }).map((_, index) => {
+        const className =
+          index < 4
+            ? "p-3 sm:p-4 md:col-span-3 xl:col-span-3"
+            : index === 6
+              ? "p-3 sm:p-4 md:col-span-6 xl:col-span-4"
+              : "p-3 sm:p-4 md:col-span-3 xl:col-span-4";
+
+        return (
+          <SkeletonPanel key={index} className={className}>
+            <div className="flex items-center gap-2">
+              <SkeletonLine className="size-1.5" />
+              <SkeletonLine className="h-2.5 w-28" />
+            </div>
+            <SkeletonLine className="mt-4 h-7 w-36 rounded-md" />
+            <SkeletonLine className="mt-3 h-2.5 w-40 max-w-full" />
+          </SkeletonPanel>
+        );
+      })}
     </div>
   );
 }
@@ -107,7 +147,13 @@ export default function AnalyticsLoading() {
         className="flynow-dashboard-skeleton min-w-0 overflow-x-clip px-3.5 pb-28 pt-4 sm:px-5 sm:pt-5 xl:px-6 xl:pb-10 xl:pt-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
-          <MetricCardsSkeleton />
+          <ViewSwitchSkeleton />
+
+          <section className="space-y-3">
+            <SectionHeaderSkeleton descriptionWidth="w-72" />
+            <MetricCardsSkeleton count={7} />
+          </section>
+
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(360px,0.9fr)]">
             <ChartSkeleton />
             <ChartSkeleton compact />

@@ -20,6 +20,7 @@ type AnalyticsPreset = SystemDateRangePreset<AnalyticsPresetKey> & {
 
 type AnalyticsPeriodFilterProps = {
   range: PerformanceRange;
+  view?: string;
 };
 
 function toCalendarDate(value: string) {
@@ -48,8 +49,15 @@ function normalizeRange(startDate: string, endDate: string) {
     : ({ startDate: endDate, endDate: startDate } satisfies PerformanceRange);
 }
 
-function rangeHref(range: PerformanceRange) {
-  return `/analytics?startDate=${range.startDate}&endDate=${range.endDate}`;
+function rangeHref(range: PerformanceRange, view?: string) {
+  const params = new URLSearchParams({
+    endDate: range.endDate,
+    startDate: range.startDate,
+  });
+
+  if (view) params.set("view", view);
+
+  return `/analytics?${params.toString()}`;
 }
 
 function previousMonthRange(today: string): PerformanceRange {
@@ -115,7 +123,7 @@ function getActivePreset(range: PerformanceRange, presets: AnalyticsPreset[]) {
   );
 }
 
-export function AnalyticsPeriodFilter({ range }: AnalyticsPeriodFilterProps) {
+export function AnalyticsPeriodFilter({ range, view }: AnalyticsPeriodFilterProps) {
   const router = useRouter();
   const presets = useMemo(() => getPresets(), []);
   const activeRange = getActivePreset(range, presets);
@@ -136,7 +144,7 @@ export function AnalyticsPeriodFilter({ range }: AnalyticsPeriodFilterProps) {
     }
 
     announceRouteRefreshStart();
-    router.push(rangeHref(preset.range));
+    router.push(rangeHref(preset.range, view));
   }
 
   function selectCalendarRange(value: RangeValue | null) {
@@ -155,7 +163,7 @@ export function AnalyticsPeriodFilter({ range }: AnalyticsPeriodFilterProps) {
     }
 
     announceRouteRefreshStart();
-    router.push(rangeHref(nextRange));
+    router.push(rangeHref(nextRange, view));
   }
 
   return (

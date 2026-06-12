@@ -58,8 +58,8 @@ const kpiDotColorByLabel: Record<string, string> = {
   "Alertas ativos": "var(--fly-warning-strong)",
   "Alertas de funil": "var(--fly-danger-strong)",
   Carrinhos: "var(--fly-kpi-carts)",
+  "Chargebacks hoje": "var(--fly-kpi-refund)",
   "Receita líquida": "var(--fly-chart-revenue)",
-  "Taxa de reembolso": "var(--fly-kpi-refund)",
   "Vendas hoje": "var(--fly-chart-revenue)",
 };
 
@@ -370,7 +370,7 @@ function TrendChartTooltip({
         {payload.map((item) => {
           const key = String(item.dataKey ?? item.name);
           const isRevenue = key === "receita";
-          const labelText = isRevenue ? "Receita" : "Reembolsos";
+          const labelText = isRevenue ? "Receita" : "Reembolsos + chargebacks";
 
           return (
             <div key={key} className="flex items-center justify-between gap-4">
@@ -435,7 +435,7 @@ function FunnelChartTooltip({
 
 function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
   const isCompact = useCompactViewport();
-  const hasChartData = data.some((item) => item.receita > 0 || item.reembolsos > 0);
+  const hasChartData = data.some((item) => item.receita > 0 || item.reversoes > 0);
   const compactChartTicks = useMemo(() => getCompactChartTicks(data), [data]);
 
   return (
@@ -443,7 +443,7 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
       <div className="mb-4">
         <SectionHeader
           title="Tendência"
-          description="Receita e reembolsos"
+          description="Receita e reembolsos + chargebacks"
           period="Últimos 30 dias"
         />
       </div>
@@ -451,7 +451,7 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
       {hasChartData ? (
         <div
           role="img"
-          aria-label="Gráfico de tendência com receita e reembolsos"
+          aria-label="Gráfico de tendência com receita, reembolsos e chargebacks"
           className="flynow-chart-stage h-[292px] min-w-0 sm:h-[320px]"
         >
           <div className="flynow-chart-plot h-full min-w-0">
@@ -540,7 +540,7 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
                   animationDuration={720}
                   animationEasing="ease-out"
                   type="monotone"
-                  dataKey="reembolsos"
+                  dataKey="reversoes"
                   stroke="var(--fly-danger-strong)"
                   strokeWidth={isCompact ? 2.05 : 1.9}
                   dot={false}
