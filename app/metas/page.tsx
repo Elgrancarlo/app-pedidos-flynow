@@ -313,41 +313,38 @@ function LossRangeGauge({ row }: { row: LossRow }) {
     return <span className="text-xs text-[var(--fly-text-muted)]">Sem base</span>;
   }
 
-  const scale = Math.max(row.target * 1.35, row.actual * 1.12, 0.01);
-  const actualPosition = clampNumber((row.actual / scale) * 100);
-  const targetPosition = clampNumber((row.target / scale) * 100);
-  const isRecovery = row.id === "recovery";
-  const fillClass = row.inverse
-    ? "bg-[var(--fly-success)] opacity-30"
-    : isRecovery
-      ? "bg-[var(--fly-chart-investment)] opacity-75"
-      : "bg-[var(--fly-chart-revenue)] opacity-75";
+  const targetPosition = 50;
+  const ratio = row.actual / row.target;
+  const actualPosition =
+    ratio <= 1
+      ? clampNumber(ratio * targetPosition, 4, targetPosition)
+      : clampNumber(targetPosition + Math.min(ratio - 1, 1) * 46, targetPosition, 96);
+  const leftZoneClass = row.inverse
+    ? "bg-[var(--fly-success)] opacity-45"
+    : "bg-[var(--fly-danger-strong)] opacity-30";
+  const rightZoneClass = row.inverse
+    ? "bg-[var(--fly-danger-strong)] opacity-30"
+    : "bg-[var(--fly-success)] opacity-45";
+  const dotClass =
+    row.status === "empty"
+      ? "bg-[var(--fly-text-muted)]"
+      : row.status === "bad"
+        ? "bg-[var(--fly-danger-strong)]"
+        : "bg-[var(--fly-success)]";
 
   return (
-    <div className="min-w-[180px] space-y-1.5">
+    <div className="min-w-[180px] space-y-1">
       <div className="relative h-1.5 rounded-full bg-[var(--fly-row-bg)]">
-        {isRecovery ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-0 left-0 rounded-full bg-[var(--fly-chart-investment)] opacity-20"
-            style={{ width: `${targetPosition}%` }}
-          />
-        ) : null}
         <span
           aria-hidden="true"
-          className={cn("absolute inset-y-0 left-0 rounded-full", fillClass)}
-          style={{
-            width: `${row.inverse ? targetPosition : actualPosition}%`,
-            minWidth: !row.inverse && row.actual > 0 ? "10px" : undefined,
-          }}
+          className={cn("absolute inset-y-0 left-0 rounded-l-full", leftZoneClass)}
+          style={{ width: `${targetPosition}%` }}
         />
-        {row.inverse ? (
-          <span
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 rounded-r-full bg-[var(--fly-danger-bg)]"
-            style={{ left: `${targetPosition}%` }}
-          />
-        ) : null}
+        <span
+          aria-hidden="true"
+          className={cn("absolute inset-y-0 right-0 rounded-r-full", rightZoneClass)}
+          style={{ left: `${targetPosition}%` }}
+        />
         <span
           aria-hidden="true"
           className="absolute top-1/2 z-10 h-3 w-px -translate-y-1/2 bg-[var(--fly-text-muted)]"
@@ -357,14 +354,13 @@ function LossRangeGauge({ row }: { row: LossRow }) {
           aria-hidden="true"
           className={cn(
             "absolute top-1/2 z-10 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-[var(--fly-surface)]",
-            STATUS_STYLES[row.status],
+            dotClass,
           )}
           style={{ left: `${actualPosition}%` }}
         />
       </div>
-      <div className="flex items-center justify-between gap-2 text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-        <span>{row.inverse ? "0%" : "Atual"}</span>
-        <span>{row.inverse ? "Limite" : "Meta"}</span>
+      <div className="relative h-3 text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+        <span className="absolute left-1/2 -translate-x-1/2">Meta</span>
       </div>
     </div>
   );
