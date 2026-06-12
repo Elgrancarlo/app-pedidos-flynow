@@ -51,7 +51,7 @@ type GpdRow = {
   depth?: 0 | 1;
   expected: number;
   id: string;
-  kind?: "group" | "item" | "total";
+  kind?: "group" | "item" | "reconciliation" | "total";
   label: string;
   meta: number;
   note?: string;
@@ -492,14 +492,41 @@ function buildGpdRows({
     target: planningData.summary.backendRevenue,
   });
   const operationRows = [...trafficRows, ...backendRows];
-  const totalMeta = operationRows
+  const classifiedMeta = operationRows
     .filter((row) => row.kind === "group")
     .reduce((total, row) => total + row.meta, 0);
-  const totalRealized = operationRows
+  const classifiedRealized = operationRows
     .filter((row) => row.kind === "group")
     .reduce((total, row) => total + row.realized, 0);
-  const target = totalMeta || cfoData.summary.revenue.target;
-  const realized = totalRealized || cfoData.summary.revenue.realized;
+  const target = cfoData.summary.revenue.target || classifiedMeta;
+  const realized = cfoData.summary.revenue.realized;
+  const otherTarget = Math.max(target - classifiedMeta, 0);
+  const otherRealized = realized - classifiedRealized;
+  const shouldShowReconciliation = otherTarget > 0 || Math.abs(otherRealized) >= 1;
+  const reconciliationStatus: GpdStatus = otherRealized < 0 ? "bad" : "ok";
+  const reconciliationRow = shouldShowReconciliation
+    ? {
+        ...createRow({
+          id: "other-revenue",
+          kind: "reconciliation",
+          label: "Outras receitas / não classificadas",
+          meta: otherTarget,
+          note:
+            otherRealized >= 0
+              ? "Fecha a diferença entre a receita financeira e Front/Back."
+              : "Front/Back supera a receita financeira; revisar classificação ou duplicidade.",
+          pace,
+          realized: otherRealized,
+        }),
+        percent: otherTarget > 0 ? otherRealized / otherTarget : null,
+        projection:
+          otherTarget > 0 && pace.elapsedDays > 0 && pace.elapsedDays < pace.totalDays
+            ? (otherRealized / pace.elapsedDays) * pace.totalDays
+            : otherRealized,
+        status: reconciliationStatus,
+      }
+    : null;
+  const reconciledRows = reconciliationRow ? [...operationRows, reconciliationRow] : operationRows;
   const totalRow = createRow({
     id: "operation-total",
     kind: "total",
@@ -511,7 +538,7 @@ function buildGpdRows({
 
   return {
     backendRows,
-    operationRows: [...operationRows, totalRow],
+    operationRows: [...reconciledRows, totalRow],
     totalRow,
     trafficRows,
   };
@@ -659,6 +686,8 @@ function GpdTable({
                 "rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3",
                 row.kind === "group" &&
                   "border-[var(--fly-border)] bg-[var(--fly-surface)]",
+                row.kind === "reconciliation" &&
+                  "border-[var(--fly-info-border)] bg-[var(--fly-info-bg)]",
                 row.kind === "total" &&
                   "border-[var(--fly-brand-border)] bg-[var(--fly-surface-elevated)]",
               )}
@@ -673,9 +702,11 @@ function GpdTable({
                         "size-1.5 shrink-0 rounded-full",
                         row.kind === "total"
                           ? "bg-[var(--fly-chart-revenue)]"
-                          : row.kind === "group"
-                            ? "bg-[var(--fly-text-soft)]"
-                            : "bg-[var(--fly-border-strong)]",
+                          : row.kind === "reconciliation"
+                            ? "bg-[var(--fly-chart-investment)]"
+                            : row.kind === "group"
+                              ? "bg-[var(--fly-text-soft)]"
+                              : "bg-[var(--fly-border-strong)]",
                       )}
                     />
                     <p
@@ -776,6 +807,8 @@ function GpdTable({
                   "border-l-2 border-l-transparent transition-colors duration-150 hover:bg-[var(--fly-row-hover)]",
                   row.kind === "group" &&
                     "border-l-[var(--fly-border-strong)] bg-[var(--fly-row-bg)]",
+                  row.kind === "reconciliation" &&
+                    "border-l-[var(--fly-chart-investment)] bg-[var(--fly-info-bg)]",
                   row.kind === "total" &&
                     "border-l-[var(--fly-chart-revenue)] bg-[var(--fly-surface-elevated)] text-[var(--fly-text)]",
                 )}
@@ -795,9 +828,11 @@ function GpdTable({
                           "size-1.5 shrink-0 rounded-full",
                           row.kind === "total"
                             ? "bg-[var(--fly-chart-revenue)]"
-                            : row.kind === "group"
-                              ? "bg-[var(--fly-text-soft)]"
-                              : "bg-[var(--fly-border-strong)]",
+                            : row.kind === "reconciliation"
+                              ? "bg-[var(--fly-chart-investment)]"
+                              : row.kind === "group"
+                                ? "bg-[var(--fly-text-soft)]"
+                                : "bg-[var(--fly-border-strong)]",
                         )}
                       />
                       <span
@@ -995,14 +1030,6 @@ export default async function MetasPage({
     pace,
     planningData,
   });
-  const financialSummaryRow = createRow({
-    id: "financial-summary",
-    kind: "total",
-    label: "Receita financeira",
-    meta: cfoData.summary.revenue.target || totalRow.meta,
-    pace,
-    realized: cfoData.summary.revenue.realized,
-  });
   const lossRows = buildLossRows(cfoData.goals);
   const visibleOperationRows =
     activeGpdView === "frontend"
@@ -1028,29 +1055,25 @@ export default async function MetasPage({
             detail="meta financeira mensal"
             label="Meta do mês"
             tone="gold"
-            value={formatCurrency(financialSummaryRow.meta)}
+            value={formatCurrency(totalRow.meta)}
           />
           <StatCard
-            detail={`esperado até hoje ${formatCurrency(financialSummaryRow.expected)}`}
+            detail={`esperado até hoje ${formatCurrency(totalRow.expected)}`}
             label="Realizado"
             tone="blue"
-            value={formatCurrency(financialSummaryRow.realized)}
+            value={formatCurrency(totalRow.realized)}
           />
           <StatCard
             detail={`${pace.elapsedDays}/${pace.totalDays} dias considerados`}
             label="% da meta"
-            tone={financialSummaryRow.status === "bad" ? "orange" : "green"}
-            value={
-              financialSummaryRow.percent == null
-                ? "-"
-                : formatPercent(financialSummaryRow.percent)
-            }
+            tone={totalRow.status === "bad" ? "orange" : "green"}
+            value={totalRow.percent == null ? "-" : formatPercent(totalRow.percent)}
           />
           <StatCard
             detail="ritmo atual projetado para o fechamento"
             label="Projeção mês"
             tone="neutral"
-            value={formatCurrency(financialSummaryRow.projection)}
+            value={formatCurrency(totalRow.projection)}
           />
           <StatCard
             detail={`investimento realizado ${formatCurrency(cfoData.summary.investment.realized)}`}
@@ -1078,7 +1101,7 @@ export default async function MetasPage({
 
         <Panel
           title="GPD · Realizado vs meta"
-          description="Leitura principal no mesmo eixo da planilha: meta, esperado, realizado, projeção e status"
+          description="Leitura principal no eixo da planilha, fechando Front + Back + outras receitas com o financeiro"
           action={
             <div className="flex flex-wrap items-center justify-end gap-2">
               <SourceBadge>{pace.startDate} - {pace.endDate}</SourceBadge>

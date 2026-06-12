@@ -25,7 +25,8 @@ Este documento resume as regras escolhidas para exibir dados no novo frontend. A
 | Funil | Usa `analytics.fact_funil_diario` e `analytics.fact_funil_por_fonte`. Tabela limitada a 2.000 linhas; take rate usa media ponderada. |
 | Upsells | Consolida produto/oferta para reduzir duplicidade visual e facilitar comparacao. |
 | Canais | Prioriza agregacao por canal/source e produto para leitura mais coerente de receita, spend, clicks e ROAS. |
+| Metas/CFO | KPIs usam a receita financeira total. A tabela GPD fecha a conta com Front + Back + `Outras receitas / nao classificadas`, evitando que receita real fique fora do total da operacao. |
 
 ## Decisao Final
 
-O objetivo nao e copiar todos os numeros do legado quando o legado esta limitado. O objetivo e exibir dados coerentes, completos e rapidos o suficiente para apoiar tomada de decisao.
+O objetivo nao e copiar todos os numeros do legado quando o legado esta limitado. O objetivo e exibir dados coerentes, completos e rapidos o suficiente para apoiar tomada de decisao. Quando uma receita existe no financeiro mas ainda nao esta classificada operacionalmente, ela deve aparecer como conciliacao, nao sumir da conta.
