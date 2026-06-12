@@ -243,6 +243,123 @@ function formatGoalValue(value: number | null, unit: MetaUnit) {
   return formatNumber(value);
 }
 
+function clampNumber(value: number, min = 0, max = 100) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function formatPercentagePoints(value: number) {
+  const formatted = new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(Math.abs(value) * 100);
+
+  return `${formatted} p.p.`;
+}
+
+function formatLossTarget(row: LossRow) {
+  const value = formatGoalValue(row.target, row.unit);
+
+  if (row.target == null) return value;
+  if (row.inverse) return `<= ${value}`;
+
+  return value;
+}
+
+function getLossMargin(row: LossRow) {
+  if (row.target == null || row.actual == null) {
+    return {
+      className: "text-[var(--fly-text-muted)]",
+      text: "-",
+    };
+  }
+
+  const delta = row.inverse ? row.target - row.actual : row.actual - row.target;
+
+  if (Math.abs(delta) < 0.0001) {
+    return {
+      className: "text-[var(--fly-text-soft)]",
+      text: row.inverse ? "No limite" : "Na meta",
+    };
+  }
+
+  const isGood = delta > 0;
+  const className = isGood
+    ? "text-[var(--fly-success-text)]"
+    : "text-[var(--fly-danger-strong)]";
+
+  if (row.unit === "percent") {
+    const value = formatPercentagePoints(delta);
+
+    return {
+      className,
+      text: row.inverse
+        ? `${value} ${isGood ? "abaixo" : "acima"} do limite`
+        : `${value} ${isGood ? "acima" : "abaixo"} da meta`,
+    };
+  }
+
+  const value = formatGoalValue(Math.abs(delta), row.unit);
+
+  return {
+    className,
+    text: row.inverse
+      ? `${value} ${isGood ? "abaixo" : "acima"} do limite`
+      : `${value} ${isGood ? "acima" : "abaixo"} da meta`,
+  };
+}
+
+function LossRangeGauge({ row }: { row: LossRow }) {
+  if (row.target == null || row.actual == null || row.target <= 0) {
+    return <span className="text-xs text-[var(--fly-text-muted)]">Sem base</span>;
+  }
+
+  const scale = Math.max(row.target * 1.35, row.actual * 1.12, 0.01);
+  const actualPosition = clampNumber((row.actual / scale) * 100);
+  const targetPosition = clampNumber((row.target / scale) * 100);
+
+  return (
+    <div className="min-w-[180px] space-y-1.5">
+      <div className="relative h-1.5 rounded-full bg-[var(--fly-row-bg)]">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-full opacity-30",
+            row.inverse ? "bg-[var(--fly-success)]" : "bg-[var(--fly-chart-revenue)]",
+          )}
+          style={{
+            width: `${row.inverse ? targetPosition : actualPosition}%`,
+          }}
+        />
+        {row.inverse ? (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 rounded-r-full bg-[var(--fly-danger-bg)]"
+            style={{ left: `${targetPosition}%` }}
+          />
+        ) : null}
+        <span
+          aria-hidden="true"
+          className="absolute top-1/2 h-3 w-px -translate-y-1/2 bg-[var(--fly-text-muted)]"
+          style={{ left: `${targetPosition}%` }}
+        />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-[var(--fly-surface)]",
+            STATUS_STYLES[row.status],
+          )}
+          style={{ left: `${actualPosition}%` }}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2 text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
+        <span>{row.inverse ? "0%" : "Atual"}</span>
+        <span>{row.inverse ? "Limite" : "Meta"}</span>
+      </div>
+    </div>
+  );
+}
+
 function getExpectedDelta(row: GpdRow) {
   return row.realized - row.expected;
 }
@@ -899,10 +1016,7 @@ function LossTable({ rows }: { rows: LossRow[] }) {
     <>
       <div className="space-y-2 lg:hidden">
         {rows.map((row) => {
-          const ratio =
-            row.target && row.actual != null && row.target > 0
-              ? row.actual / row.target
-              : null;
+          const margin = getLossMargin(row);
 
           return (
             <article
@@ -921,13 +1035,13 @@ function LossTable({ rows }: { rows: LossRow[] }) {
                 <StatusLabel status={row.status} />
               </div>
 
-              <dl className="mt-3 grid grid-cols-3 gap-3">
+              <dl className="mt-3 grid grid-cols-2 gap-3">
                 <div className="min-w-0">
                   <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    Meta
+                    {row.inverse ? "Limite" : "Meta"}
                   </dt>
                   <dd className="mt-1 truncate text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                    {formatGoalValue(row.target, row.unit)}
+                    {formatLossTarget(row)}
                   </dd>
                 </div>
                 <div className="min-w-0">
@@ -938,38 +1052,39 @@ function LossTable({ rows }: { rows: LossRow[] }) {
                     {formatGoalValue(row.actual, row.unit)}
                   </dd>
                 </div>
-                <div className="min-w-0 text-right">
+                <div className="col-span-2 min-w-0">
                   <dt className="text-[10px] font-medium uppercase text-[var(--fly-text-muted)]">
-                    vs meta
+                    Margem
                   </dt>
-                  <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                    {ratio == null ? "-" : formatPercent(row.inverse ? ratio - 1 : ratio)}
+                  <dd className={cn("mt-1 text-sm font-semibold tabular-nums", margin.className)}>
+                    {margin.text}
                   </dd>
                 </div>
               </dl>
+
+              <div className="mt-3">
+                <LossRangeGauge row={row} />
+              </div>
             </article>
           );
         })}
       </div>
 
       <div className="hidden overflow-x-auto lg:block">
-        <table className="w-full min-w-[760px] text-left text-sm">
+        <table className="w-full min-w-[880px] text-left text-sm">
         <thead>
           <tr className="border-b border-[var(--fly-divider)] bg-[var(--fly-table-head)] text-[11px] font-semibold uppercase text-[var(--fly-text-muted)]">
             <th className="w-[24%] px-3 py-3">Indicador</th>
-            <th className="w-[14%] px-3 py-3 text-right">Meta</th>
-            <th className="w-[14%] px-3 py-3 text-right">Atual</th>
-            <th className="w-[12%] px-3 py-3 text-right">vs meta</th>
-            <th className="w-[26%] px-3 py-3">Ação</th>
+            <th className="w-[13%] px-3 py-3 text-right">Atual</th>
+            <th className="w-[13%] px-3 py-3 text-right">Limite/meta</th>
+            <th className="w-[17%] px-3 py-3 text-right">Margem</th>
+            <th className="w-[23%] px-3 py-3">Leitura</th>
             <th className="w-[10%] px-3 py-3 text-right">Status</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
           {rows.map((row) => {
-            const ratio =
-              row.target && row.actual != null && row.target > 0
-                ? row.actual / row.target
-                : null;
+            const margin = getLossMargin(row);
 
             return (
               <tr
@@ -977,19 +1092,24 @@ function LossTable({ rows }: { rows: LossRow[] }) {
                 className="transition-colors duration-150 hover:bg-[var(--fly-row-hover)]"
               >
                 <td className="px-3 py-3.5 font-semibold text-[var(--fly-text)]">
-                  {row.label}
-                </td>
-                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
-                  {formatGoalValue(row.target, row.unit)}
+                  <div className="min-w-0">
+                    <p>{row.label}</p>
+                    <p className="mt-1 text-xs font-normal text-[var(--fly-text-muted)]">
+                      {row.action}
+                    </p>
+                  </div>
                 </td>
                 <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-info-text)]">
                   {formatGoalValue(row.actual, row.unit)}
                 </td>
-                <td className="px-3 py-3.5 text-right tabular-nums text-[var(--fly-text-soft)]">
-                  {ratio == null ? "-" : formatPercent(row.inverse ? ratio - 1 : ratio)}
+                <td className="px-3 py-3.5 text-right font-semibold tabular-nums text-[var(--fly-text-soft)]">
+                  {formatLossTarget(row)}
                 </td>
-                <td className="px-3 py-3.5 text-[var(--fly-text-muted)]">
-                  {row.action}
+                <td className={cn("px-3 py-3.5 text-right font-semibold tabular-nums", margin.className)}>
+                  {margin.text}
+                </td>
+                <td className="px-3 py-3.5">
+                  <LossRangeGauge row={row} />
                 </td>
                 <td className="px-3 py-3.5 text-right">
                   <StatusLabel status={row.status} />
@@ -1115,7 +1235,7 @@ export default async function MetasPage({
 
         <Panel
           title="CB + reembolso"
-          description="Taxas de perda e recuperação acompanhadas em formato de semáforo"
+          description="Taxas inversas lidas por limite: quanto menor, melhor. A margem mostra a distância em pontos percentuais."
         >
           <LossTable rows={lossRows} />
         </Panel>
