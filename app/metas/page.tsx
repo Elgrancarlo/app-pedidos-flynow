@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { CfoWeeklyInputs } from "@/components/cfo/cfo-weekly-inputs";
 import Shell from "@/components/layout/shell";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { MetasMonthFilter } from "@/components/metas/metas-month-filter";
@@ -1246,12 +1245,6 @@ export default async function MetasPage({
           <LossTable rows={lossRows} />
         </Panel>
 
-        <Panel
-          title="Fechamento semanal do CFO"
-          description="Inputs manuais que completam lucro líquido, EBITDA, CMV e eficiência"
-        >
-          <CfoWeeklyInputs month={cfoData.month} weeks={cfoData.manualInputs.weeks} />
-        </Panel>
       </PageBody>
     </Shell>
   );
