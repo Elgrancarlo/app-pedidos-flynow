@@ -262,6 +262,22 @@ function averageOptionalMetrics(weeks: CfoWeek[], getter: (week: CfoWeek) => Cfo
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
+function lossRateFromRawCounts(
+  weeks: CfoWeek[],
+  getter: (week: CfoWeek) => number | null | undefined,
+) {
+  const totalPedidos = weeks.reduce(
+    (total, week) => total + numberValue(week.dados_brutos.pedidos),
+    0,
+  );
+
+  if (totalPedidos <= 0) return 0;
+
+  const totalEventos = weeks.reduce((total, week) => total + numberValue(getter(week)), 0);
+
+  return totalEventos / totalPedidos;
+}
+
 function statusFromRatio(target: number, realized: number, inverse = false): MetaStatus {
   if (target <= 0 && realized <= 0) return "empty";
   if (target <= 0) return realized > 0 ? "ahead" : "empty";
@@ -489,6 +505,14 @@ function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
     weeks,
     (week) => week.indicadores.resultado.ebitda_pct,
   );
+  const chargebackRate = lossRateFromRawCounts(
+    weeks,
+    (week) => week.dados_brutos.chargebacks,
+  );
+  const refundRate = lossRateFromRawCounts(
+    weeks,
+    (week) => week.dados_brutos.reembolsos,
+  );
 
   return [
     createGoal({
@@ -579,7 +603,7 @@ function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
       inverse: true,
       name: "Chargeback",
       owner: "Financeiro",
-      realized: averageMetrics(weeks, (week) => week.indicadores.perdas.pct_chargeback) / 100,
+      realized: chargebackRate,
       target: numberValue(meta.meta_pct_chargeback, 6) / 100,
       unit: "percent",
     }),
@@ -590,7 +614,7 @@ function buildRealGoals(cfo: CfoPanelData): MetaGoal[] {
       inverse: true,
       name: "Reembolso",
       owner: "Financeiro",
-      realized: averageMetrics(weeks, (week) => week.indicadores.perdas.pct_reembolso) / 100,
+      realized: refundRate,
       target: numberValue(meta.meta_pct_reembolso, 2) / 100,
       unit: "percent",
     }),

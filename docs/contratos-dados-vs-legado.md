@@ -25,7 +25,7 @@ Este documento resume as regras escolhidas para exibir dados no novo frontend. A
 | Funil | Usa `analytics.fact_funil_diario` e `analytics.fact_funil_por_fonte`. Tabela limitada a 2.000 linhas; take rate usa media ponderada. |
 | Upsells | Consolida produto/oferta para reduzir duplicidade visual e facilitar comparacao. |
 | Canais | Prioriza agregacao por canal/source e produto para leitura mais coerente de receita, spend, clicks e ROAS. |
-| Metas/CFO | KPIs usam a receita financeira total. A tabela GPD fecha a conta com Front + Back + `Outras receitas / nao classificadas`, evitando que receita real fique fora do total da operacao. |
+| Metas/CFO | KPIs usam a receita financeira total. A tabela GPD fecha a conta com Front + Back + `Outras receitas / nao classificadas`, evitando que receita real fique fora do total da operacao. CB e reembolso usam `payt_event_stream`, igual ao Financeiro, e as taxas sao ponderadas pelos pedidos pagos do periodo. |
 
 ## Decisao Final
 

@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
+import { getUtcRangeForAppDates, toAppDateString } from "@/lib/app-dates";
 
 const PAGE_SIZE = 1000;
 const FRONT_CHANNELS = new Set(["VSL_FRONT", "TABOOLA"]);
@@ -11,7 +12,7 @@ const BACKEND_CHANNELS = new Set([
   "MDI",
 ]);
 const RECOVERY_CHANNELS = new Set(["BACKEND_RECUPERACAO"]);
-const REFUND_STATUSES = new Set(["refunded", "refund_requested"]);
+const POST_SALE_EVENT_STATUSES = ["refunded", "chargeback", "charged_back"];
 
 type MetaRow = Record<string, unknown>;
 
@@ -119,6 +120,12 @@ interface PaytSaleRow {
   valor_total: number | null;
 }
 
+interface PaytPostSaleEventRow {
+  event_at: string | null;
+  event_status: string | null;
+  transaction_id: string | null;
+}
+
 export function normalizeCfoMonth(value: string | null) {
   if (!value) return null;
   return value.length === 7 ? `${value}-01` : value;
@@ -184,6 +191,37 @@ function sum<T>(rows: T[], getter: (row: T) => number | null | undefined) {
   return rows.reduce((total, row) => total + numberValue(getter(row)), 0);
 }
 
+function countPostSaleEventsForWeek(
+  rows: PaytPostSaleEventRow[],
+  inicio: string,
+  fim: string,
+) {
+  const chargebacks = new Set<string>();
+  const reembolsos = new Set<string>();
+
+  for (const row of rows) {
+    const transactionId = String(row.transaction_id ?? "").trim();
+    const eventDay = toAppDateString(row.event_at);
+    const eventStatus = row.event_status?.toLowerCase() ?? "";
+
+    if (!transactionId || !eventDay || !dayInRange(eventDay, inicio, fim)) continue;
+
+    if (eventStatus === "refunded") {
+      reembolsos.add(transactionId);
+      continue;
+    }
+
+    if (eventStatus === "chargeback" || eventStatus === "charged_back") {
+      chargebacks.add(transactionId);
+    }
+  }
+
+  return {
+    chargebacks: chargebacks.size,
+    reembolsos: reembolsos.size,
+  };
+}
+
 export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
   const mes = normalizeCfoMonth(mesParam);
 
@@ -191,7 +229,8 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
     throw new CfoPanelError("Parametro mes obrigatorio. Exemplo: 2026-06", 400);
   }
 
-  const analytics = createServiceClient().schema("analytics");
+  const serviceClient = createServiceClient();
+  const analytics = serviceClient.schema("analytics");
 
   const { data: metaRow, error: metaError } = await analytics
     .from("metas_mensais")
@@ -227,8 +266,9 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
     throw new CfoPanelError(`Semanas nao configuradas para ${mesParam}`, 404);
   }
 
-  const periodoInicio = semanas[0]?.inicio;
-  const periodoFim = semanas[semanas.length - 1]?.fim;
+  const periodoInicio = semanas[0].inicio;
+  const periodoFim = semanas[semanas.length - 1].fim;
+  const { startTs, endTs } = getUtcRangeForAppDates(periodoInicio, periodoFim);
   const redtrackRows: RedtrackRow[] = [];
 
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -260,6 +300,24 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
     if (!data || data.length === 0) break;
 
     paytRows.push(...(data as PaytSaleRow[]));
+    if (data.length < PAGE_SIZE) break;
+  }
+
+  const postSaleEventRows: PaytPostSaleEventRow[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await serviceClient
+      .from("payt_event_stream")
+      .select("transaction_id, event_status, event_at")
+      .gte("event_at", startTs)
+      .lte("event_at", endTs)
+      .in("event_status", POST_SALE_EVENT_STATUSES)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw new CfoPanelError(error.message);
+    if (!data || data.length === 0) break;
+
+    postSaleEventRows.push(...(data as PaytPostSaleEventRow[]));
     if (data.length < PAGE_SIZE) break;
   }
 
@@ -295,6 +353,11 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
     const paytPaid = paytWeek.filter(
       (row) => row.status_pagamento === "paid" && row.chargeback !== true,
     );
+    const postSaleEvents = countPostSaleEventsForWeek(
+      postSaleEventRows,
+      semana.inicio,
+      semana.fim,
+    );
 
     const investimento =
       input?.override_investimento ?? sum(redtrackWeek, (row) => row.cost);
@@ -322,11 +385,9 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
     const pctFrontReal = receita > 0 ? round1((receitaFront / receita) * 100) : 0;
     const pctBackendReal = receita > 0 ? round1((receitaBackend / receita) * 100) : 0;
     const pctRecuperadaReal = receita > 0 ? round1((receitaRecuperada / receita) * 100) : 0;
-    const chargebacks = paytWeek.filter((row) => row.chargeback === true).length;
-    const reembolsos = paytWeek.filter((row) =>
-      REFUND_STATUSES.has(row.status_pagamento ?? ""),
-    ).length;
-    const totalPedidos = paytWeek.length;
+    const chargebacks = postSaleEvents.chargebacks;
+    const reembolsos = postSaleEvents.reembolsos;
+    const totalPedidos = clientes || paytPaid.length;
     const pctChargebackReal = totalPedidos > 0 ? round1((chargebacks / totalPedidos) * 100) : 0;
     const pctReembolsoReal = totalPedidos > 0 ? round1((reembolsos / totalPedidos) * 100) : 0;
     const roasReal = input?.override_roas ?? (investimento > 0 ? round2(receita / investimento) : 0);
