@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { Panel, StatusPill } from "@/components/workspace/operational-ui";
+import { SystemSelect } from "@/components/workspace/system-select";
 import type { EstoqueProdutoResumo, EstoqueProdutoStatus } from "@/lib/estoque";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,28 @@ const STATUS_TONES: Record<
   baixo: "gold",
   ok: "green",
   excesso: "blue",
+};
+
+type EstoqueSortMode =
+  | "critical"
+  | "least-critical"
+  | "az"
+  | "za"
+  | "most-sold";
+
+const SORT_OPTIONS: Array<{ label: string; value: EstoqueSortMode }> = [
+  { label: "Mais crítico", value: "critical" },
+  { label: "Menos crítico", value: "least-critical" },
+  { label: "A - Z", value: "az" },
+  { label: "Z - A", value: "za" },
+  { label: "Maior giro", value: "most-sold" },
+];
+
+const STATUS_PRIORITY: Record<EstoqueProdutoStatus, number> = {
+  critico: 0,
+  baixo: 1,
+  ok: 2,
+  excesso: 3,
 };
 
 function formatNumber(value: number, maximumFractionDigits = 0) {
@@ -84,11 +107,60 @@ function averagePotesPerSale(potes: number, pedidos: number) {
   return potes / pedidos;
 }
 
+function coverageSortValue(grupo: EstoqueProdutoResumo) {
+  return grupo.coberturaDias ?? Number.POSITIVE_INFINITY;
+}
+
+function compareByCriticality(
+  first: EstoqueProdutoResumo,
+  second: EstoqueProdutoResumo
+) {
+  return (
+    STATUS_PRIORITY[first.statusOperacional] -
+      STATUS_PRIORITY[second.statusOperacional] ||
+    coverageSortValue(first) - coverageSortValue(second) ||
+    first.estoque_atual - second.estoque_atual ||
+    second.vendasPeriodo - first.vendasPeriodo ||
+    first.nome_grupo.localeCompare(second.nome_grupo)
+  );
+}
+
+function sortGroups(grupos: EstoqueProdutoResumo[], sortMode: EstoqueSortMode) {
+  return [...grupos].sort((first, second) => {
+    switch (sortMode) {
+      case "least-critical":
+        return (
+          STATUS_PRIORITY[second.statusOperacional] -
+            STATUS_PRIORITY[first.statusOperacional] ||
+          coverageSortValue(second) - coverageSortValue(first) ||
+          second.estoque_atual - first.estoque_atual ||
+          first.vendasPeriodo - second.vendasPeriodo ||
+          first.nome_grupo.localeCompare(second.nome_grupo)
+        );
+      case "az":
+        return first.nome_grupo.localeCompare(second.nome_grupo);
+      case "za":
+        return second.nome_grupo.localeCompare(first.nome_grupo);
+      case "most-sold":
+        return (
+          second.vendasPeriodo - first.vendasPeriodo ||
+          second.giroPeriodo - first.giroPeriodo ||
+          first.nome_grupo.localeCompare(second.nome_grupo)
+        );
+      case "critical":
+      default:
+        return compareByCriticality(first, second);
+    }
+  });
+}
+
 export default function TabelaEstoque({
   grupos,
   periodoLabel,
 }: TabelaEstoqueProps) {
   const [grupoSelecionado, setGrupoSelecionado] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<EstoqueSortMode>("critical");
+  const sortedGrupos = sortGroups(grupos, sortMode);
   const totalPedidosPeriodo = grupos.reduce(
     (total, grupo) => total + sumPedidos(grupo),
     0
@@ -113,17 +185,26 @@ export default function TabelaEstoque({
         title="Detalhamento por produto"
         description={`${periodoLabel} · ${grupos.length.toLocaleString("pt-BR")} produtos monitorados · ofertas e receita por pedidos pagos no período`}
         action={
-          grupoSelecionado ? (
-            <button
-              type="button"
-              onClick={() => setGrupoSelecionado(null)}
-              className="inline-flex p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)]"
-            >
-              Ver todos
-            </button>
-          ) : (
-            <StatusPill tone="neutral">Todo o período selecionado</StatusPill>
-          )
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <SystemSelect
+              ariaLabel="Ordenar produtos do estoque"
+              className="sm:w-[236px]"
+              displayLabel="Ordenar"
+              onValueChange={(value) => setSortMode(value as EstoqueSortMode)}
+              options={SORT_OPTIONS}
+              triggerClassName="h-8 rounded-[7px] px-2.5 text-xs"
+              value={sortMode}
+            />
+            {grupoSelecionado ? (
+              <button
+                type="button"
+                onClick={() => setGrupoSelecionado(null)}
+                className="inline-flex h-8 items-center justify-start p-0 text-[11px] font-semibold leading-5 text-[var(--fly-text-muted)] underline decoration-[var(--fly-border-strong)] decoration-1 underline-offset-4 outline-none transition-[color,text-decoration-color] duration-150 hover:text-[var(--fly-brand-strong)] hover:decoration-[var(--fly-brand-strong)] focus-visible:rounded-[4px] focus-visible:text-[var(--fly-brand-strong)] focus-visible:ring-2 focus-visible:ring-[var(--fly-brand-ring)] sm:justify-center"
+              >
+                Ver todos
+              </button>
+            ) : null}
+          </div>
         }
       >
         <div className="overflow-x-auto">
@@ -152,7 +233,7 @@ export default function TabelaEstoque({
                   </td>
                 </tr>
               ) : (
-                grupos.map((grupo) => {
+                sortedGrupos.map((grupo) => {
                   const isSelected = grupoSelecionado === grupo.nome_grupo;
                   const expansionId = `estoque-ofertas-${grupo.id}`;
                   const pedidosPeriodo = sumPedidos(grupo);
