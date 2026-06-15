@@ -116,10 +116,10 @@ function compareByCriticality(
   second: EstoqueProdutoResumo
 ) {
   return (
+    first.estoque_atual - second.estoque_atual ||
     STATUS_PRIORITY[first.statusOperacional] -
       STATUS_PRIORITY[second.statusOperacional] ||
     coverageSortValue(first) - coverageSortValue(second) ||
-    first.estoque_atual - second.estoque_atual ||
     second.vendasPeriodo - first.vendasPeriodo ||
     first.nome_grupo.localeCompare(second.nome_grupo)
   );
@@ -130,10 +130,10 @@ function sortGroups(grupos: EstoqueProdutoResumo[], sortMode: EstoqueSortMode) {
     switch (sortMode) {
       case "least-critical":
         return (
+          second.estoque_atual - first.estoque_atual ||
           STATUS_PRIORITY[second.statusOperacional] -
             STATUS_PRIORITY[first.statusOperacional] ||
           coverageSortValue(second) - coverageSortValue(first) ||
-          second.estoque_atual - first.estoque_atual ||
           first.vendasPeriodo - second.vendasPeriodo ||
           first.nome_grupo.localeCompare(second.nome_grupo)
         );
