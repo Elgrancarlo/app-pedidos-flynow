@@ -46,13 +46,8 @@ npm run dev
 ```
 
 Por padrao, o sistema usa dados reais. Dados mockados so podem ser ativados em
-ambiente local/desenvolvimento com:
-
-```env
-FLYNOW_DATA_MODE=mock
-```
-
-Em `NODE_ENV=production`, o modo mock e bloqueado automaticamente.
+ambiente local/desenvolvimento. Em `NODE_ENV=production`, o modo mock e
+bloqueado automaticamente.
 
 ## Build e deploy
 
@@ -72,7 +67,5 @@ npm run start
 
 - Configure as keys reais diretamente no ambiente da VPS.
 - Nao envie `.env.local` para o repositorio.
-- `APP_TIMING_LOGS`, `PAGE_TIMING_LOGS` e flags similares devem ficar
-  desativadas em producao, exceto em investigacoes pontuais.
 - Rotas de debug usadas durante desenvolvimento nao fazem parte da branch de
   release.
