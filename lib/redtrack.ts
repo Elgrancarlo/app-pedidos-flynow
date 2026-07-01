@@ -150,7 +150,7 @@ async function fetchAllReportRows({
         group: "date,campaign,rt_source",
         date_from: day,
         date_to: day,
-        fields: "date,campaign_id,campaign,rt_source,clicks,conversions,cost,revenue,lp_views,lp_clicks,unique_clicks,total_revenue,roas",
+        fields: "date,campaign_id,campaign,rt_source,clicks,conversions,cost,revenue,lp_views,lp_clicks,unique_clicks,total_revenue,roas,valorvendido2",
         page,
         per: 500,
       });
@@ -218,6 +218,7 @@ export async function syncRedtrackAnalytics({
         lp_clicks: 0,
         unique_clicks: 0,
         total_revenue: 0,
+        valor_vendido_2: 0,
         roas: 0,
       };
 
@@ -229,6 +230,7 @@ export async function syncRedtrackAnalytics({
       current.lp_clicks += Math.round(numberValue(row.lp_clicks));
       current.unique_clicks += Math.round(numberValue(row.unique_clicks));
       current.total_revenue += numberValue(row.total_revenue, numberValue(row.revenue));
+      current.valor_vendido_2 += numberValue(row.valorvendido2);
       map.set(key, current);
       return map;
     }, new Map<string, {
@@ -247,6 +249,7 @@ export async function syncRedtrackAnalytics({
       lp_clicks: number;
       unique_clicks: number;
       total_revenue: number;
+      valor_vendido_2: number;
       roas: number;
     }>()),
   ).map(([, row]) => ({
@@ -272,6 +275,7 @@ export async function syncRedtrackAnalytics({
       lp_clicks: Math.round(numberValue(row.lp_clicks)),
       unique_clicks: Math.round(numberValue(row.unique_clicks)),
       total_revenue: numberValue(row.total_revenue, numberValue(row.revenue)),
+      valor_vendido_2: numberValue(row.valor_vendido_2),
       roas: numberValue(row.roas),
       imported_at: row.imported_at,
     };
