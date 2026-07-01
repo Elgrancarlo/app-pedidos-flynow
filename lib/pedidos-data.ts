@@ -269,7 +269,8 @@ export async function getPedidosForFrontend({
 async function getPedidosFinanceiroReal(
   range: PedidosDataRange
 ): Promise<PedidoFinanceiroResumo> {
-  return getFinancialEventMetrics(range.startDate, range.endDate);
+  const metrics = await getFinancialEventMetrics(range.startDate, range.endDate);
+  return metrics.byPurchaseDate;
 }
 
 export async function getPedidosRealInitialMetrics(

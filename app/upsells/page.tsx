@@ -595,11 +595,21 @@ export default async function UpsellsPage({
     (total, item) => total + item.totalApproved,
     0
   );
+  const totalUs1Wins = productCards.reduce(
+    (total, item) => total + item.us1Wins,
+    0
+  );
+  const totalUs2Wins = productCards.reduce(
+    (total, item) => total + item.us2Wins,
+    0
+  );
   const upsellRevenue = productCards.reduce(
     (total, item) => total + item.upsellRevenue,
     0
   );
   const conversionRate = directSales > 0 ? approved / directSales : 0;
+  const takeRateUs1 = directSales > 0 ? totalUs1Wins / directSales : 0;
+  const takeRateUs2 = directSales > 0 ? totalUs2Wins / directSales : 0;
   logServerTiming("upsells", "postProcess.productCards", postProcessStartedAt);
   logServerTiming("upsells", "total", pageStartedAt);
 
@@ -621,27 +631,27 @@ export default async function UpsellsPage({
 
         <StatGrid>
           <StatCard
-            label="Vendas diretas"
+            label="Vendas front aprovadas"
             value={formatNumber(directSales)}
-            detail="base do funil no período"
+            detail="base do funil (vendas principais)"
             tone="neutral"
           />
           <StatCard
             label="Upsells aprovados"
             value={formatNumber(approved)}
-            detail="US1 + US2 aprovados"
+            detail={`${formatNumber(totalUs1Wins)} US1 · ${formatNumber(totalUs2Wins)} US2`}
             tone="green"
           />
           <StatCard
-            label="Taxa de conversão"
+            label="Take rate (upsells / front)"
             value={formatPercent(conversionRate)}
-            detail="aprovados sobre vendas diretas"
+            detail={`US1: ${formatPercent(takeRateUs1)} · US2: ${formatPercent(takeRateUs2)}`}
             tone="blue"
           />
           <StatCard
             label="Receita upsells"
             value={formatCurrency(upsellRevenue)}
-            detail="receita incremental aprovada"
+            detail="receita incremental aprovada (US1 + US2)"
             tone="gold"
           />
         </StatGrid>

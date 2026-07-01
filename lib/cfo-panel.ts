@@ -350,6 +350,12 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
       dayInRange(row.day, semana.inicio, semana.fim),
     );
     const paytWeek = paytRows.filter((row) => dayInRange(row.day, semana.inicio, semana.fim));
+    // Ever-paid: todos os pedidos que foram pagos, incluindo reembolsados/chargebacks.
+    const EVER_PAID = new Set(["paid", "refunded", "chargeback", "charged_back"]);
+    const paytEverPaid = paytWeek.filter(
+      (row) => EVER_PAID.has(row.status_pagamento ?? ""),
+    );
+    // Pedidos atualmente pagos (sem reversão) — para mix de canais.
     const paytPaid = paytWeek.filter(
       (row) => row.status_pagamento === "paid" && row.chargeback !== true,
     );
@@ -361,12 +367,26 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
 
     const investimento =
       input?.override_investimento ?? sum(redtrackWeek, (row) => row.cost);
-    const receita = input?.override_receita ?? sum(paytPaid, (row) => row.valor_total);
+    // Receita bruta = tudo que foi pago na PayT (purchase + upsell).
+    const receitaBruta = sum(paytEverPaid, (row) => row.valor_total);
+    // Valor das reversões por data da compra (pedidos reembolsados/chargebacks no período).
+    const valorReversoes = sum(
+      paytEverPaid.filter((row) =>
+        row.status_pagamento === "refunded" ||
+        row.status_pagamento === "chargeback" ||
+        row.status_pagamento === "charged_back" ||
+        row.chargeback === true,
+      ),
+      (row) => row.valor_total,
+    );
+    // Receita líquida = bruta - reversões.
+    const receita = input?.override_receita ?? round2(receitaBruta - valorReversoes);
     const clicksTotal = sum(redtrackWeek, (row) => row.clicks);
     const conversionsTotal = sum(redtrackWeek, (row) => row.conversions);
     const redtrackRevenue = sum(redtrackWeek, (row) => row.total_revenue);
-    const clientes = new Set(paytPaid.map((row) => row.payt_transaction_id).filter(Boolean)).size;
-    const ticketMedio = clientes > 0 ? receita / clientes : 0;
+    const totalEverPaid = paytEverPaid.length;
+    const clientes = new Set(paytEverPaid.map((row) => row.payt_transaction_id).filter(Boolean)).size;
+    const ticketMedio = clientes > 0 ? receitaBruta / clientes : 0;
     const receitaFront = sum(
       paytPaid.filter((row) => FRONT_CHANNELS.has(row.canal ?? "")),
       (row) => row.valor_total,
@@ -382,14 +402,15 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
       (row) => row.valor_total,
     );
 
-    const pctFrontReal = receita > 0 ? round1((receitaFront / receita) * 100) : 0;
-    const pctBackendReal = receita > 0 ? round1((receitaBackend / receita) * 100) : 0;
-    const pctRecuperadaReal = receita > 0 ? round1((receitaRecuperada / receita) * 100) : 0;
+    const pctFrontReal = receitaBruta > 0 ? round1((receitaFront / receitaBruta) * 100) : 0;
+    const pctBackendReal = receitaBruta > 0 ? round1((receitaBackend / receitaBruta) * 100) : 0;
+    const pctRecuperadaReal = receitaBruta > 0 ? round1((receitaRecuperada / receitaBruta) * 100) : 0;
     const chargebacks = postSaleEvents.chargebacks;
     const reembolsos = postSaleEvents.reembolsos;
-    const totalPedidos = clientes || paytPaid.length;
+    const totalPedidos = clientes || totalEverPaid;
     const pctChargebackReal = totalPedidos > 0 ? round1((chargebacks / totalPedidos) * 100) : 0;
     const pctReembolsoReal = totalPedidos > 0 ? round1((reembolsos / totalPedidos) * 100) : 0;
+    // ROAS = receita líquida / investimento.
     const roasReal = input?.override_roas ?? (investimento > 0 ? round2(receita / investimento) : 0);
     const roiReal = input?.override_roi ?? (investimento > 0 ? round2(receita / investimento) : 0);
     const cpaReal = input?.override_cpa ?? (clientes > 0 ? round2(investimento / clientes) : 0);

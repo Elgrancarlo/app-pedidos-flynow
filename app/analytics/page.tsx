@@ -297,7 +297,7 @@ function OverviewContent({
 }) {
   const totalRoas =
     data.summary.spendTotal > 0
-      ? financeiro.receitaBruta / data.summary.spendTotal
+      ? financeiro.receitaLiquida / data.summary.spendTotal
       : 0;
 
   return (
@@ -311,28 +311,28 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
+            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas PayT (purchase + upsell)`}
             label="Receita bruta"
             tone="gold"
             value={formatCurrency(financeiro.receitaBruta)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Pedidos pagos no período"
-            label="Vendas"
+            detail="Vendas aprovadas PayT (incl. upsells)"
+            label="Vendas totais"
             tone="neutral"
             value={formatNumber(financeiro.totalPedidos)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Receita bruta / pedidos pagos"
+            detail="Receita bruta / vendas totais"
             label="Ticket médio"
             tone="blue"
             value={formatCurrency(financeiro.ticketMedio)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Receita bruta - reembolsos e chargebacks"
+            detail="Bruta - reembolsos - chargebacks (por data compra)"
             label="Receita líquida"
             tone="green"
             value={formatCurrency(financeiro.receitaLiquida)}
@@ -346,14 +346,14 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
-            detail="Receita bruta / investimento"
+            detail="Receita líquida / investimento"
             label="ROAS total"
             tone="green"
             value={formatDecimal(totalRoas)}
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
-            detail={`${financeiro.reembolsos.toLocaleString("pt-BR")} reembolsos + ${financeiro.chargebacks.toLocaleString("pt-BR")} chargebacks`}
+            detail={`${financeiro.reembolsos.toLocaleString("pt-BR")} reembolsos + ${financeiro.chargebacks.toLocaleString("pt-BR")} chargebacks (por data compra) · ${formatCurrency(financeiro.eventDateTotalRevertido)} no mês (por data evento)`}
             label="Reembolsos e chargebacks"
             tone="red"
             value={formatCurrency(financeiro.totalRevertido)}

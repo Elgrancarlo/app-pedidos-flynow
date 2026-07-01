@@ -541,9 +541,10 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     timedServerTask("dashboard", "vendasHoje", () =>
       fetchPaidSalesRowsForRange(supabase, startTs, endTs)
     ),
-    timedServerTask("dashboard", "financeiro", () =>
-      getFinancialEventMetrics(today, today)
-    ),
+    timedServerTask("dashboard", "financeiro", async () => {
+      const metrics = await getFinancialEventMetrics(today, today);
+      return metrics.byPurchaseDate;
+    }),
     timedServerTask("dashboard", "emTransito", () =>
       supabase.rpc("pedidos_em_transito")
     ),

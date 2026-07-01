@@ -95,51 +95,80 @@ export default async function FinanceiroPage({
           <StatCard
             label="Receita bruta"
             value={formatCurrency(data.receitaBruta)}
-            detail={`${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`}
+            detail={`${data.totalPedidos.toLocaleString("pt-BR")} vendas PayT (purchase + upsell)`}
             tone="gold"
           />
           <StatCard
             label="Receita líquida"
             value={formatCurrency(data.receitaLiquida)}
-            detail="bruta do período - reversões por evento no período"
+            detail="bruta - reembolsos - chargebacks (por data da compra)"
             tone="green"
           />
           <StatCard
             label="Ticket médio"
             value={formatCurrency(data.ticketMedio)}
-            detail="por pedido pago"
+            detail="receita bruta / vendas totais"
             tone="blue"
           />
           <StatCard
-            label="Total revertido"
+            label="Total revertido (data compra)"
             value={formatCurrency(data.totalRevertido)}
-            detail={`eventos financeiros no período · taxa CB ${formatPercent(data.taxaChargeback)}`}
+            detail={`taxa CB ${formatPercent(data.taxaChargeback)} · ${formatCurrency(data.eventDateTotalRevertido)} no mês (por data evento)`}
             tone="red"
           />
         </StatGrid>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <FinanceEventCard
-            label="Chargebacks"
-            value={data.chargebacks.toLocaleString("pt-BR")}
-            tone="red"
-          />
-          <FinanceEventCard
-            label="Valor em chargeback"
-            value={formatCurrency(data.valorChargebacks)}
-            tone="red"
-          />
-          <FinanceEventCard
-            label="Reembolsos"
-            value={data.reembolsos.toLocaleString("pt-BR")}
-            tone="gold"
-          />
-          <FinanceEventCard
-            label="Valor reembolsado"
-            value={formatCurrency(data.valorReembolsos)}
-            tone="neutral"
-          />
-        </div>
+        {/* Visão por data da COMPRA (principal) */}
+        <Panel title="Reversões por data da compra" description="Compras que depois tiveram reembolso ou chargeback — atribuídas ao mês da venda original">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <FinanceEventCard
+              label="Chargebacks (qtd)"
+              value={data.chargebacks.toLocaleString("pt-BR")}
+              tone="red"
+            />
+            <FinanceEventCard
+              label="Chargebacks (R$)"
+              value={formatCurrency(data.valorChargebacks)}
+              tone="red"
+            />
+            <FinanceEventCard
+              label="Reembolsos (qtd)"
+              value={data.reembolsos.toLocaleString("pt-BR")}
+              tone="gold"
+            />
+            <FinanceEventCard
+              label="Reembolsos (R$)"
+              value={formatCurrency(data.valorReembolsos)}
+              tone="gold"
+            />
+          </div>
+        </Panel>
+
+        {/* Visão por data do EVENTO (secundária) */}
+        <Panel title="Reversões por data do evento" description="Descontos efetivamente processados neste período — quando o reembolso/chargeback caiu">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <FinanceEventCard
+              label="Chargebacks (qtd)"
+              value={data.eventDateChargebacks.toLocaleString("pt-BR")}
+              tone="red"
+            />
+            <FinanceEventCard
+              label="Chargebacks (R$)"
+              value={formatCurrency(data.eventDateValorChargebacks)}
+              tone="red"
+            />
+            <FinanceEventCard
+              label="Reembolsos (qtd)"
+              value={data.eventDateReembolsos.toLocaleString("pt-BR")}
+              tone="gold"
+            />
+            <FinanceEventCard
+              label="Reembolsos (R$)"
+              value={formatCurrency(data.eventDateValorReembolsos)}
+              tone="gold"
+            />
+          </div>
+        </Panel>
 
         <Panel
           title="Composição financeira"

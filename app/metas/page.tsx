@@ -718,10 +718,10 @@ function buildLossRows(goals: MetaGoal[]): LossRow[] {
       unit: "percent",
     },
     {
-      action: "Validar se a recuperação está sustentando a operação.",
+      action: "Baseado no canal BACKEND_RECUPERACAO (tag/UTM). Validar regra: carrinho abandonado, Pix não pago ou cartão recusado que virou compra.",
       actual: recovery?.realized ?? null,
       id: "recovery",
-      label: "Receita recuperada",
+      label: "% receita recuperada (por canal)",
       status: recovery ? statusFromMetaStatus(recovery.status) : "empty",
       target: recovery?.target ?? null,
       unit: "percent",
