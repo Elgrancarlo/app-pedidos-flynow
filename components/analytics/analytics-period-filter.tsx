@@ -90,13 +90,13 @@ function getPresets(): AnalyticsPreset[] {
       key: "7d",
       label: "Ultimos 7 dias",
       displayLabel: "7D",
-      range: { startDate: shiftDateString(today, -6), endDate: today },
+      range: { startDate: shiftDateString(today, -7), endDate: shiftDateString(today, -1) },
     },
     {
       key: "30d",
       label: "Ultimos 30 dias",
       displayLabel: "30D",
-      range: { startDate: shiftDateString(today, -29), endDate: today },
+      range: { startDate: shiftDateString(today, -30), endDate: shiftDateString(today, -1) },
     },
     {
       key: "month",

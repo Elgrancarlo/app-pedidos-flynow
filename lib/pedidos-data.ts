@@ -13,7 +13,7 @@ import {
   type PedidoStatusLogistico,
   type PedidoStatusPagamento,
 } from "@/lib/pedidos";
-import { getUtcRangeForAppDates } from "@/lib/app-dates";
+import { getTodayInAppTimezone, getUtcRangeForAppDates } from "@/lib/app-dates";
 import { logServerTiming, timedServerTask } from "@/lib/server-timing";
 
 const PEDIDOS_SELECT =
@@ -141,9 +141,11 @@ function inferPedidoIssue(
   if (paymentStatus === "refunded") return "reembolso";
 
   const logisticsStatus = normalizeLogisticsStatus(row.status);
+  // Atrasado = prazo prometido é ANTERIOR a hoje (BRT). Um pedido que vence hoje
+  // não está atrasado. Compara strings YYYY-MM-DD para evitar erro de fuso.
   if (
     row.data_prometida_entrega &&
-    new Date(row.data_prometida_entrega).getTime() < Date.now() &&
+    String(row.data_prometida_entrega).slice(0, 10) < getTodayInAppTimezone() &&
     !["entregue", "devolvido"].includes(logisticsStatus)
   ) {
     return "atrasado";
@@ -270,7 +272,76 @@ async function getPedidosFinanceiroReal(
   range: PedidosDataRange
 ): Promise<PedidoFinanceiroResumo> {
   const metrics = await getFinancialEventMetrics(range.startDate, range.endDate);
-  return metrics.byPurchaseDate;
+  // Reversões (reembolso/chargeback) pela data em que o evento OCORREU — alinhado
+  // ao dashboard, não pela data da compra original.
+  return metrics.byEventDate;
+}
+
+// "Você recebe" = comissão 'producer' da Payt (nested ou flat) ou o campo
+// `voce_recebe` já calculado no payload. Retorna em reais, ou null se não houver.
+function extractVoceRecebe(payload: Record<string, unknown> | null | undefined): number | null {
+  if (!payload) return null;
+  const direct = payload["voce_recebe"];
+  if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+
+  let producerCents = 0;
+  let found = false;
+  const commission = payload["commission"];
+  if (Array.isArray(commission)) {
+    for (const item of commission as Array<Record<string, unknown>>) {
+      if (item && String(item["type"]).toLowerCase() === "producer") {
+        producerCents += Number(item["amount"]) || 0;
+      }
+      found = true;
+    }
+  } else {
+    for (let i = 0; ; i++) {
+      const type = payload[`commission.${i}.type`];
+      const amount = payload[`commission.${i}.amount`];
+      if (type == null && amount == null) break;
+      if (String(type).toLowerCase() === "producer") producerCents += Number(amount) || 0;
+      found = true;
+    }
+  }
+  return found ? producerCents / 100 : null;
+}
+
+// Soma o "Você recebe" (líquido do produtor) dos pedidos FÍSICOS pagos do período,
+// buscando o valor no event_stream por transação — mesma métrica do dashboard/Payt.
+async function getVoceRecebeForPedidos(pedidos: Pedido[]): Promise<number> {
+  const paidTxIds = pedidos
+    .filter((pedido) => pedido.paymentStatus === "paid" && pedido.paytTransactionId)
+    .map((pedido) => pedido.paytTransactionId as string);
+  if (paidTxIds.length === 0) return 0;
+
+  const supabase = createServiceClient();
+  const seen = new Set<string>();
+  let total = 0;
+  const BATCH = 300;
+
+  for (let i = 0; i < paidTxIds.length; i += BATCH) {
+    const batch = paidTxIds.slice(i, i + BATCH);
+    const { data, error } = await supabase
+      .from("payt_event_stream")
+      .select("transaction_id, total_price, payload")
+      .eq("event_status", "paid")
+      .in("transaction_id", batch);
+
+    if (error) throw error;
+
+    for (const row of (data ?? []) as Array<{
+      transaction_id: string | null;
+      total_price: number | null;
+      payload: Record<string, unknown> | null;
+    }>) {
+      const tx = String(row.transaction_id ?? "").trim();
+      if (!tx || seen.has(tx)) continue;
+      seen.add(tx);
+      total += extractVoceRecebe(row.payload) ?? Number(row.total_price ?? 0);
+    }
+  }
+
+  return total;
 }
 
 export async function getPedidosRealInitialMetrics(
@@ -281,7 +352,10 @@ export async function getPedidosRealInitialMetrics(
     isPedidoInRange(pedido, range)
   );
   const contagem = getStatusCountsFromPedidos(periodPedidos);
-  const valorPago = getPaidValueFromPedidos(periodPedidos);
+  // "Receita paga" = Você recebe (líquido producer), não o bruto de valor_total.
+  const valorPago = await timedServerTask("pedidos", "data.voceRecebe", () =>
+    getVoceRecebeForPedidos(periodPedidos)
+  );
   const financeiro = await timedServerTask("pedidos", "data.financeiro", () =>
     getPedidosFinanceiroReal(range)
   );

@@ -13,139 +13,24 @@ const supabase = createClient(
 
 const PAYT_INTEGRATION_KEY = Deno.env.get("PAYT_INTEGRATION_KEY");
 
+/** Lê chave dot-notation do payload flat da Payt: get(body, "customer.name") */
 function get<T>(body: Record<string, unknown>, key: string): T | null {
   return (body[key] as T) ?? null;
 }
 
-function textValue(value: unknown): string | null {
-  if (value == null) return null;
-  const text = String(value).trim();
-  return text.length > 0 ? text : null;
-}
-
-function numberValue(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const normalized = value.replace(/[^\d,-.]/g, "").replace(/\.(?=.*\.)/g, "").replace(",", ".");
-    const parsed = Number.parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-}
-
-function toIsoTimestamp(value: unknown): string | null {
-  const text = textValue(value);
-  if (!text) return null;
-  const date = new Date(text);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
-function normalizeStatus(value: unknown): string {
-  return textValue(value)?.toLowerCase() ?? "unknown";
-}
-
-function classifyEventGroup(status: string): string {
-  if (status === "paid") return "sale";
-  if (["refunded", "refund_requested", "refund_request", "chargeback", "charged_back"].includes(status)) return "post_sale";
-  if (["waiting_payment", "awaiting_payment", "pending", "processing", "in_analysis"].includes(status)) return "checkout";
-  if (["canceled", "cancelled", "expired", "refused", "failed", "lost_cart"].includes(status)) return "loss";
-  if (["abandoned_cart", "abandoned_checkout"].includes(status) || status.includes("abandon")) return "abandonment";
-  return "other";
-}
-
+/** Extrai todos os itens do produto do payload flat (product.items.0.*, product.items.1.*, ...) */
 function extractItems(body: Record<string, unknown>): Array<{ name: string | null; type: string | null; quantity: number }> {
   const items = [];
   for (let i = 0; ; i++) {
     const type = get<string>(body, `product.items.${i}.type`);
-    const name = get<string>(body, `product.items.${i}.name`);
-    if (type === null && name === null) break;
+    if (type === null && get<string>(body, `product.items.${i}.name`) === null) break;
     items.push({
-      name,
-      type,
+      name:     get<string>(body, `product.items.${i}.name`),
+      type:     type,
       quantity: get<number>(body, `product.items.${i}.quantity`) ?? 0,
     });
   }
   return items;
-}
-
-function resolveEventAt(status: string, body: Record<string, unknown>): string {
-  const timelineTs =
-    toIsoTimestamp(body["transaction.updated_at"]) ??
-    toIsoTimestamp(body["updated_at"]) ??
-    toIsoTimestamp(body["event_at"]) ??
-    toIsoTimestamp(body["created_at"]);
-  const paidAt = toIsoTimestamp(body["transaction.paid_at"]);
-  if (status === "paid") return paidAt ?? timelineTs ?? new Date().toISOString();
-  return timelineTs ?? paidAt ?? new Date().toISOString();
-}
-
-async function persistPayload(body: Record<string, unknown>) {
-  const status = normalizeStatus(body.status);
-  const transactionId = textValue(body.transaction_id);
-  const cartId = textValue(body.cart_id);
-  const productName = textValue(body["product.name"]);
-  const items = extractItems(body);
-  const physicalItems = items.filter((i) => i.type === "physical");
-  const quantity = physicalItems.reduce((sum, i) => sum + i.quantity, 0);
-  const totalPriceCents = numberValue(body["transaction.total_price"]);
-  const eventAt = resolveEventAt(status, body);
-  const streamTransactionId = transactionId ?? (cartId ? `cart:${cartId}` : null);
-
-  const rawRow = {
-    payload: body,
-    transaction_id: transactionId,
-    cart_id: cartId,
-    event_status: status,
-    event_name: textValue(body.event) ?? textValue(body.event_name),
-    integration_key: textValue(body.integration_key),
-    tangible: typeof body.tangible === "boolean" ? body.tangible : null,
-    customer_email: textValue(body["customer.email"]),
-    product_name: productName,
-  };
-
-  const { error: rawError } = await supabase.from("payt_webhooks_raw").insert(rawRow);
-  if (rawError) {
-    console.error("[webhook-payt] Erro raw structured:", rawError.message);
-    const { error: fallbackError } = await supabase.from("payt_webhooks_raw").insert({ payload: body });
-    if (fallbackError) console.error("[webhook-payt] Erro raw fallback:", fallbackError.message);
-  }
-
-  if (streamTransactionId) {
-    const eventRow = {
-      event_key: [
-        cartId ?? streamTransactionId ?? "unknown",
-        status,
-        eventAt,
-        textValue(body.event) ?? textValue(body.event_name) ?? "webhook",
-      ].join(":"),
-      transaction_id: streamTransactionId,
-      cart_id: cartId,
-      event_status: status,
-      event_name: textValue(body.event) ?? textValue(body.event_name),
-      event_group: classifyEventGroup(status),
-      tangible: typeof body.tangible === "boolean" ? body.tangible : null,
-      customer_name: textValue(body["customer.name"]),
-      customer_email: textValue(body["customer.email"]),
-      customer_phone: textValue(body["customer.phone"]),
-      customer_doc: textValue(body["customer.doc"]),
-      product_name: productName,
-      product_group: physicalItems[0]?.name ?? productName,
-      product_quantity: quantity > 0 ? quantity : null,
-      payment_method: textValue(body["transaction.payment_method"]),
-      total_price: totalPriceCents != null ? totalPriceCents / 100 : null,
-      paid_at: toIsoTimestamp(body["transaction.paid_at"]),
-      payload: body,
-      event_at: eventAt,
-    };
-
-    const { error: streamError } = await supabase
-      .from("payt_event_stream")
-      .upsert(eventRow, { onConflict: "event_key", ignoreDuplicates: true });
-
-    if (streamError && !streamError.message.toLowerCase().includes("payt_event_stream")) {
-      console.error("[webhook-payt] Erro event_stream:", streamError.message);
-    }
-  }
 }
 
 Deno.serve(async (req) => {
@@ -160,167 +45,156 @@ Deno.serve(async (req) => {
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  persistPayload(body).catch((err) =>
-    console.error("[webhook-payt] persistPayload error:", err)
-  );
+  // Logar raw payload para auditoria
+  await supabase.from("payt_webhooks_raw").insert({ payload: body });
 
+  // Verificar integration_key
   if (PAYT_INTEGRATION_KEY && body.integration_key !== PAYT_INTEGRATION_KEY) {
-    console.warn("[webhook-payt] Chave inválida:", body.integration_key);
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Só processar pedidos físicos
+  if (!body.tangible) {
+    return new Response(JSON.stringify({ ok: true, skipped: "not_tangible" }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const transactionId = body.transaction_id as string;
-  const status = body.status as string;
-  const cartId = body.cart_id as string ?? null;
+  const status        = body.status as string;
 
   if (!transactionId) {
-    if (cartId) {
-      return Response.json({ ok: true, evento: "capturado_sem_transaction_id", cart_id: cartId, status });
-    }
     return new Response("Missing transaction_id", { status: 400 });
   }
 
-  if (status === "refunded" || status === "refund_requested" || status === "chargeback" || status === "charged_back") {
-    const isChargeback = status === "chargeback" || status === "charged_back";
-    const { data: existente } = await supabase
-      .from("pedidos")
-      .select("id, produto_grupo, qtd_potes")
-      .eq("payt_transaction_id", transactionId)
-      .single();
-
-    if (existente) {
-      await supabase.from("pedidos").update({
-        ...(isChargeback
-          ? { chargeback: true, status_pagamento: "chargeback" }
-          : { status_pagamento: status === "refunded" ? "refunded" : "refund_requested" }),
-        updated_at: new Date().toISOString(),
-      }).eq("payt_transaction_id", transactionId);
-
-      return Response.json({ ok: true, evento: status, id: existente.id });
-    }
-    return Response.json({ ok: true, evento: status, aviso: "pedido_nao_encontrado" });
-  }
-
-  if (["awaiting_payment", "waiting_payment", "pending", "processing", "in_analysis",
-       "canceled", "cancelled", "expired", "refused", "failed"].includes(status)) {
-    const { data: existente } = await supabase
-      .from("pedidos")
-      .select("id")
-      .eq("payt_transaction_id", transactionId)
-      .single();
-
-    if (existente) {
-      await supabase.from("pedidos").update({
-        status_pagamento: status,
-        updated_at: new Date().toISOString(),
-      }).eq("payt_transaction_id", transactionId);
-    }
-    return Response.json({ ok: true, evento: "capturado", status, pedido_encontrado: Boolean(existente) });
-  }
-
-  if (status !== "paid") {
-    return Response.json({ ok: true, evento: "capturado", status });
-  }
-
-  if (!body.tangible) {
-    return Response.json({ ok: true, evento: "ignorado", motivo: "not_tangible" });
-  }
-
-  const clienteNome = get<string>(body, "customer.name") ?? "Desconhecido";
-  const clienteEmail = get<string>(body, "customer.email");
+  // Dados do cliente (flat dot-notation)
+  const clienteNome     = get<string>(body, "customer.name")  ?? "Desconhecido";
+  const clienteEmail    = get<string>(body, "customer.email");
   const clienteTelefone = get<string>(body, "customer.phone");
-  const clienteCpf = get<string>(body, "customer.doc");
+  const clienteCpf      = get<string>(body, "customer.doc");
 
+  // Dados do produto
   const produtoNome = get<string>(body, "product.name");
-  const items = extractItems(body);
+  const items       = extractItems(body);
   const itensFisicos = items.filter((i) => i.type === "physical");
-  const qtdPotes = itensFisicos.reduce((acc, i) => acc + i.quantity, 0);
+  const qtdPotes    = itensFisicos.reduce((acc, i) => acc + i.quantity, 0);
   const produtoGrupo = itensFisicos[0]?.name ?? produtoNome ?? null;
 
+  // Transação
   const totalPriceCents = get<number>(body, "transaction.total_price");
-  const valorTotal = totalPriceCents ? totalPriceCents / 100 : null;
-  const formaPagamento = get<string>(body, "transaction.payment_method");
-  const dataPagamento = get<string>(body, "transaction.paid_at");
-  const parcelas = get<number>(body, "transaction.installments");
+  const valorTotal      = totalPriceCents ? totalPriceCents / 100 : null;
+  const formaPagamento  = get<string>(body, "transaction.payment_method");
+  const dataPagamento   = get<string>(body, "transaction.paid_at");
 
+  // Endereço de entrega
   const enderecoEntrega: Record<string, unknown> = {};
   for (const field of ["street", "street_number", "complement", "district", "city", "state", "zipcode", "country"]) {
     const val = get<string>(body, `shipping.address.${field}`);
     if (val) enderecoEntrega[field] = val;
   }
 
-  console.log(`[webhook-payt] paid | ${transactionId} | ${clienteNome} | ${produtoNome} | ${qtdPotes} potes | R$${valorTotal}`);
+  const isChargeback = status === "chargeback" || status === "charged_back";
 
+  console.log(`[webhook-payt] ${transactionId} | ${clienteNome} | ${produtoNome} | ${qtdPotes} potes | R$${valorTotal}`);
+
+  // Idempotência
   const { data: existente, error: existError } = await supabase
     .from("pedidos")
-    .select("id")
+    .select("id, chargeback, status_pagamento")
     .eq("payt_transaction_id", transactionId)
     .single();
 
   if (existError && existError.code !== "PGRST116") {
     console.error("[webhook-payt] Erro DB:", existError);
-    return Response.json({ ok: false, error: existError.message }, { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: existError.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   if (existente) {
-    await supabase.from("pedidos").update({
-      payt_cart_id: cartId,
-      valor_total: valorTotal,
-      forma_pagamento: formaPagamento,
-      parcelas,
-      data_pagamento: dataPagamento,
-      status_pagamento: "paid",
-      chargeback: false,
-      updated_at: new Date().toISOString(),
-    }).eq("payt_transaction_id", transactionId);
-
-    return Response.json({ ok: true, evento: "paid_atualizado", id: existente.id });
+    if (isChargeback) {
+      await supabase.from("pedidos")
+        .update({ chargeback: true, status_pagamento: "chargeback", updated_at: new Date().toISOString() })
+        .eq("payt_transaction_id", transactionId);
+    } else if (status === "refunded" || status === "refund_requested") {
+      await supabase.from("pedidos")
+        .update({ status_pagamento: status === "refunded" ? "refunded" : "refund_requested", updated_at: new Date().toISOString() })
+        .eq("payt_transaction_id", transactionId);
+    } else if (status === "paid") {
+      // Transição waiting_payment/pending → paid: marca como pago e preenche data/valor.
+      // (bug anterior: pedido criado no pix ficava travado em waiting_payment)
+      await supabase.from("pedidos")
+        .update({
+          status_pagamento: "paid",
+          data_pagamento: dataPagamento,
+          valor_total: valorTotal,
+          forma_pagamento: formaPagamento,
+          chargeback: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("payt_transaction_id", transactionId);
+    } else if (existente.status_pagamento !== "paid") {
+      // Demais status (waiting_payment, canceled, expired, ...) — nunca rebaixa um pedido já pago.
+      await supabase.from("pedidos")
+        .update({ status_pagamento: status, updated_at: new Date().toISOString() })
+        .eq("payt_transaction_id", transactionId);
+    }
+    return new Response(
+      JSON.stringify({ ok: true, updated: status, id: existente.id }),
+      { headers: { "Content-Type": "application/json" } }
+    );
   }
 
+  // Inserir novo pedido
   const { data: pedido, error } = await supabase
     .from("pedidos")
     .insert({
       payt_transaction_id: transactionId,
-      payt_cart_id: cartId,
-      cliente_nome: clienteNome,
-      cliente_email: clienteEmail,
-      cliente_telefone: clienteTelefone,
-      cliente_cpf: clienteCpf,
-      produto_nome: produtoNome,
-      produto_grupo: produtoGrupo,
-      qtd_potes: qtdPotes > 0 ? qtdPotes : null,
-      valor_total: valorTotal,
-      forma_pagamento: formaPagamento,
-      parcelas,
-      data_pagamento: dataPagamento,
-      endereco_entrega: Object.keys(enderecoEntrega).length > 0 ? enderecoEntrega : null,
-      status: "pago",
-      status_pagamento: "paid",
-      chargeback: false,
+      cliente_nome:        clienteNome,
+      cliente_email:       clienteEmail,
+      cliente_telefone:    clienteTelefone,
+      cliente_cpf:         clienteCpf,
+      produto_nome:        produtoNome,
+      produto_grupo:       produtoGrupo,
+      qtd_potes:           qtdPotes > 0 ? qtdPotes : null,
+      valor_total:         valorTotal,
+      forma_pagamento:     formaPagamento,
+      data_pagamento:      dataPagamento,
+      endereco_entrega:    Object.keys(enderecoEntrega).length > 0 ? enderecoEntrega : null,
+      status:              "aguardando_postagem",
+      status_pagamento:    status,
+      chargeback:          isChargeback,
     })
     .select("id")
     .single();
 
   if (error) {
     console.error("[webhook-payt] Erro ao inserir:", error);
-    return Response.json({ ok: false, error: error.message }, { status: 500 });
+    return new Response(JSON.stringify({ ok: false, error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   console.log(`[webhook-payt] Inserido: id=${pedido!.id}`);
 
-  if (produtoGrupo && qtdPotes > 0) {
+  // Decrementar estoque se venda aprovada
+  if (status === "paid" && produtoGrupo && qtdPotes > 0) {
     await supabase.from("estoque_grupos")
       .upsert({ nome_grupo: produtoGrupo }, { onConflict: "nome_grupo", ignoreDuplicates: true });
 
     await supabase.rpc("decrementar_estoque", { p_grupo: produtoGrupo, p_qtd: qtdPotes });
 
     await supabase.from("estoque_movimentacao").insert({
-      produto_grupo: produtoGrupo,
-      tipo: "venda",
-      qtd_potes: qtdPotes,
+      produto_grupo:        produtoGrupo,
+      tipo:                 "venda",
+      qtd_potes:            qtdPotes,
       referencia_pedido_id: pedido!.id,
     });
   }
 
-  return Response.json({ ok: true, evento: "venda", id: pedido!.id });
+  return new Response(JSON.stringify({ ok: true, id: pedido!.id }), {
+    headers: { "Content-Type": "application/json" },
+  });
 });

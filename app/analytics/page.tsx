@@ -295,9 +295,12 @@ function OverviewContent({
   data: PerformancePageData;
   financeiro: FinanceiroPageData;
 }) {
+  const ticketMedioVoceRecebe = financeiro.totalPedidos > 0
+    ? financeiro.totalDasVendas / financeiro.totalPedidos
+    : 0;
   const totalRoas =
     data.summary.spendTotal > 0
-      ? financeiro.receitaLiquida / data.summary.spendTotal
+      ? financeiro.totalDasVendas / data.summary.spendTotal
       : 0;
 
   return (
@@ -311,10 +314,10 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas PayT (purchase + upsell)`}
-            label="Receita bruta"
+            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas`}
+            label="Total das vendas"
             tone="gold"
-            value={formatCurrency(financeiro.receitaBruta)}
+            value={formatCurrency(financeiro.totalDasVendas)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
@@ -325,17 +328,17 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Receita bruta / vendas totais"
+            detail="Total das vendas / vendas totais"
             label="Ticket médio"
             tone="blue"
-            value={formatCurrency(financeiro.ticketMedio)}
+            value={formatCurrency(ticketMedioVoceRecebe)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Bruta - reembolsos - chargebacks (por data compra)"
+            detail="Total das vendas - reembolsos - chargebacks"
             label="Receita líquida"
             tone="green"
-            value={formatCurrency(financeiro.receitaLiquida)}
+            value={formatCurrency(financeiro.totalDasVendas - financeiro.totalRevertido)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-4"

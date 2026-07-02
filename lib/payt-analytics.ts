@@ -239,12 +239,49 @@ function extractAttribution(payload: JsonMap | null | undefined) {
   };
 }
 
+// "Você recebe" = comissão do tipo 'producer' (o que a Payt repassa ao produtor).
+// A Payt NÃO envia um campo pronto — só o array `commission[]` (nested) ou as chaves
+// achatadas `commission.N.*` (flat). Também aceita `voce_recebe` já calculado no payload
+// (injetado pelo n8n / edge function). Retorna em REAIS, ou null se não houver comissão.
+function extractVoceRecebe(payload: JsonMap | null | undefined): number | null {
+  if (!payload) return null;
+
+  const direct = getNumericField(payload, "voce_recebe");
+  if (direct != null) return direct;
+
+  const commission = payload.commission;
+  let producerCents = 0;
+  let found = false;
+
+  if (Array.isArray(commission)) {
+    for (const item of commission) {
+      const c = item as JsonMap;
+      if (c && String(c.type).toLowerCase() === "producer") {
+        producerCents += numberValue(c.amount, 0);
+      }
+      found = true;
+    }
+  } else {
+    for (let i = 0; ; i++) {
+      const type = payload[`commission.${i}.type`];
+      const amount = payload[`commission.${i}.amount`];
+      if (type == null && amount == null) break;
+      if (String(type).toLowerCase() === "producer") {
+        producerCents += numberValue(amount, 0);
+      }
+      found = true;
+    }
+  }
+
+  return found ? producerCents / 100 : null;
+}
+
 function buildPaytSaleFromPedido(pedido: Pedido, payload: JsonMap | null | undefined): AnalyticsPaytSale {
   const attribution = extractAttribution(payload);
   const produtoNome = pedido.produto_nome ?? getField(payload, "product.name", "product_name", "offer_name");
   const valorPayload = getNumericField(payload, "transaction.total_price", "transaction_total_price", "amount");
   const valorTotal = pedido.valor_total ?? (valorPayload != null ? valorPayload / 100 : 0);
-  const voceRecebe = getNumericField(payload, "you_receive", "you_receive_value", "seller_net_amount") ?? valorTotal;
+  const voceRecebe = extractVoceRecebe(payload) ?? valorTotal;
   const paidAt =
     toIsoTimestamp(pedido.data_pagamento) ??
     toIsoTimestamp(getField(payload, "transaction.paid_at", "paid_at", "approved_at")) ??

@@ -146,6 +146,40 @@ function numberValue(value: unknown) {
   return 0;
 }
 
+// "Você recebe" = campo `voce_recebe` no payload OU comissão 'producer' (nested ou
+// flat). Mesma extração do dashboard/pedidos para os números baterem entre as telas.
+// Retorna null se não houver como calcular (aí o chamador usa o bruto como fallback).
+function extractVoceRecebe(payload: Record<string, unknown> | null | undefined): number | null {
+  if (!payload) return null;
+  const direct = payload["voce_recebe"];
+  if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+  if (typeof direct === "string") {
+    const parsed = numberValue(direct.replace(/R\$\s*/g, "").replace(/\./g, "").replace(",", "."));
+    if (parsed) return parsed;
+  }
+
+  let producerCents = 0;
+  let found = false;
+  const commission = payload["commission"];
+  if (Array.isArray(commission)) {
+    for (const item of commission as Array<Record<string, unknown>>) {
+      if (item && String(item["type"]).toLowerCase() === "producer") {
+        producerCents += Number(item["amount"]) || 0;
+      }
+      found = true;
+    }
+  } else {
+    for (let i = 0; ; i++) {
+      const type = payload[`commission.${i}.type`];
+      const amount = payload[`commission.${i}.amount`];
+      if (type == null && amount == null) break;
+      if (String(type).toLowerCase() === "producer") producerCents += Number(amount) || 0;
+      found = true;
+    }
+  }
+  return found ? producerCents / 100 : null;
+}
+
 function normalizeFinanceiroPaymentStatus(
   status: string | null,
   chargeback: boolean | null
@@ -252,15 +286,10 @@ async function getFinanceiroPedidosForFrontend(
     for (const row of saleRows) {
       const txnId = String(row.transaction_id ?? "").trim();
       if (!txnId || txnId.startsWith("cart:") || seenTransactions.has(txnId)) continue;
-      // Extrair voce_recebe do payload (valor líquido = "Total das vendas" na Payt).
-      const payloadVoceRecebe = row.payload?.voce_recebe;
-      const voceRecebe = typeof payloadVoceRecebe === "number"
-        ? payloadVoceRecebe
-        : numberValue(
-            typeof payloadVoceRecebe === "string"
-              ? payloadVoceRecebe.replace(/R\$\s*/g, "").replace(/\./g, "").replace(",", ".")
-              : payloadVoceRecebe
-          );
+      // "Você recebe" (líquido producer) — mesma extração do dashboard/pedidos.
+      const voceRecebe =
+        extractVoceRecebe(row.payload as Record<string, unknown> | null) ??
+        numberValue(row.total_price);
       seenTransactions.set(txnId, {
         amount: numberValue(row.total_price),
         voceRecebe,
@@ -307,14 +336,9 @@ async function getFinanceiroPedidosForFrontend(
       } else {
         // Não tinha evento "paid" no período, mas tem reversão com paid_at no período.
         // Incluir como ever-paid com status de reversão.
-        const rvPayload = row.payload?.voce_recebe;
-        const rvVoceRecebe = typeof rvPayload === "number"
-          ? rvPayload
-          : numberValue(
-              typeof rvPayload === "string"
-                ? rvPayload.replace(/R\$\s*/g, "").replace(/\./g, "").replace(",", ".")
-                : rvPayload
-            );
+        const rvVoceRecebe =
+          extractVoceRecebe(row.payload as Record<string, unknown> | null) ??
+          numberValue(row.total_price);
         seenTransactions.set(txnId, {
           amount: numberValue(row.total_price),
           voceRecebe: rvVoceRecebe,

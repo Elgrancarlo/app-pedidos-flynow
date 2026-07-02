@@ -158,6 +158,82 @@ async function fetchPaidSalesRowsForRange(
   return rows;
 }
 
+// "Você recebe" = comissão 'producer' da Payt (nested ou flat), ou o campo
+// `voce_recebe` já calculado no payload. Retorna em reais, ou null se não houver.
+function extractVoceRecebe(payload: Record<string, unknown> | null | undefined): number | null {
+  if (!payload) return null;
+  const direct = payload["voce_recebe"];
+  if (typeof direct === "number" && Number.isFinite(direct)) return direct;
+
+  let producerCents = 0;
+  let found = false;
+  const commission = payload["commission"];
+  if (Array.isArray(commission)) {
+    for (const item of commission as Array<Record<string, unknown>>) {
+      if (item && String(item["type"]).toLowerCase() === "producer") {
+        producerCents += numberValue(item["amount"]);
+      }
+      found = true;
+    }
+  } else {
+    for (let i = 0; ; i++) {
+      const type = payload[`commission.${i}.type`];
+      const amount = payload[`commission.${i}.amount`];
+      if (type == null && amount == null) break;
+      if (String(type).toLowerCase() === "producer") producerCents += numberValue(amount);
+      found = true;
+    }
+  }
+  return found ? producerCents / 100 : null;
+}
+
+// Soma o "Você recebe" (líquido do produtor) das vendas pagas no período,
+// deduplicando por transação — mesma base do analytics e do relatório da Payt.
+async function fetchVoceRecebeForRange(
+  supabase: ReturnType<typeof createServiceClient>,
+  startTs: string,
+  endTs: string
+) {
+  const seen = new Set<string>();
+  let total = 0;
+
+  try {
+    for (let offset = 0; ; offset += DASHBOARD_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from("payt_event_stream")
+        .select("transaction_id, total_price, payload")
+        .eq("event_status", "paid")
+        .not("paid_at", "is", null)
+        .gte("paid_at", startTs)
+        .lte("paid_at", endTs)
+        .order("paid_at", { ascending: false })
+        .range(offset, offset + DASHBOARD_PAGE_SIZE - 1);
+
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      for (const row of data as Array<{
+        transaction_id: string | null;
+        total_price: number | null;
+        payload: Record<string, unknown> | null;
+      }>) {
+        const tx = String(row.transaction_id ?? "").trim();
+        if (!tx || tx.startsWith("cart:") || seen.has(tx)) continue;
+        seen.add(tx);
+        total += extractVoceRecebe(row.payload) ?? numberValue(row.total_price);
+      }
+
+      if (data.length < DASHBOARD_PAGE_SIZE) break;
+    }
+  } catch (error) {
+    if (isMissingPaytEventStream(error)) return { total: 0, count: 0 };
+    throw error;
+  }
+
+  // total = "Você recebe" (líquido); count = nº de vendas aprovadas (dedup por transação).
+  return { total, count: seen.size };
+}
+
 async function fetchChargebackTotalsByDay(
   supabase: ReturnType<typeof createServiceClient>,
   startDate: string,
@@ -373,7 +449,7 @@ function buildOverviewCards({
 }): DashboardKpi[] {
   return [
     {
-      detail: `${formatNumber(salesCount)} pedidos pagos`,
+      detail: `${formatNumber(salesCount)} vendas aprovadas`,
       label: "Vendas hoje",
       period: "Hoje",
       tone: "green",
@@ -382,8 +458,8 @@ function buildOverviewCards({
     {
       detail:
         chargebackValue > 0
-          ? `vendas menos ${formatCurrency(refundValue + chargebackValue)} revertidos`
-          : "vendas do dia menos reversões",
+          ? `Você recebe menos ${formatCurrency(refundValue + chargebackValue)} revertidos`
+          : "Você recebe (líquido Payt) menos reversões",
       label: "Receita líquida",
       period: "Hoje",
       tone: "green",
@@ -524,27 +600,25 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   const today = getTodayInAppTimezone();
   const { startTs, endTs } = getUtcRangeForAppDate(today);
   const analyticsRange = defaultAnalyticsDates(7);
-  const trendStartDate = shiftDateString(today, -29);
 
   const queriesStartedAt = performance.now();
   const [
-    vendasHojeRows,
+    voceRecebeHoje,
     financialMetrics,
     emTransito,
     atrasados,
     checkout,
     funilPedidos,
     tendencia,
-    chargebacksTrend,
     funilAnalytics,
   ] = await Promise.all([
-    timedServerTask("dashboard", "vendasHoje", () =>
-      fetchPaidSalesRowsForRange(supabase, startTs, endTs)
+    timedServerTask("dashboard", "voceRecebeHoje", () =>
+      fetchVoceRecebeForRange(supabase, startTs, endTs)
     ),
-    timedServerTask("dashboard", "financeiro", async () => {
-      const metrics = await getFinancialEventMetrics(today, today);
-      return metrics.byPurchaseDate;
-    }),
+    timedServerTask("dashboard", "financeiro", () =>
+      // Retorna as duas visões: byEventDate (cards "hoje") e byPurchaseDate (Receita líquida).
+      getFinancialEventMetrics(today, today)
+    ),
     timedServerTask("dashboard", "emTransito", () =>
       supabase.rpc("pedidos_em_transito")
     ),
@@ -560,9 +634,6 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     ),
     timedServerTask("dashboard", "tendencia", () =>
       supabase.rpc("tendencia_30_dias")
-    ),
-    timedServerTask("dashboard", "chargebacksTrend", () =>
-      fetchChargebackTotalsByDay(supabase, trendStartDate, today)
     ),
     timedServerTask("dashboard", "funilAnalytics", () =>
       getFunilAnalytics(
@@ -582,15 +653,20 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   if (tendencia.error) throw tendencia.error;
 
   const postProcessStartedAt = performance.now();
-  const salesRows = vendasHojeRows;
-  const salesCount = salesRows.length;
-  const salesValue = salesRows.reduce(
-    (sum, pedido) => sum + numberValue(pedido.valor_total),
-    0
-  );
-  const refundValue = financialMetrics.valorReembolsos;
-  const chargebackValue = financialMetrics.valorChargebacks;
-  const netRevenue = salesValue - refundValue - chargebackValue;
+  // "Vendas hoje" = Você recebe (líquido do produtor) de todas as vendas aprovadas,
+  // não o bruto — é o que o empresário efetivamente recebe. Alinhado ao analytics.
+  const salesCount = voceRecebeHoje.count;
+  const salesValue = voceRecebeHoje.total;
+  // Cards "Reembolsos/Chargebacks hoje" = eventos que OCORRERAM hoje (data do evento).
+  const refundValue = financialMetrics.byEventDate.valorReembolsos;
+  const chargebackValue = financialMetrics.byEventDate.valorChargebacks;
+  // Receita líquida = "Você recebe" menos reversões DAS VENDAS DO PERÍODO (data da
+  // compra) — igual ao analytics. NÃO desconta chargebacks de pedidos antigos que
+  // apenas caíram hoje (esses aparecem no card "Chargebacks hoje", não aqui).
+  const netRevenue =
+    voceRecebeHoje.total -
+    financialMetrics.byPurchaseDate.valorReembolsos -
+    financialMetrics.byPurchaseDate.valorChargebacks;
   const checkoutSummary = checkout.summary;
   const carts24h =
     checkoutSummary.openCount +
@@ -644,21 +720,20 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       openCount: checkoutSummary.openCount,
     }),
     overviewCards: buildOverviewCards({
-      chargebackCount: financialMetrics.chargebacks,
+      chargebackCount: financialMetrics.byEventDate.chargebacks,
       chargebackValue,
       netRevenue,
-      refundCount: financialMetrics.reembolsos,
+      refundCount: financialMetrics.byEventDate.reembolsos,
       refundValue,
       salesCount,
       salesValue,
     }),
+    // reversões (reembolsos + chargebacks) já vêm da RPC tendencia_30_dias por dia;
+    // não somamos chargebacks por fora para evitar contá-los em dobro.
     trend: fillTrendWindow(
       ((tendencia.data ?? []) as DashboardTrendRpcRow[]).map(normalizeTrendPoint),
       today
-    ).map((point) => ({
-      ...point,
-      reversoes: point.reversoes + (chargebacksTrend.get(point.data) ?? 0),
-    })),
+    ),
   };
 
   logServerTiming("dashboard", "postProcess.total", postProcessStartedAt);
