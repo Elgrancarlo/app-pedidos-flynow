@@ -30,6 +30,10 @@ const CARRINHOS_SELECT =
 const PAGE_SIZE = 1000;
 const DEFAULT_TABLE_CART_LIMIT = 1000;
 const MAX_OPTIMIZED_CHECKOUT_DAYS = 31;
+// "Aguardando pagamento" só vale até 2 dias; depois vira perdido (a Payt não manda
+// webhook de expiração de boleto/pix). Recuperação = pagou >= 1h depois de gerar.
+const CARRINHO_OPEN_MAX_AGE_MS = 2 * 24 * 60 * 60 * 1000;
+const CARRINHO_RECOVERY_MIN_GAP_MS = 60 * 60 * 1000;
 
 type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
 type CarrinhosEventSource = "payt_event_stream" | "payt_webhooks_raw";
@@ -189,17 +193,37 @@ function inferStatus(events: PaytEventRow[]): CarrinhoStatus {
   const latest = events[events.length - 1];
   const latestIsSale =
     latest.event_status === "paid" || latest.event_group === "sale";
-  const hasPreviousNonPaid = events.some(
-    (event) => event.event_status !== "paid" && event.event_group !== "sale",
-  );
 
-  if (latestIsSale && hasPreviousNonPaid) {
-    return "recuperado";
+  if (latestIsSale) {
+    const hadNonPaid = events.some(
+      (event) => event.event_status !== "paid" && event.event_group !== "sale",
+    );
+    if (!hadNonPaid) return "ativo"; // compra direta — não é carrinho
+
+    const hadLoss = events.some(
+      (event) => event.event_group === "loss" || event.event_group === "abandonment",
+    );
+    const firstWaiting = events.find((event) => event.event_group === "checkout");
+    const gapMs = firstWaiting
+      ? new Date(latest.event_at).getTime() - new Date(firstWaiting.event_at).getTime()
+      : Number.POSITIVE_INFINITY;
+    // Recuperado = passou por perda OU pagou >= 1h depois de gerar (recuperação da IA).
+    // Pix pago na hora (< 1h, sem perda) é compra normal — não conta.
+    return hadLoss || gapMs >= CARRINHO_RECOVERY_MIN_GAP_MS ? "recuperado" : "ativo";
   }
 
+  // lost_cart = abandono da página de checkout (antes de gerar pix/boleto)
+  if (latest.event_status === "lost_cart" || latest.event_group === "abandonment") {
+    return "abandonado";
+  }
+  // canceled / expired / refused / failed
   if (latest.event_group === "loss") return "perdido";
-  if (latest.event_group === "abandonment") return "abandonado";
-  if (latest.event_group === "checkout") return "checkout";
+  if (latest.event_group === "checkout") {
+    // pix/boleto gerado: aberto se recente; perdido (vencido) se passou de 2 dias
+    const isRecent =
+      Date.now() - new Date(latest.event_at).getTime() < CARRINHO_OPEN_MAX_AGE_MS;
+    return isRecent ? "checkout" : "perdido";
+  }
 
   return "ativo";
 }
@@ -477,9 +501,13 @@ function mapEventsToCarrinho(events: PaytEventRow[]): Carrinho {
 }
 
 function statusFromOptimizedMonitorRow(row: PaytCheckoutMonitorRow): CarrinhoStatus {
+  if (row.status === "lost_cart" || row.eventGroup === "abandonment") return "abandonado";
   if (row.eventGroup === "loss") return "perdido";
-  if (row.eventGroup === "abandonment") return "abandonado";
-  if (row.eventGroup === "checkout") return "checkout";
+  if (row.eventGroup === "checkout") {
+    const isRecent =
+      Date.now() - new Date(row.eventAt).getTime() < CARRINHO_OPEN_MAX_AGE_MS;
+    return isRecent ? "checkout" : "perdido";
+  }
   return "ativo";
 }
 

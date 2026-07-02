@@ -409,27 +409,27 @@ function OverviewPanel({
   return (
     <div className="grid grid-cols-2 gap-2.5 md:gap-3 xl:grid-cols-4">
       <MetricPanel
-        label="Checkout abertos"
+        label="Aguardando pagamento"
         value={resumo.checkout.toLocaleString("pt-BR")}
-        supportingText="Aguardando pagamento, pendentes ou em analise"
+        supportingText="Pix/boleto gerado e ainda dentro do prazo (ate 2 dias)"
         tone="blue"
       />
       <MetricPanel
         label="Abandonos"
         value={resumo.abandonados.toLocaleString("pt-BR")}
-        supportingText="Eventos que a PayT sinalizou como abandono"
+        supportingText="Abandonaram o checkout sem gerar pix/boleto"
         tone="gold"
       />
       <MetricPanel
         label="Perdidos"
         value={resumo.perdidos.toLocaleString("pt-BR")}
-        supportingText="Cancelados, expirados, recusados ou falhos"
+        supportingText="Pix/boleto que venceu, cancelou ou expirou"
         tone="red"
       />
       <MetricPanel
         label="Recuperados"
         value={resumo.recuperados.toLocaleString("pt-BR")}
-        supportingText="Checkouts que passaram por evento nao pago antes do paid"
+        supportingText="Pagaram apos perda ou 1h+ depois de gerar (inclui IA)"
         tone="green"
       />
     </div>
