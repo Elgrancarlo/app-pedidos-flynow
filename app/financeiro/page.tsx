@@ -93,21 +93,15 @@ export default async function FinanceiroPage({
       <PageBody>
         <StatGrid>
           <StatCard
-            label="Receita bruta"
-            value={formatCurrency(data.receitaBruta)}
-            detail={`${data.totalPedidos.toLocaleString("pt-BR")} vendas PayT (purchase + upsell)`}
-            tone="gold"
-          />
-          <StatCard
-            label="Receita líquida"
+            label="Receita líquida (Você recebe)"
             value={formatCurrency(data.receitaLiquida)}
-            detail="bruta - reembolsos - chargebacks (por data da compra)"
+            detail={`${data.totalPedidos.toLocaleString("pt-BR")} vendas · líquido Payt menos reversões`}
             tone="green"
           />
           <StatCard
             label="Ticket médio"
             value={formatCurrency(data.ticketMedio)}
-            detail="receita bruta / vendas totais"
+            detail="Você recebe / vendas"
             tone="blue"
           />
           <StatCard
@@ -115,6 +109,12 @@ export default async function FinanceiroPage({
             value={formatCurrency(data.totalRevertido)}
             detail={`taxa CB ${formatPercent(data.taxaChargeback)} · ${formatCurrency(data.eventDateTotalRevertido)} no mês (por data evento)`}
             tone="red"
+          />
+          <StatCard
+            label="Vendas aprovadas"
+            value={data.totalPedidos.toLocaleString("pt-BR")}
+            detail="PayT (compra + upsell)"
+            tone="gold"
           />
         </StatGrid>
 

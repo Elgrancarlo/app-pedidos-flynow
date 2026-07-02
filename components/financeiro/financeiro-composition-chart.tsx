@@ -89,25 +89,33 @@ function ChartTooltip({ active, payload }: TooltipProps) {
 
 export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) {
   const grossBase = Math.max(data.receitaBruta, 1);
-  const chargebackRatio = clampRatio(data.valorChargebacks / grossBase);
-  const refundRatio = clampRatio(data.valorReembolsos / grossBase);
   const revertedRatio = clampRatio(data.totalRevertido / grossBase);
   const retainedRatio = clampRatio(data.receitaLiquida / grossBase);
-  const afterChargebacks = Math.max(data.receitaBruta - data.valorChargebacks, 0);
+  const afterTaxas = Math.max(data.receitaBruta - data.taxasPayt, 0);
+  const afterChargebacks = Math.max(afterTaxas - data.valorChargebacks, 0);
   const afterRefunds = Math.max(afterChargebacks - data.valorReembolsos, 0);
 
   const waterfallData = [
     {
       amount: data.receitaBruta,
-      axisLabel: "Bruta",
+      axisLabel: "Bruto",
       color: "var(--fly-chart-revenue)",
-      detail: `${data.totalPedidos.toLocaleString("pt-BR")} pedidos pagos`,
+      detail: `${data.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas`,
       displayValue: data.receitaBruta,
-      label: "Receita bruta",
+      label: "Faturamento bruto",
       offset: 0,
     },
     {
-      amount: Math.min(data.valorChargebacks, data.receitaBruta),
+      amount: Math.min(data.taxasPayt, data.receitaBruta),
+      axisLabel: "Taxas",
+      color: "#F0A868",
+      detail: "Plataforma, callcenter, fornecedores, afiliados",
+      displayValue: -data.taxasPayt,
+      label: "Taxas / comissões Payt",
+      offset: afterTaxas,
+    },
+    {
+      amount: Math.min(data.valorChargebacks, afterTaxas),
       axisLabel: "CB",
       color: "#F87171",
       detail: `${data.chargebacks.toLocaleString("pt-BR")} eventos · taxa CB ${formatPercent(data.taxaChargeback)}`,
@@ -126,11 +134,11 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: data.receitaLiquida,
-      axisLabel: "Líquida",
+      axisLabel: "Você recebe",
       color: "var(--fly-success)",
-      detail: `${formatPercent(retainedRatio)} da receita bruta preservada`,
+      detail: `${formatPercent(retainedRatio)} do bruto é seu`,
       displayValue: data.receitaLiquida,
-      label: "Receita líquida",
+      label: "Receita líquida (Você recebe)",
       offset: 0,
     },
   ];

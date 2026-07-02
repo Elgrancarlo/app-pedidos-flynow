@@ -108,6 +108,8 @@ export type FinanceiroPageData = {
   receitaBruta: number;
   /** "Total das vendas" na Payt — valor líquido que o produtor recebe (soma de "Você Recebe"). */
   totalDasVendas: number;
+  /** Taxas/comissões da Payt = receita bruta - "Você recebe". */
+  taxasPayt: number;
   receitaLiquida: number;
   receitaRecebivel: number;
   taxaGateway: number;
@@ -617,9 +619,12 @@ function buildFinanceiroPageData({
     pedidosEverPaid.reduce((total, pedido) => total + (pedido.voceRecebe ?? 0), 0)
   );
 
-  // Receita líquida = bruta - reversões (por data da compra).
+  // Taxas Payt = quanto do bruto NÃO é você (plataforma, callcenter, fornecedores...).
+  const taxasPayt = roundCurrency(Math.max(receitaBruta - totalDasVendas, 0));
+
+  // Receita líquida = "Você recebe" - reversões (por data da compra), não o bruto.
   const totalRevertido = roundCurrency(valorChargebacks + valorReembolsos);
-  const receitaLiquida = roundCurrency(receitaBruta - totalRevertido);
+  const receitaLiquida = roundCurrency(totalDasVendas - totalRevertido);
   const taxaGateway = roundCurrency(receitaBruta * 0.047);
   const receitaRecebivel = roundCurrency(receitaLiquida - taxaGateway);
 
@@ -651,11 +656,13 @@ function buildFinanceiroPageData({
     range,
     receitaBruta,
     totalDasVendas,
+    taxasPayt,
     receitaLiquida,
     receitaRecebivel,
     taxaGateway,
     totalPedidos,
-    ticketMedio: totalPedidos > 0 ? receitaBruta / totalPedidos : 0,
+    // Ticket médio pelo líquido (Você recebe), não pelo bruto.
+    ticketMedio: totalPedidos > 0 ? totalDasVendas / totalPedidos : 0,
     totalRevertido,
     taxaChargeback: totalPedidos > 0 ? chargebacks / totalPedidos : 0,
     chargebacks,
