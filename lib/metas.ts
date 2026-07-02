@@ -954,7 +954,9 @@ export async function getMetasPageData(
     const cfoData = await getCfoPanelData(normalizedMonth);
     return createRealMetasPageData(cfoData);
   } catch (error) {
-    if (error instanceof CfoPanelError && error.status === 404) {
+    // Qualquer problema com os dados do CFO/metas (mês sem meta, query, etc.) mostra o
+    // estado vazio — a página /metas não deve crashar por causa disso.
+    if (error instanceof CfoPanelError) {
       return createEmptyMetasPageData(normalizedMonth);
     }
 
