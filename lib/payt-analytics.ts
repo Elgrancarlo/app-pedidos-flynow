@@ -137,7 +137,9 @@ export function classifyAnalyticsChannel({
   if (s === "tb" || u.includes("taboola")) return "TABOOLA";
   if (s === "el" || u.includes("mautic")) return "EMAIL_MAUTIC";
   if (u.includes("smsfunnel")) return "SMS";
-  if (s.startsWith("back") || s.includes("backend")) return "BACKEND_RECUPERACAO";
+  // "-back" cobre sufixos das importações ("pv-back", "glico-back"); valores com
+  // "ia" ("ia-wpp-back-db-k6") pertencem ao canal IA_WHATSAPP, avaliado a seguir.
+  if (s.startsWith("back") || s.includes("backend") || (s.includes("-back") && !s.includes("ia"))) return "BACKEND_RECUPERACAO";
   if (s.includes("rec-ia") || s === "ia" || s.includes("ia-wpp") || v.includes("ia-wpp")) return "IA_WHATSAPP";
   if (p.includes("televendas") || v.includes("venda manual")) return "CALLCENTER";
   if (s.includes("paytcall") || v.includes("paytcall")) return "CALLCENTER";
@@ -151,6 +153,7 @@ function extractAttribution(payload: JsonMap | null | undefined) {
     getField(
       payload,
       "source_vendas",
+      "source_venda",
       "source_manual",
       "manual_source",
       "transaction.source",
@@ -162,9 +165,13 @@ function extractAttribution(payload: JsonMap | null | undefined) {
 
   return {
     sourceVendas,
+    // "source_venda" (singular) vem das importações XLSX e carrega o canal real
+    // ("vsl", "PAYTCALL...", "mdi", "*-back"); precisa vencer o "source" genérico,
+    // que nesses payloads é só o nome do arquivo importado ("xlsx_junho").
     sourceUrl: getField(
       payload,
       "link.sources.src",
+      "source_venda",
       "source_url",
       "utm_source_url",
       "tracking.source_url",
