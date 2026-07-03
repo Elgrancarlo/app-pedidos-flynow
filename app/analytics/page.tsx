@@ -61,7 +61,9 @@ function resolveRange(params: AnalyticsPageParams): PerformanceRange {
   const startDate = isDateString(params.startDate)
     ? params.startDate!
     : defaults.startDate;
-  const endDate = isDateString(params.endDate) ? params.endDate! : defaults.endDate;
+  const endDate = isDateString(params.endDate)
+    ? params.endDate!
+    : defaults.endDate;
 
   return startDate <= endDate
     ? { startDate, endDate }
@@ -140,7 +142,9 @@ function ActionText({
 }
 
 function ChannelsTable({ channels }: { channels: PerformanceChannel[] }) {
-  const rows = [...channels].sort((first, second) => second.revenue - first.revenue);
+  const rows = [...channels].sort(
+    (first, second) => second.revenue - first.revenue,
+  );
 
   return (
     <div className="overflow-x-auto">
@@ -295,9 +299,10 @@ function OverviewContent({
   data: PerformancePageData;
   financeiro: FinanceiroPageData;
 }) {
-  const ticketMedioVoceRecebe = financeiro.totalPedidos > 0
-    ? financeiro.totalDasVendas / financeiro.totalPedidos
-    : 0;
+  const ticketMedioVoceRecebe =
+    financeiro.totalPedidos > 0
+      ? financeiro.totalDasVendas / financeiro.totalPedidos
+      : 0;
   const totalRoas =
     data.summary.spendTotal > 0
       ? financeiro.totalDasVendas / data.summary.spendTotal
@@ -314,49 +319,51 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas`}
-            label="Total das vendas"
+            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas · total das vendas`}
+            label="Receita Bruta"
             tone="gold"
-            value={formatCurrency(financeiro.totalDasVendas)}
+            value={formatCurrency(financeiro.receitaBruta)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Vendas aprovadas PayT (incl. upsells)"
+            detail="vendas aprovadas PayT (incl. upsells)"
             label="Vendas totais"
             tone="neutral"
             value={formatNumber(financeiro.totalPedidos)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Total das vendas / vendas totais"
+            detail="(total das vendas) / (vendas totais)"
             label="Ticket médio"
             tone="blue"
             value={formatCurrency(ticketMedioVoceRecebe)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Total das vendas - reembolsos - chargebacks"
+            detail="(total das vendas) - (taxas payt e reversões)"
             label="Receita líquida"
             tone="green"
-            value={formatCurrency(financeiro.totalDasVendas - financeiro.totalRevertido)}
+            value={formatCurrency(
+              financeiro.totalDasVendas - financeiro.totalRevertido,
+            )}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-4"
-            detail="Mídia e canais pagos"
+            detail="Investimento registrado no redtrack"
             label="Investimento"
             tone="blue"
             value={formatCurrency(data.summary.spendTotal)}
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
-            detail="Receita líquida / investimento"
+            detail="(receita líquida) / (investimento)"
             label="ROAS total"
             tone="green"
             value={formatDecimal(totalRoas)}
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
-            detail={`${financeiro.reembolsos.toLocaleString("pt-BR")} reembolsos + ${financeiro.chargebacks.toLocaleString("pt-BR")} chargebacks (por data compra) · ${formatCurrency(financeiro.eventDateTotalRevertido)} no mês (por data evento)`}
+            detail={`Por compra · eventos no período: ${formatCurrency(financeiro.eventDateTotalRevertido)}`}
             label="Reembolsos e chargebacks"
             tone="red"
             value={formatCurrency(financeiro.totalRevertido)}
@@ -486,17 +493,20 @@ export default async function AnalyticsPage({
 
   if (activeView === "redtrack") {
     const redtrack = await timedServerTask("analytics", "data.redtrack", () =>
-      getRedtrackAnalytics(range.startDate, range.endDate)
+      getRedtrackAnalytics(range.startDate, range.endDate),
     );
     const postProcessStartedAt = performance.now();
     content = <RedtrackContent redtrack={redtrack} />;
     logServerTiming("analytics", "postProcess.kpis", postProcessStartedAt);
   } else {
-    const [data, financeiro] = await timedServerTask("analytics", "data.total", () =>
-      Promise.all([
-        getPerformancePageData(range, { timingScope: "analytics" }),
-        getFinanceiroPageData(range),
-      ])
+    const [data, financeiro] = await timedServerTask(
+      "analytics",
+      "data.total",
+      () =>
+        Promise.all([
+          getPerformancePageData(range, { timingScope: "analytics" }),
+          getFinanceiroPageData(range),
+        ]),
     );
     const postProcessStartedAt = performance.now();
     content = <OverviewContent data={data} financeiro={financeiro} />;
