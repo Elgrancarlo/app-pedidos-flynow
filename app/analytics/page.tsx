@@ -296,7 +296,7 @@ function OverviewContent({
   financeiro: FinanceiroPageData;
 }) {
   const ticketMedioVoceRecebe = financeiro.totalPedidos > 0
-    ? financeiro.totalDasVendas / financeiro.totalPedidos
+    ? financeiro.receitaBruta / financeiro.totalPedidos
     : 0;
   const totalRoas =
     data.summary.spendTotal > 0
@@ -314,10 +314,10 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas`}
+            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas (bruto)`}
             label="Total das vendas"
             tone="gold"
-            value={formatCurrency(financeiro.totalDasVendas)}
+            value={formatCurrency(financeiro.receitaBruta)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
@@ -335,10 +335,10 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Total das vendas - reembolsos - chargebacks"
+            detail="Você recebe (líquido Payt)"
             label="Receita líquida"
             tone="green"
-            value={formatCurrency(financeiro.totalDasVendas - financeiro.totalRevertido)}
+            value={formatCurrency(financeiro.totalDasVendas)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-4"
