@@ -136,11 +136,11 @@
   --color-ds-blue-100: var(----ds-blue-100);
   --color-color-color-red-900: var(----color-color-red-900);
   @keyframes fade-spin {
-  0% {
-    opacity: 0.15;
+    0% {
+      opacity: 0.15;
     }
-  100% {
-    opacity: 1;
+    100% {
+      opacity: 1;
     }
   }
 }
@@ -204,14 +204,26 @@ body {
   --ds-shadow-border: 0 0 0 1px rgba(0, 0, 0, 0.08);
   --ds-shadow-small: 0px 2px 2px rgba(0, 0, 0, 0.04);
   --ds-shadow-border-small: var(--ds-shadow-border), var(--ds-shadow-small);
-  --ds-shadow-medium: 0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 8px -8px rgba(0, 0, 0, 0.04);
+  --ds-shadow-medium:
+    0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 8px -8px rgba(0, 0, 0, 0.04);
   --ds-shadow-border-medium: var(--ds-shadow-border), var(--ds-shadow-medium);
-  --ds-shadow-large: 0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
+  --ds-shadow-large:
+    0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
   --ds-shadow-border-large: var(--ds-shadow-border), var(--ds-shadow-large);
-  --ds-shadow-tooltip: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 4px 8px rgba(0, 0, 0, 0.04);
-  --ds-shadow-menu: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 4px 8px -4px rgba(0, 0, 0, 0.04), 0px 16px 24px -8px rgba(0, 0, 0, 0.06);
-  --ds-shadow-modal: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 8px 16px -4px rgba(0, 0, 0, 0.04), 0px 24px 32px -8px rgba(0, 0, 0, 0.06);
-  --ds-shadow-fullscreen: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 8px 16px -4px rgba(0, 0, 0, 0.04), 0px 24px 32px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-tooltip:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 4px 8px rgba(0, 0, 0, 0.04);
+  --ds-shadow-menu:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 4px 8px -4px rgba(0, 0, 0, 0.04), 0px 16px 24px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-modal:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 8px 16px -4px rgba(0, 0, 0, 0.04),
+    0px 24px 32px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-fullscreen:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 8px 16px -4px rgba(0, 0, 0, 0.04),
+    0px 24px 32px -8px rgba(0, 0, 0, 0.06);
   --ds-red-800: oklch(58.19% 0.2482 25.15);
   --ds-blue-700: oklch(57.61% 0.2508 258.23);
   --ds-amber-800: oklch(77.21% 0.1991 64.28);
@@ -221,7 +233,8 @@ body {
   --ds-gray-1000-h: hsl(0, 0%, 22%);
   --ds-gray-alpha-200: hsla(0, 0%, 0%, 0.08);
   --ds-focus-color: var(--ds-blue-700);
-  --ds-focus-ring: 0 0 0 2px var(--ds-background-100), 0 0 0 4px var(--ds-focus-color);
+  --ds-focus-ring:
+    0 0 0 2px var(--ds-background-100), 0 0 0 4px var(--ds-focus-color);
   --ds-red-300: oklch(94.33% 0.0369 15.011509923860523);
   --ds-red-500: oklch(84.47% 0.1018 17.71);
   --ds-gray-900: hsla(0, 0%, 40%, 1);
@@ -229,16 +242,20 @@ body {
   --ds-gray-alpha-600: hsla(0, 0%, 0%, 0.34);
   --ds-background-200: hsla(0, 0%, 98%, 1);
   --geist-foreground: #000;
-  --ds-input-ring: 0 0 0 1px var(--ds-gray-alpha-600), 0 0 0 4px rgba(0, 0, 0, .16);
-  --ds-input-error-ring: 0 0 0 1px var(--ds-red-900), 0 0 0 4px var(--ds-red-300);
-  --ds-input-error-hover-ring: 0 0 0 1px var(--ds-red-900), 0 0 0 4px var(--ds-red-500);
-  --ds-red-900-alpha-160: hsla(358,66%,48%,.16);
+  --ds-input-ring:
+    0 0 0 1px var(--ds-gray-alpha-600), 0 0 0 4px rgba(0, 0, 0, 0.16);
+  --ds-input-error-ring:
+    0 0 0 1px var(--ds-red-900), 0 0 0 4px var(--ds-red-300);
+  --ds-input-error-hover-ring:
+    0 0 0 1px var(--ds-red-900), 0 0 0 4px var(--ds-red-500);
+  --ds-red-900-alpha-160: hsla(358, 66%, 48%, 0.16);
   --geist-error: #ee0000;
   --ds-gray-200: hsla(0, 0%, 92%, 1);
   --ds-gray-alpha-100: rgba(0, 0, 0, 0.05);
   --ds-gray-alpha-300: hsla(0, 0%, 0%, 0.1);
   --accents-2: #eaeaea;
-  --ds-focus-calendar-date-ring: 0 0 0 1px var(--ds-background-100), 0 0 0 2.5px var(--ds-gray-1000);
+  --ds-focus-calendar-date-ring:
+    0 0 0 1px var(--ds-background-100), 0 0 0 2.5px var(--ds-gray-1000);
 }
 
 .dark {
@@ -283,19 +300,36 @@ body {
   --ds-gray-100: hsla(0, 0%, 10%, 1);
   --ds-gray-1000: hsla(0, 0%, 93%, 1);
   --ds-gray-alpha-400: hsla(0, 0%, 100%, 0.14);
-  --ds-background-100: hsla(0,0%,4%, 1);
+  --ds-background-100: hsla(0, 0%, 4%, 1);
   --color-red-900: oklch(69.96% 0.2136 22.03);
   --ds-shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.145);
   --ds-shadow-small: 0px 1px 2px rgba(0, 0, 0, 0.16);
-  --ds-shadow-border-small: var(--ds-shadow-border), 0px 1px 2px rgba(0, 0, 0, 0.16);
-  --ds-shadow-medium: 0px 2px 2px rgba(0, 0, 0, 0.32), 0px 8px 8px -8px rgba(0, 0, 0, 0.16);
-  --ds-shadow-border-medium: var(--ds-shadow-border), 0px 2px 2px rgba(0, 0, 0, 0.32), 0px 8px 8px -8px rgba(0, 0, 0, 0.16);
-  --ds-shadow-large: 0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
-  --ds-shadow-border-large: var(--ds-shadow-border), 0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
-  --ds-shadow-tooltip: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 4px 8px rgba(0, 0, 0, 0.04);
-  --ds-shadow-menu: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 4px 8px -4px rgba(0, 0, 0, 0.04), 0px 16px 24px -8px rgba(0, 0, 0, 0.06);
-  --ds-shadow-modal: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 8px 16px -4px rgba(0, 0, 0, 0.04), 0px 24px 32px -8px rgba(0, 0, 0, 0.06);
-  --ds-shadow-fullscreen: var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02), 0px 8px 16px -4px rgba(0, 0, 0, 0.04), 0px 24px 32px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-border-small:
+    var(--ds-shadow-border), 0px 1px 2px rgba(0, 0, 0, 0.16);
+  --ds-shadow-medium:
+    0px 2px 2px rgba(0, 0, 0, 0.32), 0px 8px 8px -8px rgba(0, 0, 0, 0.16);
+  --ds-shadow-border-medium:
+    var(--ds-shadow-border), 0px 2px 2px rgba(0, 0, 0, 0.32),
+    0px 8px 8px -8px rgba(0, 0, 0, 0.16);
+  --ds-shadow-large:
+    0px 2px 2px rgba(0, 0, 0, 0.04), 0px 8px 16px -4px rgba(0, 0, 0, 0.04);
+  --ds-shadow-border-large:
+    var(--ds-shadow-border), 0px 2px 2px rgba(0, 0, 0, 0.04),
+    0px 8px 16px -4px rgba(0, 0, 0, 0.04);
+  --ds-shadow-tooltip:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 4px 8px rgba(0, 0, 0, 0.04);
+  --ds-shadow-menu:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 4px 8px -4px rgba(0, 0, 0, 0.04), 0px 16px 24px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-modal:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 8px 16px -4px rgba(0, 0, 0, 0.04),
+    0px 24px 32px -8px rgba(0, 0, 0, 0.06);
+  --ds-shadow-fullscreen:
+    var(--ds-shadow-border), 0px 1px 1px rgba(0, 0, 0, 0.02),
+    0px 8px 16px -4px rgba(0, 0, 0, 0.04),
+    0px 24px 32px -8px rgba(0, 0, 0, 0.06);
   --ds-red-800: oklch(58.01% 0.227 25.12);
   --ds-blue-700: oklch(57.61% 0.2321 258.23);
   --ds-amber-800: oklch(77.21% 0.1991 64.28);
@@ -310,8 +344,9 @@ body {
   --ds-gray-alpha-600: hsla(0, 0%, 100%, 0.51);
   --ds-background-200: hsla(0, 0%, 0%, 1);
   --geist-foreground: #fff;
-  --ds-input-ring: 0 0 0 1px var(--ds-gray-alpha-600), 0 0 0 4px rgba(255, 255, 255, .24);
-  --ds-red-900-alpha-160: hsla(358,100%,69%,.16);
+  --ds-input-ring:
+    0 0 0 1px var(--ds-gray-alpha-600), 0 0 0 4px rgba(255, 255, 255, 0.24);
+  --ds-red-900-alpha-160: hsla(358, 100%, 69%, 0.16);
   --geist-error: #ff0000;
   --ds-gray-200: hsla(0, 0%, 12%, 1);
   --ds-gray-alpha-100: rgba(255, 255, 255, 0.06);
@@ -387,12 +422,10 @@ html[data-flynow-theme="dark"],
   --fly-kpi-refund: #fb7185;
   --fly-kpi-carts: #38bdf8;
   --fly-panel-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.03),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    0 1px 0 rgba(255, 255, 255, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.035);
   --fly-panel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.025);
   --fly-tooltip-shadow:
-    0 18px 44px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 18px 44px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --fly-row-bg: rgba(255, 255, 255, 0.012);
   --fly-row-bg-strong: rgba(255, 255, 255, 0.018);
   --fly-row-hover: rgba(255, 255, 255, 0.028);
@@ -471,13 +504,11 @@ html[data-flynow-theme="light"],
   --fly-kpi-refund: #be123c;
   --fly-kpi-carts: #0369a1;
   --fly-panel-shadow:
-    0 10px 24px rgba(15, 23, 42, 0.06),
-    0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 24px rgba(15, 23, 42, 0.06), 0 1px 0 rgba(255, 255, 255, 0.86),
     inset 0 1px 0 rgba(255, 255, 255, 0.84);
   --fly-panel-inset: inset 0 1px 0 rgba(255, 255, 255, 0.82);
   --fly-tooltip-shadow:
-    0 18px 44px rgba(15, 23, 42, 0.14),
-    0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 18px 44px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(255, 255, 255, 0.72),
     inset 0 1px 0 rgba(255, 255, 255, 0.82);
   --fly-row-bg: rgba(17, 24, 39, 0.018);
   --fly-row-bg-strong: rgba(17, 24, 39, 0.026);
@@ -556,13 +587,7 @@ html[data-flynow-theme="light"] body {
   .flynow-dashboard-shell.flynow-theme-transitioning :where(*) {
     transition-duration: 360ms !important;
     transition-property:
-      background-color,
-      border-color,
-      color,
-      fill,
-      stroke,
-      box-shadow,
-      opacity !important;
+      background-color, border-color, color, fill, stroke, box-shadow, opacity !important;
     transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
 
@@ -620,10 +645,18 @@ html[data-flynow-theme="light"] body {
 }
 
 .flynow-dashboard-shell[data-theme="light"] aside a[aria-current="page"],
-.flynow-dashboard-shell[data-theme="light"] .flynow-mobile-more-sheet a[aria-current="page"],
-.flynow-dashboard-shell[data-theme="light"] nav[aria-label="Navegação mobile"] a[aria-current="page"],
-.flynow-dashboard-shell[data-theme="light"] nav[aria-label="Navegação mobile"] button[aria-expanded="true"],
-.flynow-dashboard-shell[data-theme="light"] nav[aria-label="Navegação mobile"] .flynow-mobile-more-trigger[data-active="true"] {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-mobile-more-sheet
+  a[aria-current="page"],
+.flynow-dashboard-shell[data-theme="light"]
+  nav[aria-label="Navegação mobile"]
+  a[aria-current="page"],
+.flynow-dashboard-shell[data-theme="light"]
+  nav[aria-label="Navegação mobile"]
+  button[aria-expanded="true"],
+.flynow-dashboard-shell[data-theme="light"]
+  nav[aria-label="Navegação mobile"]
+  .flynow-mobile-more-trigger[data-active="true"] {
   background-color: var(--fly-surface) !important;
   border-color: var(--fly-brand-border) !important;
   box-shadow:
@@ -858,12 +891,15 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
 }
 
 .flynow-dashboard-shell[data-theme="light"] .hover\:border-\[\#343A44\]:hover,
-.flynow-dashboard-shell[data-theme="light"] .hover\:border-white\/\[0\.1\]:hover,
-.flynow-dashboard-shell[data-theme="light"] .hover\:border-white\/\[0\.12\]:hover {
+.flynow-dashboard-shell[data-theme="light"]
+  .hover\:border-white\/\[0\.1\]:hover,
+.flynow-dashboard-shell[data-theme="light"]
+  .hover\:border-white\/\[0\.12\]:hover {
   border-color: var(--fly-border-strong) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .hover\:border-\[\#D6A84F\]\/36:hover {
+.flynow-dashboard-shell[data-theme="light"]
+  .hover\:border-\[\#D6A84F\]\/36:hover {
   border-color: var(--fly-brand-border) !important;
 }
 
@@ -874,7 +910,9 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
   color: var(--fly-text) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .group:hover .group-hover\:text-\[\#AEB2BB\] {
+.flynow-dashboard-shell[data-theme="light"]
+  .group:hover
+  .group-hover\:text-\[\#AEB2BB\] {
   color: var(--fly-text-soft) !important;
 }
 
@@ -891,7 +929,9 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .text-\[\#08090B\] {
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#20242B\],
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#242932\],
 html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#242932\],
-html[data-flynow-theme="light"] .flynow-calendar-popover .border-white\/\[0\.07\] {
+html[data-flynow-theme="light"]
+  .flynow-calendar-popover
+  .border-white\/\[0\.07\] {
   border-color: var(--fly-border) !important;
 }
 
@@ -901,9 +941,15 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-white\/\[0\.07\
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/35,
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/38,
 .flynow-dashboard-shell[data-theme="light"] .border-\[\#D6A84F\]\/45,
-html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/20,
-html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/35,
-html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/45 {
+html[data-flynow-theme="light"]
+  .flynow-calendar-popover
+  .border-\[\#D6A84F\]\/20,
+html[data-flynow-theme="light"]
+  .flynow-calendar-popover
+  .border-\[\#D6A84F\]\/35,
+html[data-flynow-theme="light"]
+  .flynow-calendar-popover
+  .border-\[\#D6A84F\]\/45 {
   border-color: var(--fly-brand-border) !important;
 }
 
@@ -912,7 +958,10 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   --tw-ring-color: var(--fly-border) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .divide-white\/\[0\.055\] > :not([hidden]) ~ :not([hidden]) {
+.flynow-dashboard-shell[data-theme="light"]
+  .divide-white\/\[0\.055\]
+  > :not([hidden])
+  ~ :not([hidden]) {
   border-color: var(--fly-divider-subtle) !important;
 }
 
@@ -936,7 +985,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   color: var(--fly-danger-strong) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-error-action:hover {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-error-action:hover {
   background-color: var(--fly-danger-surface-hover) !important;
   border-color: var(--fly-danger-border-hover) !important;
 }
@@ -968,14 +1018,19 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   color: var(--fly-warning-strong) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-warning-action:hover {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-warning-action:hover {
   background-color: var(--fly-warning-surface-hover) !important;
   border-color: var(--fly-warning-border-hover) !important;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-empty-state {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(248, 250, 252, 0.72)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(248, 250, 252, 0.72)
+    ),
     var(--fly-control-solid) !important;
   border-color: var(--fly-border) !important;
 }
@@ -993,7 +1048,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
   color: var(--fly-text) !important;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-empty-description {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-empty-description {
   color: var(--fly-text-muted) !important;
 }
 
@@ -1335,7 +1391,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-dashboard-content {
-  animation: flynow-dashboard-content-in 520ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  animation: flynow-dashboard-content-in 520ms cubic-bezier(0.2, 0.9, 0.18, 1)
+    both;
   isolation: isolate;
   transform-origin: center top;
   will-change: opacity, transform;
@@ -1368,7 +1425,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 64%
   );
   transform: translate3d(-120%, 0, 0);
-  animation: flynow-dashboard-refresh-sweep 900ms cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  animation: flynow-dashboard-refresh-sweep 900ms cubic-bezier(0.2, 0.8, 0.2, 1)
+    infinite;
 }
 
 .flynow-offer-conversions {
@@ -1401,11 +1459,13 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 64%
   );
   transform: translate3d(-120%, 0, 0);
-  animation: flynow-dashboard-refresh-sweep 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: flynow-dashboard-refresh-sweep 620ms cubic-bezier(0.2, 0.8, 0.2, 1)
+    both;
 }
 
 .flynow-dashboard-skeleton {
-  animation: flynow-dashboard-content-in 420ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  animation: flynow-dashboard-content-in 420ms cubic-bezier(0.2, 0.9, 0.18, 1)
+    both;
   isolation: isolate;
   position: relative;
 }
@@ -1425,7 +1485,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 64%
   );
   transform: translate3d(-120%, 0, 0);
-  animation: flynow-dashboard-refresh-sweep 1.05s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  animation: flynow-dashboard-refresh-sweep 1.05s cubic-bezier(0.2, 0.8, 0.2, 1)
+    infinite;
 }
 
 .flynow-dashboard-skeleton-panel {
@@ -1448,15 +1509,19 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 62%
   );
   transform: translate3d(-115%, 0, 0);
-  animation: flynow-dashboard-shimmer 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: flynow-dashboard-shimmer 1.35s cubic-bezier(0.4, 0, 0.2, 1)
+    infinite;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-content--refreshing {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-content--refreshing {
   opacity: 0.82;
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-content--refreshing::after,
-.flynow-dashboard-shell[data-theme="light"] .flynow-offer-conversions--refreshing::after {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-content--refreshing::after,
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-offer-conversions--refreshing::after {
   background: linear-gradient(
     100deg,
     transparent 0%,
@@ -1484,7 +1549,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
-.flynow-dashboard-shell[data-theme="light"] .flynow-dashboard-skeleton-panel::after {
+.flynow-dashboard-shell[data-theme="light"]
+  .flynow-dashboard-skeleton-panel::after {
   background: linear-gradient(
     100deg,
     transparent 0%,
@@ -1535,7 +1601,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 .flynow-chart-stage {
   position: relative;
   overflow: hidden;
-  animation: flynow-dashboard-chart-stage-in 520ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  animation: flynow-dashboard-chart-stage-in 520ms cubic-bezier(0.16, 1, 0.3, 1)
+    120ms both;
   transform-origin: center;
   will-change: opacity, transform;
 }
@@ -1554,7 +1621,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
     transparent 62%
   );
   transform: translate3d(-22%, 0, 0);
-  animation: flynow-dashboard-chart-scan 980ms cubic-bezier(0.2, 0.8, 0.2, 1) 260ms both;
+  animation: flynow-dashboard-chart-scan 980ms cubic-bezier(0.2, 0.8, 0.2, 1)
+    260ms both;
 }
 
 .flynow-dashboard-shell[data-theme="light"] .flynow-chart-stage::after {
@@ -1568,13 +1636,15 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-chart-plot {
-  animation: flynow-dashboard-chart-plot-in 780ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+  animation: flynow-dashboard-chart-plot-in 780ms cubic-bezier(0.16, 1, 0.3, 1)
+    160ms both;
   transform-origin: center bottom;
   will-change: opacity, transform;
 }
 
 .flynow-conversion-bar {
-  animation: flynow-dashboard-bar-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 300ms both;
+  animation: flynow-dashboard-bar-in 760ms cubic-bezier(0.16, 1, 0.3, 1) 300ms
+    both;
   transform-origin: left center;
   will-change: transform, opacity;
 }
@@ -1737,14 +1807,12 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-mobile-more-sheet--closing {
-  animation: flynow-mobile-more-sheet-out 240ms cubic-bezier(0.4, 0, 1, 1)
-    both;
+  animation: flynow-mobile-more-sheet-out 240ms cubic-bezier(0.4, 0, 1, 1) both;
   pointer-events: none;
 }
 
 .flynow-mobile-more-reveal {
-  animation: flynow-mobile-more-item-in 420ms cubic-bezier(0.16, 1, 0.3, 1)
-    both;
+  animation: flynow-mobile-more-item-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--flynow-mobile-more-delay, 0ms);
   will-change: opacity, transform;
 }
@@ -1754,7 +1822,8 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
 }
 
 .flynow-calendar-popover {
-  animation: flynow-calendar-popover-in 260ms cubic-bezier(0.2, 0.9, 0.18, 1) both;
+  animation: flynow-calendar-popover-in 260ms cubic-bezier(0.2, 0.9, 0.18, 1)
+    both;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
   will-change: opacity, transform;
@@ -1855,11 +1924,7 @@ html[data-flynow-theme="light"] .flynow-calendar-popover .border-\[\#D6A84F\]\/4
       var(--flynow-presets-clip-top, -4px) 0
         var(--flynow-presets-clip-bottom, -8px) 0
     );
-    transform: translate3d(
-      0,
-      var(--flynow-presets-translate-y, 0),
-      0
-    );
+    transform: translate3d(0, var(--flynow-presets-translate-y, 0), 0);
     transition:
       opacity 90ms linear,
       transform 90ms linear,

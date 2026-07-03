@@ -417,25 +417,25 @@ function RedtrackContent({ redtrack }: { redtrack: RedtrackAnalyticsData }) {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            detail="Campo cost do RedTrack"
+            detail="Custo de mídia no período"
             label="Investimento"
             tone="blue"
             value={formatCurrency(redtrack.summary.spend)}
           />
           <StatCard
-            detail="Campo total_revenue do RedTrack"
-            label="Receita atribuída RT"
+            detail="Receita atribuída pelo RedTrack"
+            label="Receita atribuída"
             tone="gold"
             value={formatCurrency(redtrack.summary.attributedRevenue)}
           />
           <StatCard
-            detail="Receita atribuída / investimento"
+            detail="(receita atribuída) / (custo de mídia)"
             label="ROAS RT"
             tone="green"
             value={formatDecimal(redtrack.summary.roas)}
           />
           <StatCard
-            detail="Cliques registrados"
+            detail="Cliques totais nas campanhas"
             label="Cliques"
             tone="neutral"
             value={formatNumber(redtrack.summary.clicks)}
