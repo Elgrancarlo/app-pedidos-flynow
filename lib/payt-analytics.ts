@@ -3,7 +3,6 @@ import {
   type AnalyticsCanal,
   type AnalyticsOfferKind,
   type AnalyticsPaytSale,
-  type Pedido,
   createServiceClient,
 } from "@/lib/supabase";
 import { inferirGrupo } from "@/lib/produtos";
@@ -30,20 +29,7 @@ const PRODUCT_BASE_RULES: Array<[RegExp, string]> = [
   [/lipo\s*gummy/i, "LIPO GUUMY"],
 ];
 
-function toIsoDate(value: string | null | undefined) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
-}
 
-function toIsoDateBRT(value: string | null | undefined) {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setHours(date.getHours() - 3);
-  return date.toISOString().slice(0, 10);
-}
 
 function toIsoTimestamp(value: string | null | undefined) {
   if (!value) return null;
@@ -276,28 +262,50 @@ function extractVoceRecebe(payload: JsonMap | null | undefined): number | null {
   return found ? producerCents / 100 : null;
 }
 
-function buildPaytSaleFromPedido(pedido: Pedido, payload: JsonMap | null | undefined): AnalyticsPaytSale {
+/**
+ * Linha de venda vinda do payt_event_stream (fonte de verdade da ingestão).
+ * paid_at chega em hora BRT gravada verbatim como UTC — o dia BRT é o próprio
+ * date-part do valor, sem shift de timezone.
+ */
+type StreamSaleRow = {
+  transaction_id: string | null;
+  cart_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  product_name: string | null;
+  payment_method: string | null;
+  total_price: number | string | null;
+  paid_at: string | null;
+  payload: JsonMap | null;
+};
+
+function buildPaytSaleFromStream(row: StreamSaleRow): AnalyticsPaytSale {
+  const payload = row.payload ?? null;
   const attribution = extractAttribution(payload);
-  const produtoNome = pedido.produto_nome ?? getField(payload, "product.name", "product_name", "offer_name");
+  const produtoNome = row.product_name ?? getField(payload, "product.name", "product_name", "offer_name");
   const valorPayload = getNumericField(payload, "transaction.total_price", "transaction_total_price", "amount");
-  const valorTotal = pedido.valor_total ?? (valorPayload != null ? valorPayload / 100 : 0);
-  const voceRecebe = extractVoceRecebe(payload) ?? valorTotal;
+  const valorTotal =
+    row.total_price != null ? numberValue(row.total_price, 0) : valorPayload != null ? valorPayload / 100 : 0;
+  // Sem fallback pro bruto: voce_recebe ausente vira 0 e é contado no resultado
+  // do sync — cair no valor_total mascarava o líquido como bruto (bug antigo).
+  const voceRecebe = extractVoceRecebe(payload);
   const paidAt =
-    toIsoTimestamp(pedido.data_pagamento) ??
+    toIsoTimestamp(row.paid_at) ??
     toIsoTimestamp(getField(payload, "transaction.paid_at", "paid_at", "approved_at")) ??
-    pedido.created_at;
+    new Date().toISOString();
   const productBase = inferProductBase(produtoNome);
   const offerKind = inferOfferKind(produtoNome);
 
   return {
-    payt_transaction_id: pedido.payt_transaction_id,
-    pedido_id: pedido.id,
-    payt_cart_id: pedido.payt_cart_id,
+    payt_transaction_id: row.transaction_id!,
+    pedido_id: null,
+    payt_cart_id: row.cart_id,
     paid_at: paidAt,
-    day: (toIsoDateBRT(paidAt) ?? toIsoDateBRT(pedido.created_at) ?? toIsoDateBRT(new Date().toISOString()))!,
-    cliente_nome: pedido.cliente_nome,
-    cliente_email: pedido.cliente_email,
-    cliente_telefone: pedido.cliente_telefone,
+    day: paidAt.slice(0, 10),
+    cliente_nome: row.customer_name,
+    cliente_email: row.customer_email,
+    cliente_telefone: row.customer_phone,
     produto_nome: produtoNome,
     product_base: productBase,
     kit: inferKit(produtoNome),
@@ -316,12 +324,12 @@ function buildPaytSaleFromPedido(pedido: Pedido, payload: JsonMap | null | undef
       sourceVendas: attribution.sourceVendas,
       productName: produtoNome,
     }),
-    forma_pagamento: pedido.forma_pagamento,
+    forma_pagamento: row.payment_method,
     valor_total: valorTotal,
-    voce_recebe: Math.max(voceRecebe, 0),
-    chargeback: pedido.chargeback,
-    status_pagamento: pedido.status_pagamento,
-    endereco_entrega: pedido.endereco_entrega,
+    voce_recebe: Math.max(voceRecebe ?? 0, 0),
+    chargeback: false,
+    status_pagamento: "paid",
+    endereco_entrega: null,
     imported_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -418,81 +426,7 @@ async function fetchAllPaginated<T>(
   return rows;
 }
 
-async function fetchPaytRawEvents() {
-  const attempts = [
-    { select: "payload, received_at", orderColumn: "received_at", timestampKey: "received_at" as const },
-    { select: "payload, created_at", orderColumn: "created_at", timestampKey: "created_at" as const },
-  ];
 
-  for (const attempt of attempts) {
-    try {
-      const rows = await fetchAllPaginated<{ payload: JsonMap; received_at?: string; created_at?: string }>(
-        "payt_webhooks_raw",
-        attempt.select,
-        (query) => query.order(attempt.orderColumn, { ascending: false }),
-      );
-
-      return rows.map((row) => ({
-        payload: row.payload,
-        created_at: row[attempt.timestampKey] ?? null,
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-      if (!message.includes(attempt.orderColumn)) throw error;
-    }
-  }
-
-  return [] as Array<{ payload: JsonMap; created_at: string | null }>;
-}
-
-async function fetchPaytRawEventsByIds(transactionIds: string[]) {
-  if (transactionIds.length === 0) {
-    return [] as Array<{ payload: JsonMap; created_at: string | null }>;
-  }
-
-  const supabase = createServiceClient();
-  const results: Array<{ payload: JsonMap; created_at: string | null }> = [];
-  const batchSize = 500;
-
-  for (let index = 0; index < transactionIds.length; index += batchSize) {
-    const batch = transactionIds.slice(index, index + batchSize);
-    const { data, error } = await supabase
-      .from("payt_webhooks_raw")
-      .select("payload, received_at")
-      .in("transaction_id", batch)
-      .order("received_at", { ascending: false });
-
-    if (error) {
-      const fallback = await supabase
-        .from("payt_webhooks_raw")
-        .select("payload")
-        .in("transaction_id", batch);
-
-      if (!fallback.error && fallback.data) {
-        results.push(
-          ...(fallback.data as Array<{ payload: JsonMap }>).map((row) => ({
-            payload: row.payload,
-            created_at: null,
-          })),
-        );
-      }
-      continue;
-    }
-
-    if (data) {
-      results.push(
-        ...(data as Array<{ payload: JsonMap; received_at?: string | null }>).map(
-          (row) => ({
-            payload: row.payload,
-            created_at: row.received_at ?? null,
-          }),
-        ),
-      );
-    }
-  }
-
-  return results;
-}
 
 function buildFunilFacts(sales: AnalyticsPaytSale[]) {
   const daily = new Map<string, FunilDailyAccumulator>();
@@ -536,9 +470,12 @@ function buildFunilFacts(sales: AnalyticsPaytSale[]) {
     const directSales = cart.principalSales.length;
     const us1Wins = cart.us1Sales.length > 0 ? directSales : 0;
     const us2Wins = cart.us2Sales.length > 0 ? directSales : 0;
-    const coreUpsellRevenue = cart.coreUpsellSales.reduce((sum, sale) => sum + sale.valor_total, 0);
-    const totalRevenue = cart.allSales.reduce((sum, sale) => sum + sale.valor_total, 0);
-    const totalNet = cart.allSales.reduce((sum, sale) => sum + sale.voce_recebe, 0);
+    // Receitas do funil em "Você recebe" (líquido producer) — regra do app:
+    // toda métrica de receita exibida reflete o que a Payt chama de "Total das
+    // vendas", não o bruto pago pelo cliente.
+    const coreUpsellRevenue = cart.coreUpsellSales.reduce((sum, sale) => sum + sale.voce_recebe, 0);
+    const totalRevenue = cart.allSales.reduce((sum, sale) => sum + sale.voce_recebe, 0);
+    const totalNet = totalRevenue;
 
     const dailyKey = [
       anchor.day,
@@ -566,7 +503,7 @@ function buildFunilFacts(sales: AnalyticsPaytSale[]) {
     };
 
     dailyEntry.qtd_vendas_diretas += directSales;
-    dailyEntry.receita_vendas_diretas += cart.principalSales.reduce((sum, sale) => sum + sale.valor_total, 0);
+    dailyEntry.receita_vendas_diretas += cart.principalSales.reduce((sum, sale) => sum + sale.voce_recebe, 0);
     dailyEntry.qtd_upsells_aprovados += cart.coreUpsellSales.length;
     dailyEntry.receita_upsells += coreUpsellRevenue;
     dailyEntry.receita_total += totalRevenue;
@@ -648,6 +585,11 @@ function buildFunilFacts(sales: AnalyticsPaytSale[]) {
   return { dailyRows, sourceRows };
 }
 
+/** Payload flat (n8n) tem as chaves pontilhadas que extractAttribution entende melhor. */
+function isFlatPayload(payload: JsonMap | null) {
+  return !!payload && ("transaction.total_price" in payload || "link.sources.src" in payload || "product.name" in payload);
+}
+
 export async function syncPaytAnalytics({
   startDate,
   endDate,
@@ -655,73 +597,73 @@ export async function syncPaytAnalytics({
   startDate: string;
   endDate: string;
 }) {
-  const pedidos = await fetchAllPaginated<Pedido>(
-    "pedidos",
-    [
-      "id",
-      "payt_transaction_id",
-      "payt_cart_id",
-      "cliente_nome",
-      "cliente_email",
-      "cliente_telefone",
-      "produto_nome",
-      "valor_total",
-      "forma_pagamento",
-      "data_pagamento",
-      "endereco_entrega",
-      "status_pagamento",
-      "chargeback",
-      "created_at",
-      "updated_at",
-    ].join(", "),
+  // Fonte de verdade: payt_event_stream (derivado do raw pelo trigger da migration
+  // 023). A tabela pedidos NÃO é usada — ela depende do caminho de webhook que
+  // historicamente perdia eventos, o que deixava o funil com vendas faltando.
+  // paid_at é hora BRT verbatim → janela do dia BRT = o próprio dia em UTC.
+  const streamRows = await fetchAllPaginated<StreamSaleRow>(
+    "payt_event_stream",
+    "transaction_id, cart_id, customer_name, customer_email, customer_phone, product_name, payment_method, total_price, paid_at, payload",
     (query) =>
       query
-        .gte("data_pagamento", `${startDate}T03:00:00Z`)
-        .lte("data_pagamento", `${endDate}T23:59:59.999-03:00`)
-        .order("data_pagamento", { ascending: true }),
+        .eq("event_status", "paid")
+        .not("transaction_id", "like", "cart:%")
+        .gte("paid_at", `${startDate}T00:00:00.000Z`)
+        .lte("paid_at", `${endDate}T23:59:59.999Z`)
+        .order("paid_at", { ascending: true }),
   );
 
-  const analyticsPedidos = pedidos.filter(
-    (pedido) => pedido.status_pagamento === "paid" && pedido.chargeback !== true,
+  // Transações revertidas (qualquer momento) saem do funil — paridade com o
+  // comportamento antigo, que excluía pedidos refunded/chargeback.
+  const reversalRows = await fetchAllPaginated<{ transaction_id: string | null }>(
+    "payt_event_stream",
+    "transaction_id",
+    (query) =>
+      query
+        .in("event_status", ["refunded", "chargeback", "charged_back"])
+        .not("transaction_id", "like", "cart:%"),
+  );
+  const reversedTransactions = new Set(
+    reversalRows.map((row) => normalizeString(row.transaction_id)).filter(Boolean) as string[],
   );
 
-  const transactionIds = new Set(analyticsPedidos.map((pedido) => pedido.payt_transaction_id));
-  const rawEvents = await fetchPaytRawEventsByIds(Array.from(transactionIds));
-
-  const latestRawByTransaction = new Map<string, { payload: JsonMap; created_at: string | null }>();
-  const latestPaidRawByTransaction = new Map<string, { payload: JsonMap; created_at: string | null }>();
-  for (const event of rawEvents) {
-    const transactionId = getField(event.payload, "transaction_id");
-    if (!transactionId || !transactionIds.has(transactionId)) {
+  const byTransaction = new Map<string, StreamSaleRow>();
+  for (const row of streamRows) {
+    const transactionId = normalizeString(row.transaction_id);
+    if (!transactionId) continue;
+    const current = byTransaction.get(transactionId);
+    if (!current) {
+      byTransaction.set(transactionId, row);
       continue;
     }
-    if (!latestRawByTransaction.has(transactionId)) latestRawByTransaction.set(transactionId, event);
-    const status = getField(event.payload, "status")?.toLowerCase();
-    if (status === "paid" && !latestPaidRawByTransaction.has(transactionId)) {
-      latestPaidRawByTransaction.set(transactionId, event);
+    if (isFlatPayload(row.payload) && !isFlatPayload(current.payload)) {
+      byTransaction.set(transactionId, row);
     }
   }
 
-  const sales = analyticsPedidos.map((pedido) =>
-    buildPaytSaleFromPedido(
-      pedido,
-      latestPaidRawByTransaction.get(pedido.payt_transaction_id)?.payload ??
-        latestRawByTransaction.get(pedido.payt_transaction_id)?.payload,
-    ),
-  );
+  let transacoesRevertidasExcluidas = 0;
+  const dedupedRows: StreamSaleRow[] = [];
+  for (const [transactionId, row] of byTransaction) {
+    if (reversedTransactions.has(transactionId)) {
+      transacoesRevertidasExcluidas += 1;
+      continue;
+    }
+    dedupedRows.push(row);
+  }
+
+  const sales = dedupedRows.map((row) => buildPaytSaleFromStream(row));
+  const vendasSemVoceRecebe = dedupedRows.filter((row) => extractVoceRecebe(row.payload) == null).length;
 
   const { dailyRows, sourceRows } = buildFunilFacts(sales);
   const analytics = createServiceClient().schema("analytics");
 
+  const payloadByTransaction = new Map(dedupedRows.map((row) => [normalizeString(row.transaction_id)!, row.payload]));
   for (const items of chunk(sales.map((sale) => ({
     payt_transaction_id: sale.payt_transaction_id,
     pedido_id: sale.pedido_id,
     payt_cart_id: sale.payt_cart_id,
-    payload:
-      latestPaidRawByTransaction.get(sale.payt_transaction_id)?.payload ??
-      latestRawByTransaction.get(sale.payt_transaction_id)?.payload ??
-      null,
-    payload_source: "payt_webhooks_raw",
+    payload: payloadByTransaction.get(sale.payt_transaction_id) ?? null,
+    payload_source: "payt_event_stream",
     imported_at: sale.imported_at,
     updated_at: sale.updated_at,
   })))) {
@@ -730,6 +672,17 @@ export async function syncPaytAnalytics({
 
   for (const items of chunk(sales)) {
     await analytics.from("payt_sales").upsert(items, { onConflict: "payt_transaction_id" });
+  }
+
+  // Linhas de transações que ficaram revertidas depois de já sincronizadas
+  // continuariam como "paid" no payt_sales — marca como excluídas do funil.
+  if (reversedTransactions.size > 0) {
+    for (const ids of chunk(Array.from(reversedTransactions))) {
+      await analytics
+        .from("payt_sales")
+        .update({ chargeback: true, updated_at: new Date().toISOString() })
+        .in("payt_transaction_id", ids);
+    }
   }
 
   await analytics
@@ -753,10 +706,11 @@ export async function syncPaytAnalytics({
   }
 
   return {
-    pedidosProcessados: analyticsPedidos.length,
-    pedidosIgnoradosPorStatus: pedidos.length - analyticsPedidos.length,
-    rawsAssociados: latestRawByTransaction.size,
+    fonte: "payt_event_stream",
+    linhasStream: streamRows.length,
     vendasNormalizadas: sales.length,
+    transacoesRevertidasExcluidas,
+    vendasSemVoceRecebe,
     linhasFunilDiario: dailyRows.length,
     linhasFunilFonte: sourceRows.length,
     canaisMapeados: Object.keys(ANALYTICS_CHANNEL_LABELS).length,
