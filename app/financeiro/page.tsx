@@ -41,31 +41,195 @@ function formatDateLong(value: string) {
   });
 }
 
-function FinanceEventCard({
+function formatSignedCurrency(value: number) {
+  if (value === 0) return formatCurrency(0);
+  return `${value > 0 ? "+" : ""}${formatCurrency(value)}`;
+}
+
+function ReversalMetricRow({
   label,
+  count,
+  total,
   value,
   tone,
 }: {
   label: string;
-  value: string;
-  tone: "red" | "gold" | "neutral";
+  count: number;
+  total: number;
+  value: number;
+  tone: "red" | "gold";
 }) {
-  const borderClass = {
-    red: "border-l-[var(--fly-danger-strong)]",
-    gold: "border-l-[var(--fly-chart-revenue)]",
-    neutral: "border-l-[var(--fly-border-strong)]",
+  const toneClass = {
+    red: "bg-[#F87171]",
+    gold: "bg-[var(--fly-chart-revenue)]",
   }[tone];
+  const meter = total > 0 ? Math.max((value / total) * 100, 4) : 0;
+
   return (
-    <section
-      className={`flynow-dashboard-enter-item min-w-0 rounded-[8px] border border-[var(--fly-border)] border-l-4 ${borderClass} bg-[var(--fly-surface)] p-4 shadow-[var(--fly-panel-shadow)]`}
+    <div className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={`size-1.5 shrink-0 rounded-full ${toneClass}`} />
+            <p className="truncate text-sm font-medium text-[var(--fly-text-soft)]">
+              {label}
+            </p>
+          </div>
+          <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
+            {count.toLocaleString("pt-BR")} eventos
+          </p>
+        </div>
+        <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--fly-text)]">
+          {formatCurrency(value)}
+        </p>
+      </div>
+      <div className="mt-3 h-1 overflow-hidden rounded-full bg-[var(--fly-divider)]">
+        <span
+          aria-hidden="true"
+          className={`block h-full rounded-full ${toneClass}`}
+          style={{ width: `${meter}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ReversalLensCard({
+  badge,
+  title,
+  description,
+  total,
+  chargebacks,
+  chargebackValue,
+  refunds,
+  refundValue,
+  footer,
+}: {
+  badge: string;
+  title: string;
+  description: string;
+  total: number;
+  chargebacks: number;
+  chargebackValue: number;
+  refunds: number;
+  refundValue: number;
+  footer?: string;
+}) {
+  const breakdownTotal = Math.max(chargebackValue + refundValue, 0);
+
+  return (
+    <article className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface-muted)] p-4 shadow-[var(--fly-panel-inset)]">
+      <div className="flex min-w-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <span className="inline-flex max-w-full items-center rounded-full border border-[var(--fly-border-subtle)] bg-[var(--fly-control)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--fly-text-muted)]">
+            {badge}
+          </span>
+          <h3 className="mt-3 text-[15px] font-semibold leading-none text-[var(--fly-text)]">
+            {title}
+          </h3>
+          <p className="mt-2 text-xs leading-5 text-[var(--fly-text-muted)]">
+            {description}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[24px] font-semibold leading-none tabular-nums text-[var(--fly-text)] sm:text-[28px]">
+            {formatCurrency(total)}
+          </p>
+          <p className="mt-2 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+            total revertido
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+        <ReversalMetricRow
+          count={chargebacks}
+          label="Chargebacks"
+          tone="red"
+          total={breakdownTotal}
+          value={chargebackValue}
+        />
+        <ReversalMetricRow
+          count={refunds}
+          label="Reembolsos"
+          tone="gold"
+          total={breakdownTotal}
+          value={refundValue}
+        />
+      </div>
+
+      {footer ? (
+        <p className="mt-3 border-t border-[var(--fly-divider)] pt-3 text-xs leading-5 text-[var(--fly-text-muted)]">
+          {footer}
+        </p>
+      ) : null}
+    </article>
+  );
+}
+
+function ReversalsOverview({ data }: { data: Awaited<ReturnType<typeof getFinanceiroPageData>> }) {
+  const eventDateDelta = data.eventDateTotalRevertido - data.totalRevertido;
+  const deltaTone =
+    eventDateDelta > 0
+      ? "text-[var(--fly-danger-strong)]"
+      : eventDateDelta < 0
+        ? "text-[var(--fly-success-text)]"
+        : "text-[var(--fly-text-soft)]";
+  const deltaLabel =
+    eventDateDelta === 0
+      ? "Mesmo valor nas duas leituras"
+      : eventDateDelta > 0
+        ? "Mais reversões processadas no período"
+        : "Menos reversões processadas no período";
+
+  return (
+    <Panel
+      title="Reversões"
+      description="Separe competência da venda e impacto financeiro processado"
     >
-      <p className="text-[22px] font-semibold leading-none tabular-nums text-[var(--fly-text)]">
-        {value}
-      </p>
-      <p className="mt-3 text-xs leading-5 text-[var(--fly-text-muted)]">
-        {label}
-      </p>
-    </section>
+      <div className="grid gap-3 xl:grid-cols-2">
+        <ReversalLensCard
+          badge="data da compra"
+          chargebackValue={data.valorChargebacks}
+          chargebacks={data.chargebacks}
+          description="Vendas do período que depois viraram reembolso ou chargeback."
+          footer={`Taxa de chargeback: ${formatPercent(data.taxaChargeback)} sobre vendas aprovadas.`}
+          refundValue={data.valorReembolsos}
+          refunds={data.reembolsos}
+          title="Impacto nas vendas do período"
+          total={data.totalRevertido}
+        />
+        <ReversalLensCard
+          badge="data do evento"
+          chargebackValue={data.eventDateValorChargebacks}
+          chargebacks={data.eventDateChargebacks}
+          description="Reversões que caíram neste período, independente da data da venda."
+          refundValue={data.eventDateValorReembolsos}
+          refunds={data.eventDateReembolsos}
+          title="Impacto processado no período"
+          total={data.eventDateTotalRevertido}
+        />
+      </div>
+
+      <div className="mt-3 grid gap-3 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-[var(--fly-text-soft)]">
+            Diferença entre as leituras
+          </p>
+          <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
+            Compra mostra a qualidade das vendas do período; evento mostra o que afetou o caixa agora.
+          </p>
+        </div>
+        <div className="shrink-0 text-left sm:text-right">
+          <p className={`text-lg font-semibold tabular-nums ${deltaTone}`}>
+            {formatSignedCurrency(eventDateDelta)}
+          </p>
+          <p className="mt-1 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
+            {deltaLabel}
+          </p>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
@@ -118,57 +282,7 @@ export default async function FinanceiroPage({
           />
         </StatGrid>
 
-        {/* Visão por data da COMPRA (principal) */}
-        <Panel title="Reversões por data da compra" description="Compras que depois tiveram reembolso ou chargeback — atribuídas ao mês da venda original">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <FinanceEventCard
-              label="Chargebacks (qtd)"
-              value={data.chargebacks.toLocaleString("pt-BR")}
-              tone="red"
-            />
-            <FinanceEventCard
-              label="Chargebacks (R$)"
-              value={formatCurrency(data.valorChargebacks)}
-              tone="red"
-            />
-            <FinanceEventCard
-              label="Reembolsos (qtd)"
-              value={data.reembolsos.toLocaleString("pt-BR")}
-              tone="gold"
-            />
-            <FinanceEventCard
-              label="Reembolsos (R$)"
-              value={formatCurrency(data.valorReembolsos)}
-              tone="gold"
-            />
-          </div>
-        </Panel>
-
-        {/* Visão por data do EVENTO (secundária) */}
-        <Panel title="Reversões por data do evento" description="Descontos efetivamente processados neste período — quando o reembolso/chargeback caiu">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <FinanceEventCard
-              label="Chargebacks (qtd)"
-              value={data.eventDateChargebacks.toLocaleString("pt-BR")}
-              tone="red"
-            />
-            <FinanceEventCard
-              label="Chargebacks (R$)"
-              value={formatCurrency(data.eventDateValorChargebacks)}
-              tone="red"
-            />
-            <FinanceEventCard
-              label="Reembolsos (qtd)"
-              value={data.eventDateReembolsos.toLocaleString("pt-BR")}
-              tone="gold"
-            />
-            <FinanceEventCard
-              label="Reembolsos (R$)"
-              value={formatCurrency(data.eventDateValorReembolsos)}
-              tone="gold"
-            />
-          </div>
-        </Panel>
+        <ReversalsOverview data={data} />
 
         <Panel
           title="Composição financeira"
