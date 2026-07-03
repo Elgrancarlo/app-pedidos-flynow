@@ -64,6 +64,7 @@ type FinancialEventRow = {
   total_price: number | string | null;
   event_at: string | null;
   paid_at: string | null;
+  payload: Record<string, unknown> | null;
 };
 
 type EventStreamSaleRow = {
@@ -392,7 +393,7 @@ async function getFinancialEventRowsByPurchaseDate(
   for (let offset = 0; ; offset += FINANCEIRO_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("payt_event_stream")
-      .select("transaction_id, event_status, total_price, event_at, paid_at")
+      .select("transaction_id, event_status, total_price, event_at, paid_at, payload")
       .gte("paid_at", startTs)
       .lte("paid_at", endTs)
       .order("paid_at", { ascending: false })
@@ -424,7 +425,7 @@ async function getFinancialEventRowsByEventDate(
   for (let offset = 0; ; offset += FINANCEIRO_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("payt_event_stream")
-      .select("transaction_id, event_status, total_price, event_at, paid_at")
+      .select("transaction_id, event_status, total_price, event_at, paid_at, payload")
       .gte("event_at", startTs)
       .lte("event_at", endTs)
       .order("event_at", { ascending: false })
@@ -453,7 +454,10 @@ function aggregateEventMetrics(rows: FinancialEventRow[]): FinancialMetrics {
     const targetMap =
       row.event_status === "refunded" ? latestRefundByTransaction : latestChargebackByTransaction;
     if (!targetMap.has(transactionId)) {
-      targetMap.set(transactionId, numberValue(row.total_price));
+      // Reversão descontada pela fatia producer ("Você recebe"), igual à Payt —
+      // descontar o bruto tiraria da líquida um valor que nunca foi do producer.
+      const voceRecebe = extractVoceRecebe(row.payload);
+      targetMap.set(transactionId, voceRecebe ?? numberValue(row.total_price));
     }
   }
 

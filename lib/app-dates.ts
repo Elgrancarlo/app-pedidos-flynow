@@ -29,10 +29,15 @@ export function shiftDateString(date: string, days: number) {
   return base.toISOString().slice(0, 10);
 }
 
+// Os timestamps da Payt chegam em hora BRT sem timezone e são gravados
+// VERBATIM como UTC (event_stream.paid_at/event_at, pedidos.data_pagamento) —
+// convenção herdada do n8n. Um dia BRT do app corresponde, portanto, ao
+// próprio dia em UTC no banco, sem deslocamento de offset. Aplicar -03:00
+// aqui cortaria as vendas da madrugada (00h–03h) do dia filtrado.
 export function getUtcRangeForAppDate(date: string) {
   return {
-    startTs: new Date(`${date}T00:00:00${APP_UTC_OFFSET}`).toISOString(),
-    endTs: new Date(`${date}T23:59:59.999${APP_UTC_OFFSET}`).toISOString(),
+    startTs: `${date}T00:00:00.000Z`,
+    endTs: `${date}T23:59:59.999Z`,
   };
 }
 

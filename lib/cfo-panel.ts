@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
-import { getUtcRangeForAppDates, toAppDateString } from "@/lib/app-dates";
+import { getUtcRangeForAppDates } from "@/lib/app-dates";
 
 const PAGE_SIZE = 1000;
 const FRONT_CHANNELS = new Set(["VSL_FRONT", "TABOOLA"]);
@@ -201,7 +201,9 @@ function countPostSaleEventsForWeek(
 
   for (const row of rows) {
     const transactionId = String(row.transaction_id ?? "").trim();
-    const eventDay = toAppDateString(row.event_at);
+    // event_at é hora BRT gravada verbatim como UTC — o dia BRT é o próprio
+    // date-part do valor; converter com toAppDateString deslocaria -3h.
+    const eventDay = row.event_at ? String(row.event_at).slice(0, 10) : "";
     const eventStatus = row.event_status?.toLowerCase() ?? "";
 
     if (!transactionId || !eventDay || !dayInRange(eventDay, inicio, fim)) continue;
