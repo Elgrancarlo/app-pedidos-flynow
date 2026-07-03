@@ -94,7 +94,9 @@ function resolveRange(params: FunilPageParams): PerformanceRange {
   const startDate = isDateString(params.startDate)
     ? params.startDate!
     : defaults.startDate;
-  const endDate = isDateString(params.endDate) ? params.endDate! : defaults.endDate;
+  const endDate = isDateString(params.endDate)
+    ? params.endDate!
+    : defaults.endDate;
 
   return startDate <= endDate
     ? { startDate, endDate }
@@ -125,8 +127,8 @@ function formatChannelLabel(channel: string) {
 }
 
 function uniqueOptions(values: string[], allLabel: string): SelectOption[] {
-  const uniqueValues = Array.from(new Set(values.filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b, "pt-BR")
+  const uniqueValues = Array.from(new Set(values.filter(Boolean))).sort(
+    (a, b) => a.localeCompare(b, "pt-BR"),
   );
 
   return [
@@ -147,7 +149,7 @@ function resolveFilter(value: string | undefined, options: SelectOption[]) {
 function filterFunnelDays(
   rows: PerformanceFunnelDay[],
   selectedProduct: string,
-  selectedChannel: string
+  selectedChannel: string,
 ) {
   return rows.filter((row) => {
     const matchesProduct =
@@ -161,15 +163,21 @@ function filterFunnelDays(
 
 function summarizeFunnel(rows: PerformanceFunnelDay[]): FunnelSummary {
   const directSales = rows.reduce((total, item) => total + item.directSales, 0);
-  const revenueTotal = rows.reduce((total, item) => total + item.revenueTotal, 0);
-  const upsellRevenue = rows.reduce((total, item) => total + item.upsellRevenue, 0);
+  const revenueTotal = rows.reduce(
+    (total, item) => total + item.revenueTotal,
+    0,
+  );
+  const upsellRevenue = rows.reduce(
+    (total, item) => total + item.upsellRevenue,
+    0,
+  );
   const takeRateUs1Base = rows.reduce(
     (total, item) => total + item.directSales * item.takeRateUs1,
-    0
+    0,
   );
   const takeRateUs2Base = rows.reduce(
     (total, item) => total + item.directSales * item.takeRateUs2,
-    0
+    0,
   );
 
   return {
@@ -236,7 +244,7 @@ function buildDailySeries(rows: PerformanceFunnelDay[]): FunilChartPoint[] {
 
 function buildSourceRows(
   rows: PerformanceFunnelSourceRow[],
-  selectedChannel: string
+  selectedChannel: string,
 ): SourceSummaryRow[] {
   const grouped = new Map<
     string,
@@ -247,7 +255,7 @@ function buildSourceRows(
 
   rows
     .filter(
-      (row) => selectedChannel === "all" || row.channel === selectedChannel
+      (row) => selectedChannel === "all" || row.channel === selectedChannel,
     )
     .forEach((row) => {
       const campaign = row.campaign ?? "-";
@@ -286,7 +294,8 @@ function buildSourceRows(
       medium: item.medium,
       revenueTotal: item.revenueTotal,
       source: item.source,
-      upsellRatio: item.directSales > 0 ? item.upsellCount / item.directSales : 0,
+      upsellRatio:
+        item.directSales > 0 ? item.upsellCount / item.directSales : 0,
       upsellRevenue: item.upsellRevenue,
     }))
     .sort((first, second) => second.revenueTotal - first.revenueTotal);
@@ -318,10 +327,7 @@ function buildFunilHref({
 }
 
 function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
-  const toneByLevel: Record<
-    PerformanceAlert["level"],
-    { dot: string }
-  > = {
+  const toneByLevel: Record<PerformanceAlert["level"], { dot: string }> = {
     danger: {
       dot: "bg-[#F87171]",
     },
@@ -348,7 +354,9 @@ function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
               className="rounded-[8px] bg-[var(--fly-row-bg)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]"
             >
               <div className="flex min-w-0 items-center gap-2">
-                <span className={cn("size-1.5 shrink-0 rounded-full", tone.dot)} />
+                <span
+                  className={cn("size-1.5 shrink-0 rounded-full", tone.dot)}
+                />
                 <p className="truncate text-sm font-semibold text-[var(--fly-text)]">
                   {alert.title}
                 </p>
@@ -571,16 +579,16 @@ export default async function FunilPage({
   const params = await searchParams;
   const range = resolveRange(params);
   const data = await timedServerTask("funil", "data.total", () =>
-    getPerformancePageData(range, { timingScope: "funil" })
+    getPerformancePageData(range, { timingScope: "funil" }),
   );
   const postProcessStartedAt = performance.now();
   const productOptions = uniqueOptions(
     data.funnelDays.map((item) => item.product),
-    "Todos os produtos"
+    "Todos os produtos",
   );
   const channelOptions = uniqueOptions(
     data.funnelDays.map((item) => item.channel),
-    "Todos os canais"
+    "Todos os canais",
   );
   const selectedProduct = resolveFilter(params.product, productOptions);
   const selectedChannel = resolveFilter(params.channel, channelOptions);
@@ -588,7 +596,7 @@ export default async function FunilPage({
   const filteredFunnelDays = filterFunnelDays(
     data.funnelDays,
     selectedProduct,
-    selectedChannel
+    selectedChannel,
   );
   const summary = summarizeFunnel(filteredFunnelDays);
   const chartSeries = buildDailySeries(filteredFunnelDays);
@@ -599,10 +607,17 @@ export default async function FunilPage({
   const totalPages = Math.max(Math.ceil(sourceRows.length / pageSize), 1);
   const currentPage = Math.min(resolvePage(params.page), totalPages);
   const startIndex = (currentPage - 1) * pageSize;
-  const paginatedSourceRows = sourceRows.slice(startIndex, startIndex + pageSize);
+  const paginatedSourceRows = sourceRows.slice(
+    startIndex,
+    startIndex + pageSize,
+  );
   const tableStart = sourceRows.length === 0 ? 0 : startIndex + 1;
   const tableEnd = Math.min(startIndex + pageSize, sourceRows.length);
-  logServerTiming("funil", "postProcess.filtersAndCharts", postProcessStartedAt);
+  logServerTiming(
+    "funil",
+    "postProcess.filtersAndCharts",
+    postProcessStartedAt,
+  );
   logServerTiming("funil", "total", pageStartedAt);
 
   return (
@@ -632,19 +647,19 @@ export default async function FunilPage({
           />
           <StatCard
             detail="Direta + upsells no periodo"
-            label="Receita total"
+            label="Receita do funil"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
           <StatCard
-            detail={`${formatPercent(summary.upsellRatio)} da receita total`}
+            detail={`${formatPercent(summary.upsellRatio)} da receita do funil`}
             label="Receita upsells"
             tone="green"
             value={formatCurrency(summary.upsellRevenue)}
           />
           <StatCard
-            detail="Receita media por venda direta"
-            label="AOV medio"
+            detail="(receita do funil) / (vendas diretas)"
+            label="AOV do funil"
             tone="blue"
             value={formatCurrency(summary.aov)}
           />
@@ -715,15 +730,18 @@ export default async function FunilPage({
             </>
           ) : (
             <p className="rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-3 text-sm leading-5 text-[var(--fly-text-soft)]">
-              O resumo por fonte nao possui dimensao confiavel de produto na fact
-              atual. Com filtro de produto ativo, esta secao fica oculta para
-              evitar leitura incorreta.
+              O resumo por fonte nao possui dimensao confiavel de produto na
+              fact atual. Com filtro de produto ativo, esta secao fica oculta
+              para evitar leitura incorreta.
             </p>
           )}
         </Panel>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <Panel title="Log de alteracoes" description="Eventos com leitura de impacto">
+          <Panel
+            title="Log de alteracoes"
+            description="Eventos com leitura de impacto"
+          >
             <LogsTable logs={data.logs} />
           </Panel>
 

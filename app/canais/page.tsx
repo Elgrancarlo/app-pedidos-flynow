@@ -94,7 +94,9 @@ function resolveRange(params: CanaisPageParams): PerformanceRange {
   const startDate = isDateString(params.startDate)
     ? params.startDate!
     : defaults.startDate;
-  const endDate = isDateString(params.endDate) ? params.endDate! : defaults.endDate;
+  const endDate = isDateString(params.endDate)
+    ? params.endDate!
+    : defaults.endDate;
 
   return startDate <= endDate
     ? { startDate, endDate }
@@ -118,8 +120,8 @@ function buildChannelOptions(rows: AnalyticsFunilSourceRow[]): SelectOption[] {
     (first, second) =>
       (ANALYTICS_CHANNEL_LABELS[first] ?? first).localeCompare(
         ANALYTICS_CHANNEL_LABELS[second] ?? second,
-        "pt-BR"
-      )
+        "pt-BR",
+      ),
   );
 
   return [
@@ -149,7 +151,7 @@ function summarizeChannels(data: ChannelAnalyticsData): ChannelSummary {
 }
 
 function buildChannelRevenueRows(
-  sourceRows: AnalyticsFunilSourceRow[]
+  sourceRows: AnalyticsFunilSourceRow[],
 ): ChannelRevenueDatum[] {
   const grouped = new Map<
     AnalyticsCanal,
@@ -185,7 +187,7 @@ function buildChannelRevenueRows(
 }
 
 function buildSourceSpendRows(
-  mediaBySource: ChannelAnalyticsData["mediaBySource"]
+  mediaBySource: ChannelAnalyticsData["mediaBySource"],
 ): SourceSpendDatum[] {
   return mediaBySource
     .map((item) => ({
@@ -199,7 +201,7 @@ function buildSourceSpendRows(
 }
 
 function buildRedtrackProductRows(
-  topCampaigns: ChannelAnalyticsData["topCampaigns"]
+  topCampaigns: ChannelAnalyticsData["topCampaigns"],
 ): RedtrackProductRow[] {
   return topCampaigns
     .map((item) => ({
@@ -437,7 +439,7 @@ export default async function CanaisPage({
   const params = await searchParams;
   const range = resolveRange(params);
   const baseData = await timedServerTask("canais", "data.base", () =>
-    getChannelAnalytics(range.startDate, range.endDate)
+    getChannelAnalytics(range.startDate, range.endDate),
   );
   const channelOptions = buildChannelOptions(baseData.sourceRows);
   const selectedChannel = resolveFilter(params.channel, channelOptions);
@@ -445,7 +447,7 @@ export default async function CanaisPage({
     selectedChannel === "all" ? null : (selectedChannel as AnalyticsCanal);
   const data = selectedCanal
     ? await timedServerTask("canais", "data.filtered", () =>
-        getChannelAnalytics(range.startDate, range.endDate, selectedCanal)
+        getChannelAnalytics(range.startDate, range.endDate, selectedCanal),
       )
     : baseData;
   const postProcessStartedAt = performance.now();
@@ -462,7 +464,11 @@ export default async function CanaisPage({
   const currentPage = Math.min(resolvePage(params.page), totalPages);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedRows = redtrackRows.slice(startIndex, startIndex + pageSize);
-  logServerTiming("canais", "postProcess.tablesAndCharts", postProcessStartedAt);
+  logServerTiming(
+    "canais",
+    "postProcess.tablesAndCharts",
+    postProcessStartedAt,
+  );
   logServerTiming("canais", "total", pageStartedAt);
   const tableStart = redtrackRows.length === 0 ? 0 : startIndex + 1;
   const tableEnd = Math.min(startIndex + pageSize, redtrackRows.length);
@@ -484,8 +490,8 @@ export default async function CanaisPage({
         <StatGrid columns="xl:grid-cols-6 min-[1400px]:!grid-cols-5">
           <StatCard
             className="xl:col-span-2 min-[1400px]:!col-span-1"
-            detail="Soma PayT do período"
-            label="Receita total"
+            detail="Vendas atribuídas por canal"
+            label="Receita do funil"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
@@ -525,7 +531,9 @@ export default async function CanaisPage({
           <StatCard
             className="xl:col-span-3 min-[1400px]:!col-span-1"
             detail={
-              data.redtrackComparable ? "Receita RT / spend" : "Indisponível por canal"
+              data.redtrackComparable
+                ? "Receita RT / spend"
+                : "Indisponível por canal"
             }
             label="ROAS RT"
             tone={
