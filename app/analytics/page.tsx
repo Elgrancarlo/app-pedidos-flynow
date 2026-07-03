@@ -314,8 +314,8 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas (bruto)`}
-            label="Total das vendas"
+            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas — valor cheio pago pelo cliente`}
+            label="Receita bruta"
             tone="gold"
             value={formatCurrency(financeiro.receitaBruta)}
           />
@@ -328,14 +328,14 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Total das vendas / vendas totais"
+            detail="Receita líquida / vendas totais"
             label="Ticket médio"
             tone="blue"
             value={formatCurrency(ticketMedioVoceRecebe)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="Você recebe (líquido Payt)"
+            detail={'= "Total das vendas" na Payt (Você recebe)'}
             label="Receita líquida"
             tone="green"
             value={formatCurrency(financeiro.totalDasVendas)}
