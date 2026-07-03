@@ -135,8 +135,10 @@ export function classifyAnalyticsChannel({
 
   if (s === "vsl" || s === "vsl-rp") return "VSL_FRONT";
   if (s === "tb" || u.includes("taboola")) return "TABOOLA";
-  if (s === "el" || u.includes("mautic")) return "EMAIL_MAUTIC";
-  if (u.includes("smsfunnel")) return "SMS";
+  // SMS antes do email: disparos SMSFunnel também usam source "EL", e a regra
+  // do email engolia essas vendas quando avaliada primeiro.
+  if (u.includes("sms") || s.includes("sms")) return "SMS";
+  if (s === "el" || u.includes("mautic") || s.includes("mail")) return "EMAIL_MAUTIC";
   // "-back" cobre sufixos das importações ("pv-back", "glico-back"); valores com
   // "ia" ("ia-wpp-back-db-k6") pertencem ao canal IA_WHATSAPP, avaliado a seguir.
   if (s.startsWith("back") || s.includes("backend") || (s.includes("-back") && !s.includes("ia"))) return "BACKEND_RECUPERACAO";
