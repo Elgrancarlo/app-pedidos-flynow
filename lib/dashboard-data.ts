@@ -79,10 +79,6 @@ type PedidosEmTransitoResponse = {
   valor?: number | string | null;
 };
 
-type VendasHojeRow = {
-  valor_total: number | string | null;
-};
-
 type DashboardFunnelRpcRow = {
   status: string | null;
   total: number | string | null;
@@ -128,35 +124,6 @@ function numberValue(value: unknown) {
   return 0;
 }
 
-async function fetchPaidSalesRowsForRange(
-  supabase: ReturnType<typeof createServiceClient>,
-  startTs: string,
-  endTs: string
-) {
-  const rows: VendasHojeRow[] = [];
-
-  for (let offset = 0; ; offset += DASHBOARD_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("pedidos")
-      .select("valor_total")
-      .eq("status_pagamento", "paid")
-      .not("data_pagamento", "is", null)
-      .gte("data_pagamento", startTs)
-      .lte("data_pagamento", endTs)
-      .order("data_pagamento", { ascending: false })
-      .range(offset, offset + DASHBOARD_PAGE_SIZE - 1);
-
-    if (error) throw error;
-    if (!data || data.length === 0) break;
-
-    rows.push(...(data as VendasHojeRow[]));
-
-    if (data.length < DASHBOARD_PAGE_SIZE) break;
-  }
-
-  return rows;
-}
-
 // "Você recebe" = comissão 'producer' da Payt (nested ou flat), ou o campo
 // `voce_recebe` já calculado no payload. Retorna em reais, ou null se não houver.
 function extractVoceRecebe(payload: Record<string, unknown> | null | undefined): number | null {
@@ -186,15 +153,15 @@ function extractVoceRecebe(payload: Record<string, unknown> | null | undefined):
   return found ? producerCents / 100 : null;
 }
 
-// Soma o "Você recebe" (líquido do produtor) das vendas pagas no período,
-// deduplicando por transação — mesma base do analytics e do relatório da Payt.
-async function fetchVoceRecebeForRange(
+// Soma receita bruta e "Você recebe" das vendas pagas no período, deduplicando por transação.
+async function fetchSalesForRange(
   supabase: ReturnType<typeof createServiceClient>,
   startTs: string,
   endTs: string
 ) {
   const seen = new Set<string>();
-  let total = 0;
+  let grossTotal = 0;
+  let netTotal = 0;
 
   try {
     for (let offset = 0; ; offset += DASHBOARD_PAGE_SIZE) {
@@ -219,18 +186,21 @@ async function fetchVoceRecebeForRange(
         const tx = String(row.transaction_id ?? "").trim();
         if (!tx || tx.startsWith("cart:") || seen.has(tx)) continue;
         seen.add(tx);
-        total += extractVoceRecebe(row.payload) ?? numberValue(row.total_price);
+        const grossValue = numberValue(row.total_price);
+        grossTotal += grossValue;
+        netTotal += extractVoceRecebe(row.payload) ?? grossValue;
       }
 
       if (data.length < DASHBOARD_PAGE_SIZE) break;
     }
   } catch (error) {
-    if (isMissingPaytEventStream(error)) return { total: 0, count: 0 };
+    if (isMissingPaytEventStream(error)) {
+      return { count: 0, grossTotal: 0, netTotal: 0 };
+    }
     throw error;
   }
 
-  // total = "Você recebe" (líquido); count = nº de vendas aprovadas (dedup por transação).
-  return { total, count: seen.size };
+  return { count: seen.size, grossTotal, netTotal };
 }
 
 async function fetchChargebackTotalsByDay(
@@ -432,27 +402,27 @@ function normalizeFunnelRows(rows: DashboardFunnelRpcRow[]) {
 function buildOverviewCards({
   chargebackCount,
   chargebackValue,
+  grossRevenue,
   netRevenue,
   refundCount,
   refundValue,
   salesCount,
-  salesValue,
 }: {
   chargebackCount: number;
   chargebackValue: number;
+  grossRevenue: number;
   netRevenue: number;
   refundCount: number;
   refundValue: number;
   salesCount: number;
-  salesValue: number;
 }): DashboardKpi[] {
   return [
     {
-      detail: `PayT · ${formatNumber(salesCount)} vendas aprovadas`,
-      label: "Total das vendas",
+      detail: `PayT · valor pago pelo cliente · ${formatNumber(salesCount)} vendas`,
+      label: "Receita bruta",
       period: "Hoje",
-      tone: "green",
-      value: formatCurrency(salesValue),
+      tone: "gold",
+      value: formatCurrency(grossRevenue),
     },
     {
       detail: "PayT · Você recebe - reversões por compra",
@@ -599,7 +569,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
 
   const queriesStartedAt = performance.now();
   const [
-    voceRecebeHoje,
+    salesToday,
     financialMetrics,
     emTransito,
     atrasados,
@@ -608,8 +578,8 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     tendencia,
     funilAnalytics,
   ] = await Promise.all([
-    timedServerTask("dashboard", "voceRecebeHoje", () =>
-      fetchVoceRecebeForRange(supabase, startTs, endTs)
+    timedServerTask("dashboard", "salesToday", () =>
+      fetchSalesForRange(supabase, startTs, endTs)
     ),
     timedServerTask("dashboard", "financeiro", () =>
       // Retorna as duas visões de reversões para os cards por evento e leituras auxiliares.
@@ -649,9 +619,10 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   if (tendencia.error) throw tendencia.error;
 
   const postProcessStartedAt = performance.now();
-  // "Total das vendas" = Você recebe (líquido do produtor) de todas as vendas aprovadas.
-  const salesCount = voceRecebeHoje.count;
-  const salesValue = voceRecebeHoje.total;
+  // Receita bruta = valor pago pelo cliente em todas as vendas aprovadas.
+  const salesCount = salesToday.count;
+  const grossRevenue = salesToday.grossTotal;
+  const netSalesValue = salesToday.netTotal;
   // Cards de reversões por evento = eventos que OCORRERAM hoje (data do evento).
   const refundValue = financialMetrics.byEventDate.valorReembolsos;
   const chargebackValue = financialMetrics.byEventDate.valorChargebacks;
@@ -659,7 +630,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   const purchaseDateReversals =
     financialMetrics.byPurchaseDate.valorReembolsos +
     financialMetrics.byPurchaseDate.valorChargebacks;
-  const netRevenue = voceRecebeHoje.total - purchaseDateReversals;
+  const netRevenue = netSalesValue - purchaseDateReversals;
   const checkoutSummary = checkout.summary;
   const carts24h =
     checkoutSummary.openCount +
@@ -715,11 +686,11 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
     overviewCards: buildOverviewCards({
       chargebackCount: financialMetrics.byEventDate.chargebacks,
       chargebackValue,
+      grossRevenue,
       netRevenue,
       refundCount: financialMetrics.byEventDate.reembolsos,
       refundValue,
       salesCount,
-      salesValue,
     }),
     // reversões (reembolsos + chargebacks) já vêm da RPC tendencia_30_dias por dia;
     // não somamos chargebacks por fora para evitar contá-los em dobro.
@@ -745,14 +716,14 @@ function getMockDashboardData(): DashboardPageData {
   const todayEverPaid = todayPedidos.filter((pedido) =>
     ["paid", "refunded", "chargeback"].includes(pedido.paymentStatus)
   );
-  const salesValue = todayEverPaid.reduce(
+  const grossRevenue = todayEverPaid.reduce(
     (total, pedido) => total + (pedido.amount ?? 0),
     0
   );
   const salesCount = todayEverPaid.length;
   const refundValue = todayFinanceiro.valorReembolsos;
   const chargebackValue = todayFinanceiro.valorChargebacks;
-  const netRevenue = salesValue - refundValue - chargebackValue;
+  const netRevenue = grossRevenue - refundValue - chargebackValue;
   const allStatusCounts = getPedidosContagemPorStatus(pedidos);
   const emTransito = OPEN_LOGISTICS_STATUSES.reduce(
     (sum, status) => sum + allStatusCounts[status],
@@ -791,7 +762,7 @@ function getMockDashboardData(): DashboardPageData {
                 : "neutral";
 
       return {
-        amount: count * (salesCount > 0 ? salesValue / salesCount : 0),
+        amount: count * (salesCount > 0 ? grossRevenue / salesCount : 0),
         count,
         label: PEDIDO_STATUS_LOGISTICO_LABELS[status as PedidoStatusLogistico],
         tone,
@@ -842,11 +813,11 @@ function getMockDashboardData(): DashboardPageData {
     overviewCards: buildOverviewCards({
       chargebackCount: todayFinanceiro.chargebacks,
       chargebackValue,
+      grossRevenue,
       netRevenue,
       refundCount: todayFinanceiro.reembolsos,
       refundValue,
       salesCount,
-      salesValue,
     }),
     trend,
   };
