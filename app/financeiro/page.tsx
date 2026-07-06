@@ -265,7 +265,7 @@ export default async function FinanceiroPage({
           <StatCard
             label="Receita líquida"
             value={formatCurrency(data.receitaLiquida)}
-            detail="PayT · Você recebe menos reversões"
+            detail="PayT · Você recebe - reversões por compra"
             tone="green"
           />
           <StatCard

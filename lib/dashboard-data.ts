@@ -455,7 +455,7 @@ function buildOverviewCards({
       value: formatCurrency(salesValue),
     },
     {
-      detail: "PayT · Você recebe menos reversões por compra",
+      detail: "PayT · Você recebe - reversões por compra",
       label: "Receita líquida",
       period: "Hoje",
       tone: "green",

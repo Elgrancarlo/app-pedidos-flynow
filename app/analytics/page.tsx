@@ -340,7 +340,7 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="PayT · Você recebe menos reversões"
+            detail="PayT · Você recebe - reversões por compra"
             label="Receita líquida"
             tone="green"
             value={formatCurrency(
