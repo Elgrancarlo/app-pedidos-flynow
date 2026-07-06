@@ -299,9 +299,9 @@ function OverviewContent({
   data: PerformancePageData;
   financeiro: FinanceiroPageData;
 }) {
-  const ticketMedioVoceRecebe =
+  const ticketMedioBruto =
     financeiro.totalPedidos > 0
-      ? financeiro.totalDasVendas / financeiro.totalPedidos
+      ? financeiro.receitaBruta / financeiro.totalPedidos
       : 0;
   const totalRoas =
     data.summary.spendTotal > 0
@@ -319,28 +319,28 @@ function OverviewContent({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-6 xl:grid-cols-12">
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail={`${financeiro.totalPedidos.toLocaleString("pt-BR")} vendas aprovadas · total das vendas`}
-            label="Receita Bruta"
+            detail="PayT · valor pago pelo cliente"
+            label="Receita bruta"
             tone="gold"
             value={formatCurrency(financeiro.receitaBruta)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="vendas aprovadas PayT (incl. upsells)"
+            detail="PayT · vendas aprovadas com upsells"
             label="Vendas totais"
             tone="neutral"
             value={formatNumber(financeiro.totalPedidos)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="(total das vendas) / (vendas totais)"
+            detail="Receita bruta / vendas totais"
             label="Ticket médio"
             tone="blue"
-            value={formatCurrency(ticketMedioVoceRecebe)}
+            value={formatCurrency(ticketMedioBruto)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-3"
-            detail="(total das vendas) - (taxas payt e reversões)"
+            detail="PayT · Você recebe menos reversões"
             label="Receita líquida"
             tone="green"
             value={formatCurrency(
@@ -349,14 +349,14 @@ function OverviewContent({
           />
           <StatCard
             className="md:col-span-3 xl:col-span-4"
-            detail="Investimento registrado no redtrack"
+            detail="RedTrack · campo cost"
             label="Investimento"
             tone="blue"
             value={formatCurrency(data.summary.spendTotal)}
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
-            detail="(receita líquida) / (investimento)"
+            detail="Receita líquida / investimento"
             label="ROAS total"
             tone="green"
             value={formatDecimal(totalRoas)}
@@ -417,25 +417,25 @@ function RedtrackContent({ redtrack }: { redtrack: RedtrackAnalyticsData }) {
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            detail="Custo de mídia no período"
+            detail="RedTrack · campo cost"
             label="Investimento"
             tone="blue"
             value={formatCurrency(redtrack.summary.spend)}
           />
           <StatCard
-            detail="Receita atribuída pelo RedTrack"
+            detail="RedTrack · campo total_revenue"
             label="Receita atribuída"
             tone="gold"
             value={formatCurrency(redtrack.summary.attributedRevenue)}
           />
           <StatCard
-            detail="(receita atribuída) / (custo de mídia)"
+            detail="Receita atribuída / investimento"
             label="ROAS RT"
             tone="green"
             value={formatDecimal(redtrack.summary.roas)}
           />
           <StatCard
-            detail="Cliques totais nas campanhas"
+            detail="RedTrack · cliques registrados"
             label="Cliques"
             tone="neutral"
             value={formatNumber(redtrack.summary.clicks)}

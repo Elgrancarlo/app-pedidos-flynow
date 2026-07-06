@@ -245,6 +245,12 @@ export default async function FinanceiroPage({
     getFinanceiroPageData(range)
   );
   logServerTiming("financeiro", "total", pageStartedAt);
+  const ticketMedioBruto =
+    data.totalPedidos > 0 ? data.receitaBruta / data.totalPedidos : 0;
+  const dataComTicketMedioBruto = {
+    ...data,
+    ticketMedio: ticketMedioBruto,
+  };
 
   return (
     <Shell>
@@ -264,8 +270,8 @@ export default async function FinanceiroPage({
           />
           <StatCard
             label="Ticket médio"
-            value={formatCurrency(data.ticketMedio)}
-            detail="Você recebe / vendas"
+            value={formatCurrency(ticketMedioBruto)}
+            detail="Receita bruta / vendas totais"
             tone="blue"
           />
           <StatCard
@@ -288,7 +294,7 @@ export default async function FinanceiroPage({
           title="Composição financeira"
           description="Receita por data de pagamento; reversões por data do evento financeiro"
         >
-          <FinanceCompositionChart data={data} />
+          <FinanceCompositionChart data={dataComTicketMedioBruto} />
         </Panel>
       </PageBody>
     </Shell>
