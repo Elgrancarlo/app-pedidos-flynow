@@ -67,6 +67,12 @@ type FinancialEventRow = {
   payload: Record<string, unknown> | null;
 };
 
+type PaidEventAmountRow = {
+  transaction_id: string | null;
+  total_price: number | string | null;
+  payload: Record<string, unknown> | null;
+};
+
 type EventStreamSaleRow = {
   transaction_id: string | null;
   event_status: string | null;
@@ -443,7 +449,68 @@ async function getFinancialEventRowsByEventDate(
   return rows;
 }
 
-function aggregateEventMetrics(rows: FinancialEventRow[]): FinancialMetrics {
+function resolveReversalAmount(
+  row: FinancialEventRow,
+  paidAmountByTransaction: Map<string, number>
+) {
+  const transactionId = String(row.transaction_id ?? "").trim();
+  const eventVoceRecebe = extractVoceRecebe(row.payload);
+  if (eventVoceRecebe != null && eventVoceRecebe > 0) {
+    return eventVoceRecebe;
+  }
+
+  const paidAmount = paidAmountByTransaction.get(transactionId);
+  if (paidAmount != null && paidAmount > 0) {
+    return paidAmount;
+  }
+
+  return numberValue(row.total_price);
+}
+
+async function getPaidAmountsByTransaction(
+  supabase: ReturnType<typeof createServiceClient>,
+  transactionIds: string[]
+) {
+  const paidAmountByTransaction = new Map<string, number>();
+  const uniqueIds = Array.from(new Set(transactionIds.filter(Boolean)));
+  const batchSize = 300;
+
+  for (let index = 0; index < uniqueIds.length; index += batchSize) {
+    const batch = uniqueIds.slice(index, index + batchSize);
+    const { data, error } = await supabase
+      .from("payt_event_stream")
+      .select("transaction_id, total_price, payload")
+      .eq("event_status", "paid")
+      .in("transaction_id", batch)
+      .order("paid_at", { ascending: false });
+
+    if (error) throw error;
+
+    for (const row of (data ?? []) as PaidEventAmountRow[]) {
+      const transactionId = String(row.transaction_id ?? "").trim();
+      if (!transactionId || paidAmountByTransaction.has(transactionId)) {
+        continue;
+      }
+
+      const voceRecebe = extractVoceRecebe(row.payload);
+      const amount =
+        voceRecebe != null && voceRecebe > 0
+          ? voceRecebe
+          : numberValue(row.total_price);
+
+      if (amount > 0) {
+        paidAmountByTransaction.set(transactionId, amount);
+      }
+    }
+  }
+
+  return paidAmountByTransaction;
+}
+
+function aggregateEventMetrics(
+  rows: FinancialEventRow[],
+  paidAmountByTransaction: Map<string, number>
+): FinancialMetrics {
   const latestRefundByTransaction = new Map<string, number>();
   const latestChargebackByTransaction = new Map<string, number>();
 
@@ -452,20 +519,31 @@ function aggregateEventMetrics(rows: FinancialEventRow[]): FinancialMetrics {
     if (!transactionId) continue;
 
     const targetMap =
-      row.event_status === "refunded" ? latestRefundByTransaction : latestChargebackByTransaction;
+      row.event_status === "refunded"
+        ? latestRefundByTransaction
+        : latestChargebackByTransaction;
     if (!targetMap.has(transactionId)) {
       // Reversão descontada pela fatia producer ("Você recebe"), igual à Payt —
-      // descontar o bruto tiraria da líquida um valor que nunca foi do producer.
-      const voceRecebe = extractVoceRecebe(row.payload);
-      targetMap.set(transactionId, voceRecebe ?? numberValue(row.total_price));
+      // eventos de chargeback podem vir com a comissão zerada, então usamos a
+      // venda original como fonte de valor antes de cair no bruto do evento.
+      targetMap.set(
+        transactionId,
+        resolveReversalAmount(row, paidAmountByTransaction)
+      );
     }
   }
 
   return {
     chargebacks: latestChargebackByTransaction.size,
-    valorChargebacks: Array.from(latestChargebackByTransaction.values()).reduce((sum, value) => sum + value, 0),
+    valorChargebacks: Array.from(latestChargebackByTransaction.values()).reduce(
+      (sum, value) => sum + value,
+      0
+    ),
     reembolsos: latestRefundByTransaction.size,
-    valorReembolsos: Array.from(latestRefundByTransaction.values()).reduce((sum, value) => sum + value, 0),
+    valorReembolsos: Array.from(latestRefundByTransaction.values()).reduce(
+      (sum, value) => sum + value,
+      0
+    ),
   };
 }
 
@@ -486,10 +564,23 @@ export async function getFinancialEventMetrics(
       getFinancialEventRowsByPurchaseDate(supabase, startTs, endTs),
       getFinancialEventRowsByEventDate(supabase, startTs, endTs),
     ]);
+    const reversalTransactionIds = [
+      ...purchaseDateRows,
+      ...eventDateRows,
+    ]
+      .map((row) => String(row.transaction_id ?? "").trim())
+      .filter(Boolean);
+    const paidAmountByTransaction = await getPaidAmountsByTransaction(
+      supabase,
+      reversalTransactionIds
+    );
 
     return {
-      byPurchaseDate: aggregateEventMetrics(purchaseDateRows),
-      byEventDate: aggregateEventMetrics(eventDateRows),
+      byPurchaseDate: aggregateEventMetrics(
+        purchaseDateRows,
+        paidAmountByTransaction
+      ),
+      byEventDate: aggregateEventMetrics(eventDateRows, paidAmountByTransaction),
     };
   } catch (error) {
     if (!isMissingEventStream(error)) throw error;
