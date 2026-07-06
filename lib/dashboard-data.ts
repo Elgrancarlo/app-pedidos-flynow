@@ -449,32 +449,29 @@ function buildOverviewCards({
 }): DashboardKpi[] {
   return [
     {
-      detail: `${formatNumber(salesCount)} vendas aprovadas`,
-      label: "Vendas hoje",
+      detail: `PayT · ${formatNumber(salesCount)} vendas aprovadas`,
+      label: "Total das vendas",
       period: "Hoje",
       tone: "green",
       value: formatCurrency(salesValue),
     },
     {
-      detail:
-        chargebackValue > 0
-          ? `Você recebe menos ${formatCurrency(refundValue + chargebackValue)} revertidos`
-          : "Você recebe (líquido Payt) menos reversões",
+      detail: "Total das vendas - reversões por compra",
       label: "Receita líquida",
       period: "Hoje",
       tone: "green",
       value: formatCurrency(netRevenue),
     },
     {
-      detail: `${formatNumber(refundCount)} eventos no dia`,
-      label: "Reembolsos hoje",
+      detail: `Por evento · ${formatNumber(refundCount)} eventos hoje`,
+      label: "Reembolsos por evento",
       period: "Hoje",
       tone: "red",
       value: formatCurrency(refundValue),
     },
     {
-      detail: `${formatNumber(chargebackCount)} ocorrências no dia`,
-      label: "Chargebacks hoje",
+      detail: `Por evento · ${formatNumber(chargebackCount)} eventos hoje`,
+      label: "Chargebacks por evento",
       period: "Hoje",
       tone: "gold",
       value: formatCurrency(chargebackValue),
@@ -497,21 +494,21 @@ function buildOperationCards({
 }): DashboardKpi[] {
   return [
     {
-      detail: "pedidos em rota",
+      detail: "Logística · pedidos em rota",
       label: "Em trânsito",
       period: "Agora",
       tone: "blue",
       value: formatNumber(emTransito),
     },
     {
-      detail: "data prometida vencida",
+      detail: "Logística · data prometida vencida",
       label: "Alertas ativos",
       period: "Agora",
       tone: "gold",
       value: formatNumber(activeAlerts),
     },
     {
-      detail: `${formatNumber(openCount)} abertos · ${formatNumber(abandonedCount)} abandonos`,
+      detail: `Checkout · ${formatNumber(openCount)} abertos + ${formatNumber(abandonedCount)} abandonos`,
       label: "Carrinhos",
       period: "24h",
       tone: "gold",
@@ -533,28 +530,28 @@ function buildCheckoutCards({
 }): DashboardKpi[] {
   return [
     {
-      detail: "checkouts consolidados na janela",
+      detail: "Checkout · abertos, perdidos e recuperados",
       label: "Checkout monitorado",
       period: "24h",
       tone: "blue",
       value: formatNumber(checkoutMonitorado),
     },
     {
-      detail: "abandono e perda no recorte",
+      detail: "(perdidos + abandonados) / monitorados",
       label: "Taxa de perda",
       period: "24h",
       tone: "red",
       value: formatPercent(taxaPerda),
     },
     {
-      detail: "recuperados após evento não pago",
+      detail: "recuperados / monitorados",
       label: "Taxa de recuperação",
       period: "24h",
       tone: "green",
       value: formatPercent(taxaRecuperacao),
     },
     {
-      detail: "sinais avaliados pela camada analítica",
+      detail: "Funil · sinais críticos dos últimos 7 dias",
       label: "Alertas de funil",
       period: "7 dias",
       tone: "gold",
@@ -653,16 +650,16 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   if (tendencia.error) throw tendencia.error;
 
   const postProcessStartedAt = performance.now();
-  // "Vendas hoje" = Você recebe (líquido do produtor) de todas as vendas aprovadas,
+  // "Total das vendas" = Você recebe (líquido do produtor) de todas as vendas aprovadas,
   // não o bruto — é o que o empresário efetivamente recebe. Alinhado ao analytics.
   const salesCount = voceRecebeHoje.count;
   const salesValue = voceRecebeHoje.total;
-  // Cards "Reembolsos/Chargebacks hoje" = eventos que OCORRERAM hoje (data do evento).
+  // Cards de reversões por evento = eventos que OCORRERAM hoje (data do evento).
   const refundValue = financialMetrics.byEventDate.valorReembolsos;
   const chargebackValue = financialMetrics.byEventDate.valorChargebacks;
   // Receita líquida = "Você recebe" menos reversões DAS VENDAS DO PERÍODO (data da
   // compra) — igual ao analytics. NÃO desconta chargebacks de pedidos antigos que
-  // apenas caíram hoje (esses aparecem no card "Chargebacks hoje", não aqui).
+  // apenas caíram hoje (esses aparecem nos cards por evento, não aqui).
   const netRevenue =
     voceRecebeHoje.total -
     financialMetrics.byPurchaseDate.valorReembolsos -

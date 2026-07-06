@@ -58,9 +58,10 @@ const kpiDotColorByLabel: Record<string, string> = {
   "Alertas ativos": "var(--fly-warning-strong)",
   "Alertas de funil": "var(--fly-danger-strong)",
   Carrinhos: "var(--fly-kpi-carts)",
-  "Chargebacks hoje": "var(--fly-kpi-refund)",
+  "Chargebacks por evento": "var(--fly-kpi-refund)",
   "Receita líquida": "var(--fly-chart-revenue)",
-  "Vendas hoje": "var(--fly-chart-revenue)",
+  "Reembolsos por evento": "var(--fly-danger-strong)",
+  "Total das vendas": "var(--fly-chart-revenue)",
 };
 
 function getKpiDotColor({ label, tone }: Pick<DashboardKpi, "label" | "tone">) {
@@ -370,7 +371,7 @@ function TrendChartTooltip({
         {payload.map((item) => {
           const key = String(item.dataKey ?? item.name);
           const isRevenue = key === "receita";
-          const labelText = isRevenue ? "Receita" : "Reembolsos + chargebacks";
+          const labelText = isRevenue ? "Total das vendas" : "Reversões";
 
           return (
             <div key={key} className="flex items-center justify-between gap-4">
@@ -442,8 +443,8 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
     <section className="min-w-0 rounded-[8px] border border-[var(--fly-border)] bg-[var(--fly-surface)] p-3 shadow-[var(--fly-panel-shadow)] sm:p-5">
       <div className="mb-4">
         <SectionHeader
-          title="Tendência"
-          description="Receita e reembolsos + chargebacks"
+          title="Tendência financeira"
+          description="PayT · total das vendas e reversões por dia"
           period="Últimos 30 dias"
         />
       </div>
@@ -451,7 +452,7 @@ function TrendChart({ data }: { data: DashboardTrendPoint[] }) {
       {hasChartData ? (
         <div
           role="img"
-          aria-label="Gráfico de tendência com receita, reembolsos e chargebacks"
+          aria-label="Gráfico de tendência com total das vendas e reversões"
           className="flynow-chart-stage h-[292px] min-w-0 sm:h-[320px]"
         >
           <div className="flynow-chart-plot h-full min-w-0">
@@ -572,7 +573,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
     ({
       amount: 0,
       count: 0,
-      label: "Aguard. Postagem",
+      label: "Aguardando postagem",
       tone: "gold" as const,
     } satisfies DashboardFunnelRow);
   const posted =
@@ -597,7 +598,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
       <div className="mb-4">
         <SectionHeader
           title="Funil de pedidos"
-          description="Distribuição do dia por status logístico"
+          description="Logística · status dos pedidos do dia"
           period="Hoje"
         />
       </div>
@@ -652,7 +653,7 @@ function OrdersFunnelCard({ rows }: { rows: DashboardFunnelRow[] }) {
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-x-0 bottom-7 text-center">
               <p className="text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
-                Total
+                Pedidos
               </p>
               <p className="mt-1 text-[14px] font-semibold leading-none tabular-nums text-[var(--fly-text-soft)]">
                 {formatNumber(total)}
@@ -746,7 +747,7 @@ function ActiveAlertsPanel({
           </span>
         </div>
         <p className="text-xs text-[var(--fly-text-muted)]">
-          Pedidos com data prometida vencida
+          Logística · data prometida vencida
         </p>
       </div>
 
@@ -806,7 +807,7 @@ function FunnelAlertsPanel({ alerts }: { alerts: DashboardFunnelAlert[] }) {
             Alertas do funil
           </h2>
           <p className="mt-1 text-xs text-[var(--fly-text-muted)]">
-            Leitura dos últimos 7 dias
+            Funil · sinais críticos dos últimos 7 dias
           </p>
         </div>
         <span className="text-xs text-[var(--fly-text-muted)]">
@@ -861,7 +862,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
     <>
       <DashboardHeader
         title="Dashboard"
-        description="Métricas do dia atual, sinais operacionais e tendência recente"
+        description="PayT, operação e checkout em leitura diária"
         actions={<UpdatedBadge value={data.generatedAtLabel} />}
       />
 
@@ -873,7 +874,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
           >
             <SectionGroup
               title="Visão geral"
-              description="Venda e reversão financeira do dia atual"
+              description="PayT · vendas e reversões do dia"
               period="Hoje"
             >
               <KpiGrid cards={data.overviewCards} featured />
@@ -886,7 +887,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
           >
             <SectionGroup
               title="Operação"
-              description="Sinais que precisam representar o estado atual da operação"
+              description="Logística e carrinhos em leitura operacional"
               period="Agora + 24h"
             >
               <KpiGrid cards={data.operationCards} columns="xl:grid-cols-3" />
@@ -899,7 +900,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
           >
             <SectionGroup
               title="Saúde do checkout"
-              description="Eventos de checkout e recuperação em janela curta"
+              description="Checkout · perda, recuperação e alertas"
               period="24h + 7 dias"
             >
               <KpiGrid cards={data.checkoutCards} />
@@ -912,7 +913,7 @@ export function PerformanceDashboard({ data }: PerformanceDashboardProps) {
           >
             <SectionGroup
               title="Análise recente"
-              description="Funil do dia e curva consolidada dos últimos 30 dias"
+              description="Pedidos do dia e tendência dos últimos 30 dias"
             >
               <div className="grid gap-5 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
                 <OrdersFunnelCard rows={data.funnelRows} />
