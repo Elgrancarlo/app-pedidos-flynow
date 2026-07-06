@@ -303,9 +303,10 @@ function OverviewContent({
     financeiro.totalPedidos > 0
       ? financeiro.receitaBruta / financeiro.totalPedidos
       : 0;
-  const totalRoas =
+  const receitaLiquida = financeiro.totalDasVendas - financeiro.totalRevertido;
+  const roas =
     data.summary.spendTotal > 0
-      ? financeiro.totalDasVendas / data.summary.spendTotal
+      ? receitaLiquida / data.summary.spendTotal
       : 0;
 
   return (
@@ -343,9 +344,7 @@ function OverviewContent({
             detail="PayT · Você recebe - reversões por compra"
             label="Receita líquida"
             tone="green"
-            value={formatCurrency(
-              financeiro.totalDasVendas - financeiro.totalRevertido,
-            )}
+            value={formatCurrency(receitaLiquida)}
           />
           <StatCard
             className="md:col-span-3 xl:col-span-4"
@@ -357,9 +356,9 @@ function OverviewContent({
           <StatCard
             className="md:col-span-6 xl:col-span-4"
             detail="Receita líquida / investimento"
-            label="ROAS total"
+            label="ROAS"
             tone="green"
-            value={formatDecimal(totalRoas)}
+            value={formatDecimal(roas)}
           />
           <StatCard
             className="md:col-span-6 xl:col-span-4"
