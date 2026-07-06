@@ -631,9 +631,9 @@ export default async function UpsellsPage({
 
         <StatGrid>
           <StatCard
-            label="Vendas front aprovadas"
+            label="Vendas diretas"
             value={formatNumber(directSales)}
-            detail="base do funil (vendas principais)"
+            detail="Funil · pedidos principais aprovados"
             tone="neutral"
           />
           <StatCard
@@ -643,9 +643,9 @@ export default async function UpsellsPage({
             tone="green"
           />
           <StatCard
-            label="Take rate (upsells / front)"
+            label="Take rate de upsells"
             value={formatPercent(conversionRate)}
-            detail={`US1: ${formatPercent(takeRateUs1)} · US2: ${formatPercent(takeRateUs2)}`}
+            detail={`Upsells / vendas diretas · US1: ${formatPercent(takeRateUs1)} · US2: ${formatPercent(takeRateUs2)}`}
             tone="blue"
           />
           <StatCard
