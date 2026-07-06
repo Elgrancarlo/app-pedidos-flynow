@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
-import { getUtcRangeForAppDates, toAppDateString } from "@/lib/app-dates";
+import { getUtcRangeForAppDates } from "@/lib/app-dates";
 
 const PAGE_SIZE = 1000;
 const FRONT_CHANNELS = new Set(["VSL_FRONT", "TABOOLA"]);
@@ -201,7 +201,9 @@ function countPostSaleEventsForWeek(
 
   for (const row of rows) {
     const transactionId = String(row.transaction_id ?? "").trim();
-    const eventDay = toAppDateString(row.event_at);
+    // event_at é hora BRT gravada verbatim como UTC — o dia BRT é o próprio
+    // date-part do valor; converter com toAppDateString deslocaria -3h.
+    const eventDay = row.event_at ? String(row.event_at).slice(0, 10) : "";
     const eventStatus = row.event_status?.toLowerCase() ?? "";
 
     if (!transactionId || !eventDay || !dayInRange(eventDay, inicio, fim)) continue;
@@ -235,9 +237,14 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
   const { data: metaRow, error: metaError } = await analytics
     .from("metas_mensais")
     .select("*")
+    .eq("mes", mes)
     // maybeSingle: mês sem meta cadastrada (ex.: virada de mês) retorna null sem erro,
     // caindo no 404 que a página /metas trata como estado vazio (em vez de crashar 500).
     .maybeSingle();
+
+  if (metaError) {
+    throw new CfoPanelError(metaError.message);
+  }
 
   // Sem meta cadastrada para o mês (ex.: virada de mês) → 404, que a /metas trata
   // como "não configurado" (estado vazio). Qualquer resultado sem linha cai aqui.
