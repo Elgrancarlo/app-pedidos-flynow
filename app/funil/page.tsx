@@ -369,7 +369,7 @@ function AlertList({ alerts }: { alerts: PerformanceAlert[] }) {
         })
       ) : (
         <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
-          Nenhum alerta registrado no periodo.
+          Nenhum alerta registrado no período.
         </p>
       )}
     </div>
@@ -395,7 +395,7 @@ function SourceTableControls({
       <FunilQuerySelect
         className="sm:w-[150px]"
         displayLabel="Linhas"
-        label="linhas por pagina"
+        label="linhas por página"
         options={pageSizeOptions.map((option) => ({
           value: String(option),
           label: String(option),
@@ -416,10 +416,10 @@ function SourceSummaryTable({ rows }: { rows: SourceSummaryRow[] }) {
             <th className="w-[18%] px-3 py-3">Canal</th>
             <th className="w-[25%] px-3 py-3">UTM campaign</th>
             <th className="w-[17%] px-3 py-3">UTM source</th>
-            <th className="w-[10%] px-3 py-3 text-right">Vendas</th>
-            <th className="w-[13%] px-3 py-3 text-right">Receita</th>
-            <th className="w-[13%] px-3 py-3 text-right">Receita upsells</th>
-            <th className="w-[9%] px-3 py-3 text-right">Upsell ratio</th>
+            <th className="w-[10%] px-3 py-3 text-right">Vendas diretas</th>
+            <th className="w-[13%] px-3 py-3 text-right">Receita do funil</th>
+            <th className="w-[13%] px-3 py-3 text-right">Receita de upsells</th>
+            <th className="w-[9%] px-3 py-3 text-right">Take rate</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--fly-divider-subtle)]">
@@ -507,7 +507,7 @@ function PaginationFooter({
   return (
     <div className="flex flex-col gap-3 border-t border-[var(--fly-divider)] bg-[var(--fly-row-bg)] px-3 py-3 text-xs text-[var(--fly-text-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-4">
       <span className="font-medium tabular-nums text-[var(--fly-text-soft)]">
-        Pagina {currentPage} de {totalPages}
+        Página {currentPage} de {totalPages}
       </span>
       <div className="flex items-center gap-2">
         {currentPage <= 1 ? (
@@ -518,10 +518,10 @@ function PaginationFooter({
           </Link>
         )}
         {currentPage >= totalPages ? (
-          <span className={disabledClassName}>Proxima</span>
+          <span className={disabledClassName}>Próxima</span>
         ) : (
           <Link className={controlClassName} href={nextHref}>
-            Proxima
+            Próxima
           </Link>
         )}
       </div>
@@ -563,7 +563,7 @@ function LogsTable({ logs }: { logs: PerformanceLog[] }) {
         ))
       ) : (
         <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
-          Nenhuma alteracao registrada no periodo.
+          Nenhuma alteração registrada no período.
         </p>
       )}
     </div>
@@ -624,7 +624,7 @@ export default async function FunilPage({
     <Shell>
       <DashboardHeader
         title="Funil"
-        description="Funil diario por produto, canal e take rate de upsells"
+        description="Receita, vendas diretas, upsells e take rate por produto e canal"
         actions={<FunilPeriodFilter range={range} />}
       />
 
@@ -640,37 +640,37 @@ export default async function FunilPage({
 
         <StatGrid columns="xl:grid-cols-3">
           <StatCard
-            detail="Pedidos principais no recorte"
+            detail="Funil · pedidos principais aprovados"
             label="Vendas diretas"
             tone="neutral"
             value={formatNumber(summary.directSales)}
           />
           <StatCard
-            detail="Direta + upsells no periodo"
+            detail="Diretas + upsells aprovados"
             label="Receita do funil"
             tone="gold"
             value={formatCurrency(summary.revenueTotal)}
           />
           <StatCard
             detail={`${formatPercent(summary.upsellRatio)} da receita do funil`}
-            label="Receita upsells"
+            label="Receita de upsells"
             tone="green"
             value={formatCurrency(summary.upsellRevenue)}
           />
           <StatCard
-            detail="(receita do funil) / (vendas diretas)"
-            label="AOV do funil"
+            detail="Receita do funil / vendas diretas"
+            label="Ticket médio do funil"
             tone="blue"
             value={formatCurrency(summary.aov)}
           />
           <StatCard
-            detail="Media ponderada por vendas"
+            detail="US1 aprovados / vendas diretas"
             label="Take rate US1"
             tone="neutral"
             value={formatPercent(summary.takeRateUs1)}
           />
           <StatCard
-            detail="Media ponderada por vendas"
+            detail="US2 aprovados / vendas diretas"
             label="Take rate US2"
             tone="neutral"
             value={formatPercent(summary.takeRateUs2)}
@@ -679,23 +679,23 @@ export default async function FunilPage({
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.85fr)]">
           <Panel
-            title="Faturamento vs receita de upsell"
-            description="Evolucao diaria do recorte selecionado"
+            title="Receita do funil vs upsells"
+            description="Série diária do recorte selecionado"
           >
             <FunnelRevenueChart series={chartSeries} />
           </Panel>
 
           <Panel
             title="Take rate de upsells"
-            description="US1 e US2 ponderados por vendas diretas"
+            description="US1 e US2 / vendas diretas"
           >
             <FunnelTakeRateChart series={chartSeries} />
           </Panel>
         </div>
 
         <Panel
-          title="Alertas automaticos do funil"
-          description={`${data.alerts.length} sinais na janela`}
+          title="Alertas automáticos"
+          description={`${data.alerts.length} sinais no período`}
         >
           <AlertList alerts={data.alerts} />
         </Panel>
@@ -703,8 +703,8 @@ export default async function FunilPage({
         <FunilOperationalForms products={productOptions} />
 
         <Panel
-          title="Resumo por fonte no periodo"
-          description="Canal, UTM, vendas, receita e take de upsell"
+          title="Resumo por fonte"
+          description="Canal, UTM, vendas diretas, receita e upsells"
           action={
             canShowSourceRows ? (
               <SourceTableControls
@@ -730,8 +730,8 @@ export default async function FunilPage({
             </>
           ) : (
             <p className="rounded-[8px] border border-[var(--fly-brand-border)] bg-[var(--fly-brand-surface)] px-3 py-3 text-sm leading-5 text-[var(--fly-text-soft)]">
-              O resumo por fonte nao possui dimensao confiavel de produto na
-              fact atual. Com filtro de produto ativo, esta secao fica oculta
+              O resumo por fonte não possui dimensão confiável de produto na
+              fact atual. Com filtro de produto ativo, esta seção fica oculta
               para evitar leitura incorreta.
             </p>
           )}
@@ -739,18 +739,18 @@ export default async function FunilPage({
 
         <div className="grid gap-4 xl:grid-cols-2">
           <Panel
-            title="Log de alteracoes"
-            description="Eventos com leitura de impacto"
+            title="Log de alterações"
+            description="Eventos com impacto no funil"
           >
             <LogsTable logs={data.logs} />
           </Panel>
 
           <Panel
-            title="Transcricoes operacionais"
-            description="Registro operacional do periodo"
+            title="Transcrições operacionais"
+            description="Registro operacional do período"
           >
             <p className="rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] px-3 py-3 text-sm text-[var(--fly-text-muted)]">
-              Nenhuma transcricao encontrada no periodo.
+              Nenhuma transcrição encontrada no período.
             </p>
           </Panel>
         </div>
