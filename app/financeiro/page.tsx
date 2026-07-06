@@ -136,7 +136,7 @@ function ReversalLensCard({
             {formatCurrency(total)}
           </p>
           <p className="mt-2 text-[10px] font-semibold uppercase text-[var(--fly-text-dim)]">
-            total revertido
+            valor revertido
           </p>
         </div>
       </div>
@@ -179,34 +179,34 @@ function ReversalsOverview({ data }: { data: Awaited<ReturnType<typeof getFinanc
     eventDateDelta === 0
       ? "Mesmo valor nas duas leituras"
       : eventDateDelta > 0
-        ? "Mais reversões processadas no período"
-        : "Menos reversões processadas no período";
+        ? "Evento acima da compra"
+        : "Evento abaixo da compra";
 
   return (
     <Panel
-      title="Reversões"
-      description="Separe competência da venda e impacto financeiro processado"
+      title="Reversões por data"
+      description="Por compra mede qualidade das vendas; por evento mede caixa do período"
     >
       <div className="grid gap-3 xl:grid-cols-2">
         <ReversalLensCard
-          badge="data da compra"
+          badge="por compra"
           chargebackValue={data.valorChargebacks}
           chargebacks={data.chargebacks}
-          description="Vendas do período que depois viraram reembolso ou chargeback."
-          footer={`Taxa de chargeback: ${formatPercent(data.taxaChargeback)} sobre vendas aprovadas.`}
+          description="Vendas do período que viraram reembolso ou chargeback."
+          footer={`Chargebacks / vendas totais: ${formatPercent(data.taxaChargeback)}.`}
           refundValue={data.valorReembolsos}
           refunds={data.reembolsos}
-          title="Impacto nas vendas do período"
+          title="Reversões por compra"
           total={data.totalRevertido}
         />
         <ReversalLensCard
-          badge="data do evento"
+          badge="por evento"
           chargebackValue={data.eventDateValorChargebacks}
           chargebacks={data.eventDateChargebacks}
-          description="Reversões que caíram neste período, independente da data da venda."
+          description="Reversões processadas no período, independente da data da venda."
           refundValue={data.eventDateValorReembolsos}
           refunds={data.eventDateReembolsos}
-          title="Impacto processado no período"
+          title="Reversões por evento"
           total={data.eventDateTotalRevertido}
         />
       </div>
@@ -214,10 +214,10 @@ function ReversalsOverview({ data }: { data: Awaited<ReturnType<typeof getFinanc
       <div className="mt-3 grid gap-3 rounded-[8px] border border-[var(--fly-border-subtle)] bg-[var(--fly-row-bg)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="min-w-0">
           <p className="text-sm font-medium text-[var(--fly-text-soft)]">
-            Diferença entre as leituras
+            Diferença compra vs evento
           </p>
           <p className="mt-1 text-xs leading-5 text-[var(--fly-text-muted)]">
-            Compra mostra a qualidade das vendas do período; evento mostra o que afetou o caixa agora.
+            Por compra olha as vendas do período; por evento olha reversões processadas agora.
           </p>
         </div>
         <div className="shrink-0 text-left sm:text-right">
@@ -256,16 +256,16 @@ export default async function FinanceiroPage({
     <Shell>
       <DashboardHeader
         title="Financeiro"
-        description={`Receita, reembolsos e chargebacks · ${formatDateLong(data.range.endDate)}`}
+        description={`PayT · receita, vendas e reversões · ${formatDateLong(data.range.endDate)}`}
         actions={<FinanceiroPeriodFilter range={data.range} />}
       />
 
       <PageBody>
         <StatGrid>
           <StatCard
-            label="Receita líquida (Você recebe)"
+            label="Receita líquida"
             value={formatCurrency(data.receitaLiquida)}
-            detail={`${data.totalPedidos.toLocaleString("pt-BR")} vendas · líquido Payt menos reversões`}
+            detail="PayT · Você recebe menos reversões"
             tone="green"
           />
           <StatCard
@@ -275,15 +275,15 @@ export default async function FinanceiroPage({
             tone="blue"
           />
           <StatCard
-            label="Total revertido (data compra)"
+            label="Reversões por compra"
             value={formatCurrency(data.totalRevertido)}
-            detail={`taxa CB ${formatPercent(data.taxaChargeback)} · ${formatCurrency(data.eventDateTotalRevertido)} no mês (por data evento)`}
+            detail={`Por compra · eventos no período: ${formatCurrency(data.eventDateTotalRevertido)}`}
             tone="red"
           />
           <StatCard
-            label="Vendas aprovadas"
+            label="Vendas totais"
             value={data.totalPedidos.toLocaleString("pt-BR")}
-            detail="PayT (compra + upsell)"
+            detail="PayT · vendas aprovadas com upsells"
             tone="gold"
           />
         </StatGrid>
@@ -292,7 +292,7 @@ export default async function FinanceiroPage({
 
         <Panel
           title="Composição financeira"
-          description="Receita por data de pagamento; reversões por data do evento financeiro"
+          description="PayT · bruto, taxas, reversões e líquido"
         >
           <FinanceCompositionChart data={dataComTicketMedioBruto} />
         </Panel>
