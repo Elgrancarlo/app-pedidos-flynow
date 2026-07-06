@@ -16,7 +16,6 @@ import {
   createMockPedidos,
   getPedidosContagemPorStatus,
   getPedidosFinanceiroResumo,
-  getPedidosValorPago,
   PEDIDO_STATUS_LOGISTICO_LABELS,
   type Pedido,
   type PedidoStatusLogistico,
@@ -456,7 +455,7 @@ function buildOverviewCards({
       value: formatCurrency(salesValue),
     },
     {
-      detail: "PayT · Você recebe",
+      detail: "PayT · Você recebe menos reversões por compra",
       label: "Receita líquida",
       period: "Hoje",
       tone: "green",
@@ -650,15 +649,17 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   if (tendencia.error) throw tendencia.error;
 
   const postProcessStartedAt = performance.now();
-  // "Total das vendas" = Você recebe (líquido do produtor) de todas as vendas aprovadas,
-  // não o bruto — é o que o empresário efetivamente recebe. Alinhado ao analytics.
+  // "Total das vendas" = Você recebe (líquido do produtor) de todas as vendas aprovadas.
   const salesCount = voceRecebeHoje.count;
   const salesValue = voceRecebeHoje.total;
   // Cards de reversões por evento = eventos que OCORRERAM hoje (data do evento).
   const refundValue = financialMetrics.byEventDate.valorReembolsos;
   const chargebackValue = financialMetrics.byEventDate.valorChargebacks;
-  // Receita líquida = "Você recebe" da PayT, sem descontar reversões novamente.
-  const netRevenue = voceRecebeHoje.total;
+  // Receita líquida = "Você recebe" - reversões pela data da compra.
+  const purchaseDateReversals =
+    financialMetrics.byPurchaseDate.valorReembolsos +
+    financialMetrics.byPurchaseDate.valorChargebacks;
+  const netRevenue = voceRecebeHoje.total - purchaseDateReversals;
   const checkoutSummary = checkout.summary;
   const carts24h =
     checkoutSummary.openCount +
@@ -741,11 +742,17 @@ function getMockDashboardData(): DashboardPageData {
   const todayPedidos = pedidos.filter((pedido) => dateKeyFromIso(pedido.paidAt) === today);
   const todayStatusCounts = getPedidosContagemPorStatus(todayPedidos);
   const todayFinanceiro = getPedidosFinanceiroResumo(todayPedidos);
-  const salesValue = getPedidosValorPago(todayPedidos);
-  const salesCount = todayPedidos.filter((pedido) => pedido.paymentStatus === "paid").length;
+  const todayEverPaid = todayPedidos.filter((pedido) =>
+    ["paid", "refunded", "chargeback"].includes(pedido.paymentStatus)
+  );
+  const salesValue = todayEverPaid.reduce(
+    (total, pedido) => total + (pedido.amount ?? 0),
+    0
+  );
+  const salesCount = todayEverPaid.length;
   const refundValue = todayFinanceiro.valorReembolsos;
   const chargebackValue = todayFinanceiro.valorChargebacks;
-  const netRevenue = salesValue;
+  const netRevenue = salesValue - refundValue - chargebackValue;
   const allStatusCounts = getPedidosContagemPorStatus(pedidos);
   const emTransito = OPEN_LOGISTICS_STATUSES.reduce(
     (sum, status) => sum + allStatusCounts[status],

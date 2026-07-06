@@ -118,6 +118,7 @@ interface PaytSaleRow {
   payt_transaction_id: string | null;
   status_pagamento: string | null;
   valor_total: number | null;
+  voce_recebe: number | null;
 }
 
 interface PaytPostSaleEventRow {
@@ -298,7 +299,7 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await analytics
       .from("payt_sales")
-      .select("day, valor_total, canal, offer_kind, chargeback, status_pagamento, payt_transaction_id")
+      .select("day, valor_total, voce_recebe, canal, offer_kind, chargeback, status_pagamento, payt_transaction_id")
       .gte("day", periodoInicio)
       .lte("day", periodoFim)
       .range(from, from + PAGE_SIZE - 1);
@@ -376,6 +377,8 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
       input?.override_investimento ?? sum(redtrackWeek, (row) => row.cost);
     // Receita bruta = tudo que foi pago na PayT (purchase + upsell).
     const receitaBruta = sum(paytEverPaid, (row) => row.valor_total);
+    // Total das vendas = "Você recebe" da PayT, mesma base de Financeiro/Analytics.
+    const totalDasVendas = sum(paytEverPaid, (row) => row.voce_recebe);
     // Valor das reversões por data da compra (pedidos reembolsados/chargebacks no período).
     const valorReversoes = sum(
       paytEverPaid.filter((row) =>
@@ -384,10 +387,10 @@ export async function getCfoPanelData(mesParam: string): Promise<CfoPanelData> {
         row.status_pagamento === "charged_back" ||
         row.chargeback === true,
       ),
-      (row) => row.valor_total,
+      (row) => row.voce_recebe,
     );
-    // Receita líquida = bruta - reversões.
-    const receita = input?.override_receita ?? round2(receitaBruta - valorReversoes);
+    // Receita líquida = "Você recebe" - reversões por data da compra.
+    const receita = input?.override_receita ?? round2(totalDasVendas - valorReversoes);
     const clicksTotal = sum(redtrackWeek, (row) => row.clicks);
     const conversionsTotal = sum(redtrackWeek, (row) => row.conversions);
     const redtrackRevenue = sum(redtrackWeek, (row) => row.total_revenue);
