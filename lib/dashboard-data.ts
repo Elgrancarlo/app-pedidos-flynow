@@ -456,7 +456,7 @@ function buildOverviewCards({
       value: formatCurrency(salesValue),
     },
     {
-      detail: "Total das vendas - reversões por compra",
+      detail: "PayT · Você recebe",
       label: "Receita líquida",
       period: "Hoje",
       tone: "green",
@@ -613,7 +613,7 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
       fetchVoceRecebeForRange(supabase, startTs, endTs)
     ),
     timedServerTask("dashboard", "financeiro", () =>
-      // Retorna as duas visões: byEventDate (cards "hoje") e byPurchaseDate (Receita líquida).
+      // Retorna as duas visões de reversões para os cards por evento e leituras auxiliares.
       getFinancialEventMetrics(today, today)
     ),
     timedServerTask("dashboard", "emTransito", () =>
@@ -657,13 +657,8 @@ async function getRealDashboardData(): Promise<DashboardPageData> {
   // Cards de reversões por evento = eventos que OCORRERAM hoje (data do evento).
   const refundValue = financialMetrics.byEventDate.valorReembolsos;
   const chargebackValue = financialMetrics.byEventDate.valorChargebacks;
-  // Receita líquida = "Você recebe" menos reversões DAS VENDAS DO PERÍODO (data da
-  // compra) — igual ao analytics. NÃO desconta chargebacks de pedidos antigos que
-  // apenas caíram hoje (esses aparecem nos cards por evento, não aqui).
-  const netRevenue =
-    voceRecebeHoje.total -
-    financialMetrics.byPurchaseDate.valorReembolsos -
-    financialMetrics.byPurchaseDate.valorChargebacks;
+  // Receita líquida = "Você recebe" da PayT, sem descontar reversões novamente.
+  const netRevenue = voceRecebeHoje.total;
   const checkoutSummary = checkout.summary;
   const carts24h =
     checkoutSummary.openCount +
@@ -750,7 +745,7 @@ function getMockDashboardData(): DashboardPageData {
   const salesCount = todayPedidos.filter((pedido) => pedido.paymentStatus === "paid").length;
   const refundValue = todayFinanceiro.valorReembolsos;
   const chargebackValue = todayFinanceiro.valorChargebacks;
-  const netRevenue = salesValue - refundValue - chargebackValue;
+  const netRevenue = salesValue;
   const allStatusCounts = getPedidosContagemPorStatus(pedidos);
   const emTransito = OPEN_LOGISTICS_STATUSES.reduce(
     (sum, status) => sum + allStatusCounts[status],
