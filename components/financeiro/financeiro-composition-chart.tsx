@@ -134,11 +134,11 @@ export function FinanceCompositionChart({ data }: { data: FinanceiroPageData }) 
     },
     {
       amount: data.receitaLiquida,
-      axisLabel: "Você recebe",
+      axisLabel: "Líquido",
       color: "var(--fly-success)",
       detail: `${formatPercent(retainedRatio)} do bruto é seu`,
       displayValue: data.receitaLiquida,
-      label: "Receita líquida (Você recebe)",
+      label: "Líquido",
       offset: 0,
     },
   ];
