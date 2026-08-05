@@ -26,6 +26,16 @@ export const GRUPO_MAP: Array<[RegExp, string]> = [
   [/vitalafil\s*caps/i, "Vitalafil Caps"],
   [/lipo\s*guumy/i,     "Lipo Guumy"],
   [/lipo\s*gummy/i,     "Lipo Guumy"],
+  [/gelatidina/i,       "GELATIDINA"],
+  [/memo\s*clear/i,     "MEMO CLEAR"],
+  [/barimax/i,          "BARIMAX"],
+  [/gelatina\s*power/i, "GELATINA POWER"],
+  [/gelatinax/i,        "GELATINAX"],
+  [/gelatina\s*31/i,    "GELATINA 31"],
+  [/gluco\s*activ/i,    "GLUCO ACTIV"],
+  [/menoflam/i,         "MENOFLAM"],
+  [/divessence/i,       "Divessence"],
+  [/sonus\s*zen/i,      "Sonuszen"],
 ];
 
 /**
