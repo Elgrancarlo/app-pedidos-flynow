@@ -33,6 +33,79 @@ function extractItems(body: Record<string, unknown>): Array<{ name: string | nul
   return items;
 }
 
+/**
+ * Registra baixa de estoque de forma IDEMPOTENTE: só decrementa se o pedido
+ * ainda não tem movimentação de venda. Cobre tanto o insert (cartão, que já
+ * nasce paid) quanto a transição waiting_payment → paid (pix/boleto), que
+ * antes NÃO baixava estoque.
+ */
+async function baixarEstoquePedido(pedidoId: string, produtoGrupo: string | null, qtdPotes: number) {
+  if (!produtoGrupo || qtdPotes <= 0) return;
+
+  const { data: jaExiste, error: lookupError } = await supabase
+    .from("estoque_movimentacao")
+    .select("id")
+    .eq("referencia_pedido_id", pedidoId)
+    .eq("tipo", "venda")
+    .limit(1);
+
+  if (lookupError) {
+    console.error("[webhook-payt] Erro ao verificar movimentação:", lookupError.message);
+    return;
+  }
+  if ((jaExiste ?? []).length > 0) return;
+
+  await supabase.from("estoque_grupos")
+    .upsert({ nome_grupo: produtoGrupo }, { onConflict: "nome_grupo", ignoreDuplicates: true });
+
+  await supabase.rpc("decrementar_estoque", { p_grupo: produtoGrupo, p_qtd: qtdPotes });
+
+  await supabase.from("estoque_movimentacao").insert({
+    produto_grupo:        produtoGrupo,
+    tipo:                 "venda",
+    qtd_potes:            qtdPotes,
+    referencia_pedido_id: pedidoId,
+  });
+}
+
+/**
+ * Devolve estoque em refund/chargeback de forma IDEMPOTENTE: só devolve se
+ * houve baixa de venda e ainda não houve estorno para o pedido.
+ */
+async function devolverEstoquePedido(pedidoId: string, motivo: "refund" | "chargeback") {
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("id, produto_grupo, qtd_potes")
+    .eq("id", pedidoId)
+    .single();
+
+  if (!pedido?.produto_grupo || !pedido.qtd_potes || pedido.qtd_potes <= 0) return;
+
+  const { data: movs, error: lookupError } = await supabase
+    .from("estoque_movimentacao")
+    .select("tipo, observacao")
+    .eq("referencia_pedido_id", pedidoId);
+
+  if (lookupError) {
+    console.error("[webhook-payt] Erro ao verificar estorno:", lookupError.message);
+    return;
+  }
+
+  const temVenda   = (movs ?? []).some((m) => m.tipo === "venda");
+  const temEstorno = (movs ?? []).some((m) => m.tipo === "entrada" && (m.observacao ?? "").startsWith("Estorno automático:"));
+  if (!temVenda || temEstorno) return;
+
+  await supabase.rpc("incrementar_estoque", { p_grupo: pedido.produto_grupo, p_qtd: pedido.qtd_potes });
+
+  await supabase.from("estoque_movimentacao").insert({
+    produto_grupo:        pedido.produto_grupo,
+    tipo:                 "entrada",
+    qtd_potes:            pedido.qtd_potes,
+    referencia_pedido_id: pedidoId,
+    observacao:           `Estorno automático: ${motivo}`,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -117,10 +190,14 @@ Deno.serve(async (req) => {
       await supabase.from("pedidos")
         .update({ chargeback: true, status_pagamento: "chargeback", updated_at: new Date().toISOString() })
         .eq("payt_transaction_id", transactionId);
+      await devolverEstoquePedido(existente.id, "chargeback");
     } else if (status === "refunded" || status === "refund_requested") {
       await supabase.from("pedidos")
         .update({ status_pagamento: status === "refunded" ? "refunded" : "refund_requested", updated_at: new Date().toISOString() })
         .eq("payt_transaction_id", transactionId);
+      if (status === "refunded") {
+        await devolverEstoquePedido(existente.id, "refund");
+      }
     } else if (status === "paid") {
       // Transição waiting_payment/pending → paid: marca como pago e preenche data/valor.
       // (bug anterior: pedido criado no pix ficava travado em waiting_payment)
@@ -134,6 +211,10 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         })
         .eq("payt_transaction_id", transactionId);
+      // Baixa idempotente: pix/boleto chegam aqui na aprovação sem nunca terem
+      // baixado estoque no insert (bug corrigido em 05/08/2026 — venda pix não
+      // decrementava estoque).
+      await baixarEstoquePedido(existente.id, produtoGrupo, qtdPotes);
     } else if (existente.status_pagamento !== "paid") {
       // Demais status (waiting_payment, canceled, expired, ...) — nunca rebaixa um pedido já pago.
       await supabase.from("pedidos")
@@ -179,19 +260,9 @@ Deno.serve(async (req) => {
 
   console.log(`[webhook-payt] Inserido: id=${pedido!.id}`);
 
-  // Decrementar estoque se venda aprovada
-  if (status === "paid" && produtoGrupo && qtdPotes > 0) {
-    await supabase.from("estoque_grupos")
-      .upsert({ nome_grupo: produtoGrupo }, { onConflict: "nome_grupo", ignoreDuplicates: true });
-
-    await supabase.rpc("decrementar_estoque", { p_grupo: produtoGrupo, p_qtd: qtdPotes });
-
-    await supabase.from("estoque_movimentacao").insert({
-      produto_grupo:        produtoGrupo,
-      tipo:                 "venda",
-      qtd_potes:            qtdPotes,
-      referencia_pedido_id: pedido!.id,
-    });
+  // Decrementar estoque se venda aprovada (idempotente)
+  if (status === "paid") {
+    await baixarEstoquePedido(pedido!.id, produtoGrupo, qtdPotes);
   }
 
   return new Response(JSON.stringify({ ok: true, id: pedido!.id }), {
